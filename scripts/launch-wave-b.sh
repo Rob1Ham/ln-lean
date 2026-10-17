@@ -4,7 +4,7 @@
 set -uo pipefail
 cd /home/ubuntu/ln-lean
 
-if pgrep -f 'scripts/run-b-agent.sh' >/dev/null 2>&1; then
+if pgrep -f 'run-b-agent.sh B[0-9][0-9]' >/dev/null 2>&1; then
   echo "wave B already running; refusing to duplicate" >&2
   exit 1
 fi
