@@ -638,14 +638,145 @@ theorem sumParts_perm {ps qs : List MPPPart} (h : ps.Perm qs) :
   | swap x y l => simp [sumParts]; omega
   | trans _ _ ih1 ih2 => exact ih1.trans ih2
 
+/-- Membership in the collector: adding `p` makes exactly `p` and the old
+elements present. -/
+theorem mem_addPart (ps : List MPPPart) (p q : MPPPart) :
+    q ∈ addPart ps p ↔ q = p ∨ q ∈ ps := by
+  unfold addPart
+  by_cases hc : containsPart ps p = true
+  · rw [ite_eq_left hc]
+    constructor
+    · intro hq
+      exact Or.inr hq
+    · rintro (rfl | hq)
+      · exact (containsPart_iff ps q).mp hc
+      · exact hq
+  · rw [ite_eq_right hc]
+    simp
+
+/-- The extra amount contributed by adding `p` to `ps`. -/
+def addWeight (ps : List MPPPart) (p : MPPPart) : Nat :=
+  if containsPart ps p then 0 else p.amount.val
+
+/-- The collected sum after one insertion. -/
+theorem sumParts_addPart_eq (ps : List MPPPart) (p : MPPPart) :
+    sumParts (addPart ps p) = sumParts ps + addWeight ps p := by
+  unfold addWeight
+  by_cases h : p ∈ ps
+  · have hc : containsPart ps p = true := (containsPart_iff ps p).mpr h
+    rw [sumParts_addPart_of_mem h]
+    simp [hc]
+  · have hc : containsPart ps p = false := by
+      cases hb : containsPart ps p
+      · rfl
+      · exact absurd ((containsPart_iff ps p).mp hb) h
+    rw [sumParts_addPart_of_not_mem h]
+    simp [hc]
+    omega
+
+/-- The weight of an old element is unchanged by adding a different one. -/
+theorem addWeight_addPart_of_ne {ps : List MPPPart} {p q : MPPPart} (h : p ≠ q) :
+    addWeight (addPart ps q) p = addWeight ps p := by
+  unfold addWeight
+  have hc : containsPart (addPart ps q) p = containsPart ps p := by
+    by_cases hm : p ∈ addPart ps q
+    · have hp : p ∈ ps := by
+        rcases (mem_addPart ps q p).mp hm with hpq | hps
+        · exact absurd hpq h
+        · exact hps
+      rw [(containsPart_iff _ _).mpr hm, (containsPart_iff _ _).mpr hp]
+    · have hp : p ∉ ps := fun hps => hm ((mem_addPart ps q p).mpr (Or.inr hps))
+      have hb₁ : containsPart (addPart ps q) p = false := by
+        cases hb : containsPart (addPart ps q) p
+        · rfl
+        · exact absurd ((containsPart_iff _ _).mp hb) hm
+      have hb₂ : containsPart ps p = false := by
+        cases hb : containsPart ps p
+        · rfl
+        · exact absurd ((containsPart_iff _ _).mp hb) hp
+      rw [hb₁, hb₂]
+  rw [hc]
+
+/-- Adding an element already present contributes nothing. -/
+theorem addWeight_self (ps : List MPPPart) (p : MPPPart) :
+    addWeight (addPart ps p) p = 0 := by
+  unfold addWeight
+  have hm : p ∈ addPart ps p := (mem_addPart ps p p).mpr (Or.inl rfl)
+  have hc : containsPart (addPart ps p) p = true := (containsPart_iff _ _).mpr hm
+  simp [hc]
+
+/-- The two orderings of two insertions produce the same collected sum. -/
+theorem sumParts_addPart_comm (acc : List MPPPart) (x y : MPPPart) :
+    sumParts (addPart (addPart acc x) y) =
+      sumParts (addPart (addPart acc y) x) := by
+  rw [sumParts_addPart_eq, sumParts_addPart_eq,
+    sumParts_addPart_eq, sumParts_addPart_eq]
+  by_cases hxy : x = y
+  · subst hxy
+    omega
+  · rw [addWeight_addPart_of_ne hxy, addWeight_addPart_of_ne (Ne.symm hxy)]
+    omega
+
+/-- Two orderings of two insertions produce the same membership set. -/
+theorem mem_addPart_comm (acc : List MPPPart) (x y q : MPPPart) :
+    q ∈ addPart (addPart acc x) y ↔ q ∈ addPart (addPart acc y) x := by
+  rw [mem_addPart, mem_addPart, mem_addPart, mem_addPart]
+  constructor <;> intro h <;> rcases h with rfl | rfl | h <;> simp [*]
+
+/-- **Fold invariant.**  Two accumulators with the same total and the same
+membership produce the same collected total under any suffix `ps`. -/
+theorem sumParts_foldl_addPart_congr (ps : List MPPPart) {acc₁ acc₂ : List MPPPart}
+    (hsum : sumParts acc₁ = sumParts acc₂)
+    (hmem : ∀ q, q ∈ acc₁ ↔ q ∈ acc₂) :
+    sumParts (ps.foldl addPart acc₁) = sumParts (ps.foldl addPart acc₂) := by
+  induction ps generalizing acc₁ acc₂ with
+  | nil => exact hsum
+  | cons p ps ih =>
+      simp only [List.foldl_cons]
+      apply ih
+      · by_cases hp : p ∈ acc₁
+        · have hp₂ : p ∈ acc₂ := (hmem p).mp hp
+          rw [sumParts_addPart_of_mem hp, sumParts_addPart_of_mem hp₂]
+          exact hsum
+        · have hp₂ : p ∉ acc₂ := fun h => hp ((hmem p).mpr h)
+          rw [sumParts_addPart_of_not_mem hp, sumParts_addPart_of_not_mem hp₂]
+          exact congrArg (fun n => p.amount.val + n) hsum
+      · intro q
+        rw [mem_addPart, mem_addPart]
+        constructor
+        · rintro (rfl | hq)
+          · exact Or.inl rfl
+          · exact Or.inr ((hmem q).mp hq)
+        · rintro (rfl | hq)
+          · exact Or.inl rfl
+          · exact Or.inr ((hmem q).mpr hq)
+
+/-- **Accumulator form of permutation invariance.**  The collecting fold's
+total is unchanged by any permutation of the suffix, for every accumulator. -/
+theorem sumParts_foldl_addPart_perm {ps qs : List MPPPart} (h : ps.Perm qs)
+    (acc : List MPPPart) :
+    sumParts (ps.foldl addPart acc) = sumParts (qs.foldl addPart acc) := by
+  induction h generalizing acc with
+  | nil => rfl
+  | cons x h ih =>
+      simp only [List.foldl_cons]
+      exact ih (addPart acc x)
+  | swap x y l =>
+      simp only [List.foldl_cons]
+      exact sumParts_foldl_addPart_congr l
+        (sumParts_addPart_comm acc y x)
+        (fun q => mem_addPart_comm acc y x q)
+  | trans h₁ h₂ ih₁ ih₂ =>
+      exact (ih₁ acc).trans (ih₂ acc)
+
 /-- The collected (duplicate-free) total depends only on the multiset of
-parts, not on their arrival order.  The proof needs a fold invariant that
-carries both the membership set and the sum through `List.Perm`; it is left
-as the smallest open duplicate-handling step. -/
+parts, not on their arrival order.  Proved through the accumulator invariant
+`sumParts_foldl_addPart_congr`: the fold only tracks a membership set and a
+sum, and adjacent swaps of `addPart` preserve both. -/
 theorem sumParts_addParts_perm {ps qs : List MPPPart} (h : ps.Perm qs) :
     sumParts (addParts ps) = sumParts (addParts qs) := by
-  -- OBLIGATION: LN-PAY-MPP-001 the duplicate-free collected total is invariant under any permutation of the part list
-  sorry
+  unfold addParts
+  exact sumParts_foldl_addPart_perm h []
 
 end MPPProps
 
