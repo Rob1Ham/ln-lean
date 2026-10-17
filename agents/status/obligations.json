@@ -1,0 +1,798 @@
+{
+  "files": 33,
+  "obligations": 48,
+  "catalog_obligations": 48,
+  "declarations": 1541,
+  "sorries": 25,
+  "by_domain": {
+    "Bitcoin": 7,
+    "Channel": 27,
+    "Conservation.lean": 1,
+    "Crypto": 3,
+    "Payment": 2,
+    "Protocol": 3,
+    "Routing": 4,
+    "Wire": 1
+  },
+  "by_kind": {
+    "abbrev": 3,
+    "def": 347,
+    "inductive": 17,
+    "structure": 41,
+    "theorem": 1133
+  },
+  "duplicate_ids": [],
+  "catalog_duplicate_ids": [],
+  "rows": [
+    {
+      "id": "LN-ANCHOR-007",
+      "claim": "equal anchor witness scripts imply equal funding keys",
+      "domain": "Bitcoin",
+      "file": "LnLean/Proofs/Bitcoin/AnchorProps.lean",
+      "line": 447
+    },
+    {
+      "id": "LN-ANCHOR-008",
+      "claim": "collision-resistant P2WSH programs separate the two anchors",
+      "domain": "Bitcoin",
+      "file": "LnLean/Proofs/Bitcoin/AnchorProps.lean",
+      "line": 461
+    },
+    {
+      "id": "LN-FUND-002",
+      "claim": "capacity is bounded by 21M BTC expressed in msat (`Msat.MAX`).",
+      "domain": "Bitcoin",
+      "file": "LnLean/Proofs/Bitcoin/FundingProps.lean",
+      "line": 298
+    },
+    {
+      "id": "LN-FUND-001",
+      "claim": "the wave-A script parser rejects `OP_CHECKMULTISIG`.",
+      "domain": "Bitcoin",
+      "file": "LnLean/Proofs/Bitcoin/FundingProps.lean",
+      "line": 423
+    },
+    {
+      "id": "LN-SCRIPT-001",
+      "claim": "The fixed-width four-byte little-endian push is injective on values below 2^32.",
+      "domain": "Bitcoin",
+      "file": "LnLean/Proofs/Bitcoin/ScriptProps.lean",
+      "line": 699
+    },
+    {
+      "id": "LN-SCRIPT-002",
+      "claim": "Distinct CLTV expiries yield distinct received-HTLC witness scripts, so the script commits to the expiry.",
+      "domain": "Bitcoin",
+      "file": "LnLean/Proofs/Bitcoin/ScriptProps.lean",
+      "line": 712
+    },
+    {
+      "id": "LN-SCRIPT-003",
+      "claim": "Distinct 20-byte payment-hash digests yield distinct offered-HTLC witness scripts, so the script commits to the payment hash.",
+      "domain": "Bitcoin",
+      "file": "LnLean/Proofs/Bitcoin/ScriptProps.lean",
+      "line": 723
+    },
+    {
+      "id": "LN-BREACH-013",
+      "claim": "A complete penalty also sweeps pending HTLC outputs (statement only here).",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 176
+    },
+    {
+      "id": "LN-BREACH-001",
+      "claim": "With minSeen = currentNumber, a confirmed commitment is revoked iff breachDetected.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 188
+    },
+    {
+      "id": "LN-BREACH-002",
+      "claim": "A commitment at the current commitment number is not a breach.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 204
+    },
+    {
+      "id": "LN-BREACH-003",
+      "claim": "A current commitment is not punishable by the penalty path.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 213
+    },
+    {
+      "id": "LN-BREACH-004",
+      "claim": "Any reachable history preserves the breach test below its initial counter.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 226
+    },
+    {
+      "id": "LN-BREACH-005",
+      "claim": "A valid penalty is breach, both-output spend, sweep value, and timely confirmation.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 243
+    },
+    {
+      "id": "LN-BREACH-006",
+      "claim": "Punishable reduces to the four core penalty conditions.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 263
+    },
+    {
+      "id": "LN-BREACH-007",
+      "claim": "Honest punishability is holding the commitment secret plus punishable.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 285
+    },
+    {
+      "id": "LN-BREACH-008",
+      "claim": "A confirmed penalty makes the old to_local output unavailable to the breacher.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 306
+    },
+    {
+      "id": "LN-BREACH-009",
+      "claim": "A confirmed penalty makes the old to_remote output unavailable to the breacher.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 318
+    },
+    {
+      "id": "LN-BREACH-010",
+      "claim": "The sweep is at least the old to_local value minus the fee when to_remote is non-negative.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 335
+    },
+    {
+      "id": "LN-BREACH-011",
+      "claim": "A valid penalty pays both old main outputs minus the fee, and no more when the fee is non-negative.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 353
+    },
+    {
+      "id": "LN-BREACH-012",
+      "claim": "Timely confirmation is exactly the half-open window [breach, breach + window).",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 374
+    },
+    {
+      "id": "LN-BREACH-014",
+      "claim": "No confirmation at or after the deadline is timely.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 383
+    },
+    {
+      "id": "LN-BREACH-015",
+      "claim": "No penalty is punishable with a confirmation after the revocation window.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 397
+    },
+    {
+      "id": "LN-BREACH-016",
+      "claim": "A watchtower report implies the tower is live.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 409
+    },
+    {
+      "id": "LN-BREACH-017",
+      "claim": "Offline late detection requires a live watchtower report.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 420
+    },
+    {
+      "id": "LN-BREACH-018",
+      "claim": "With the party offline and no report, the model derives no detection.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 433
+    },
+    {
+      "id": "LN-BREACH-019",
+      "claim": "A two-input penalty transaction spends no third outpoint.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/BreachProps.lean",
+      "line": 448
+    },
+    {
+      "id": "LN-COMMIT-005",
+      "claim": "`commitmentPairOfBalances` must subtract the two anchors from the funder on both commitments; the current A3 model subtracts only the fee.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/CommitmentTxProps.lean",
+      "line": 435
+    },
+    {
+      "id": "LN-COMMIT-006",
+      "claim": "BOLT 3 \u00a76 requires BIP 69+CLTV sorting of the final outputs; the model fixes the group order instead, so sorted-order equivalence is open.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/CommitmentTxProps.lean",
+      "line": 456
+    },
+    {
+      "id": "LN-COMMIT-004",
+      "claim": "BOLT 3's single-anchor exception (no HTLCs and one output below dust) is not modelled: `commitmentOutputs` always emits both anchors when `anchorOutputs = true`.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/CommitmentTxProps.lean",
+      "line": 463
+    },
+    {
+      "id": "LN-COMMIT-003",
+      "claim": "The refinement `LnLean.Channel.Step` \u2192 `CommitmentCounterStep` (and the identification of `Commitment.commitmentNumber` with the channel counter) is not proved: importing `State.lean` is outside the B09 import set.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/CommitmentTxProps.lean",
+      "line": 524
+    },
+    {
+      "id": "LN-HTLCRecord-010",
+      "claim": "Removing an HTLCRecord id commutes with filtering to the live HTLCRecord set.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/HTLCProps.lean",
+      "line": 425
+    },
+    {
+      "id": "LN-HTLCRecord-011",
+      "claim": "The in-flight value of a finite HTLCRecord set is at most its size times any pointwise amount bound.",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/HTLCProps.lean",
+      "line": 432
+    },
+    {
+      "id": "LN-CH-101",
+      "claim": "a committed update preserves settled-plus-in-flight value",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/ReserveProps.lean",
+      "line": 566
+    },
+    {
+      "id": "LN-CH-010",
+      "claim": "a trace from negotiating to normal contains fundingLocked",
+      "domain": "Channel",
+      "file": "LnLean/Proofs/Channel/StateMachineProps.lean",
+      "line": 399
+    },
+    {
+      "id": "LN-CONS-004",
+      "claim": "erasing one HTLC output from a commitment output list removes exactly its value from the output sum, so crediting that value to a balance preserves the conservation equation even with duplicate-valued HTLC outputs",
+      "domain": "Conservation.lean",
+      "file": "LnLean/Proofs/Conservation.lean",
+      "line": 631
+    },
+    {
+      "id": "LN-ECDSA-001",
+      "claim": "full DER body acceptance implies the envelope predicate within 71--73 bytes",
+      "domain": "Crypto",
+      "file": "LnLean/Proofs/Crypto/EcdsaProps.lean",
+      "line": 551
+    },
+    {
+      "id": "LN-ECDSA-002",
+      "claim": "a full DER parse fixes the two INTEGER lengths and their sum plus the sighash byte",
+      "domain": "Crypto",
+      "file": "LnLean/Proofs/Crypto/EcdsaProps.lean",
+      "line": 559
+    },
+    {
+      "id": "LN-CR-007",
+      "claim": "`ByteArray` has more elements than the 2^256 possible 32-byte outputs, so no `H` with `(H b).size = 32` for all `b` is injective; the global `PreimageResistant` field of `PrimitiveModel` is therefore incompatible with `sha256_size`, and the consistent hypothesis is injectivity on 32-byte preimages.",
+      "domain": "Crypto",
+      "file": "LnLean/Proofs/Crypto/Sha256Props.lean",
+      "line": 332
+    },
+    {
+      "id": "LN-KS-001",
+      "claim": "A keysend whose every settlement outcome is a failure never reveals its preimage.",
+      "domain": "Payment",
+      "file": "LnLean/Proofs/Payment/KeysendProps.lean",
+      "line": 443
+    },
+    {
+      "id": "LN-PAY-MPP-001",
+      "claim": "the duplicate-free collected total is invariant under any permutation of the part list",
+      "domain": "Payment",
+      "file": "LnLean/Proofs/Payment/MPPProps.lean",
+      "line": 647
+    },
+    {
+      "id": "LN-REEST-001",
+      "claim": "receiving a `channel_reestablish` leaves the addressed",
+      "domain": "Protocol",
+      "file": "LnLean/Proofs/Protocol/ChannelReestablishProps.lean",
+      "line": 229
+    },
+    {
+      "id": "LN-REEST-002",
+      "claim": "an accepted `receive` is monotone in both reestablish",
+      "domain": "Protocol",
+      "file": "LnLean/Proofs/Protocol/ChannelReestablishProps.lean",
+      "line": 338
+    },
+    {
+      "id": "LN-FEAT-012",
+      "claim": "Bitwise AND cannot introduce an unknown required bit.",
+      "domain": "Protocol",
+      "file": "LnLean/Proofs/Protocol/FeaturesProps.lean",
+      "line": 467
+    },
+    {
+      "id": "LN-GOSSIP-001",
+      "claim": "an accepted channel_update is signed by one of the two announced node ids of its channel",
+      "domain": "Routing",
+      "file": "LnLean/Proofs/Routing/GossipProps.lean",
+      "line": 872
+    },
+    {
+      "id": "LN-GOSSIP-002",
+      "claim": "an accepted channel announcement has a positive capacity",
+      "domain": "Routing",
+      "file": "LnLean/Proofs/Routing/GossipProps.lean",
+      "line": 883
+    },
+    {
+      "id": "LN-GOSSIP-003",
+      "claim": "an accepted channel_update has a 64-byte signature",
+      "domain": "Routing",
+      "file": "LnLean/Proofs/Routing/GossipProps.lean",
+      "line": 892
+    },
+    {
+      "id": "LN-GRAPH-001",
+      "claim": "every path returned by simplePaths is a walk of enabled edges (either orientation)",
+      "domain": "Routing",
+      "file": "LnLean/Proofs/Routing/GraphProps.lean",
+      "line": 474
+    },
+    {
+      "id": "LN-WIRE-001",
+      "claim": "canonical TLV streams round-trip through encodeTLV/decodeTLV",
+      "domain": "Wire",
+      "file": "LnLean/Proofs/Wire/TLVProps.lean",
+      "line": 290
+    }
+  ],
+  "catalog_rows": [
+    {
+      "id": "LN-L1-001",
+      "claim": "The funding output is P2WSH over the 2-of-2 funding witness script.",
+      "lean_target": "LnLean.Bitcoin.fundingScriptPubKey",
+      "boltdoc": "BOLT 2 \u00a7Channel Establishment v1; BOLT 3 \u00a7Funding Transaction Output",
+      "anchor": "lightning/src/ln/chan_utils.rs:847",
+      "status": "statementOnly",
+      "domain": "l1"
+    },
+    {
+      "id": "LN-L1-002",
+      "claim": "If the seam MoneyRange predicate holds for a funding output, the btc-lean L1 MoneyRange predicate holds.",
+      "lean_target": "LnLean.Bitcoin.fundingOutput_moneyRange",
+      "boltdoc": "BOLT 2 \u00a7The open_channel Message",
+      "anchor": "lightning/src/ln/channel.rs:2683",
+      "status": "proved",
+      "domain": "l1"
+    },
+    {
+      "id": "LN-L1-003",
+      "claim": "Channel safety is preserved for reorgs within the adversary's depth budget, and deep reorgs are a separate failure mode.",
+      "lean_target": "LnLean.Security.Adversary.reorgAllowed",
+      "boltdoc": "BOLT 5 \u00a7Commitment Transaction",
+      "anchor": "lightning/src/chain/channelmonitor.rs:514",
+      "status": "statementOnly",
+      "domain": "l1"
+    },
+    {
+      "id": "LN-L1-004",
+      "claim": "The to_local commitment output carries the CSV contest delay and the revocation key.",
+      "lean_target": "LnLean.Bitcoin.toLocalScript",
+      "boltdoc": "BOLT 3 \u00a7to_local Output",
+      "anchor": "lightning/src/ln/chan_utils.rs:687",
+      "status": "statementOnly",
+      "domain": "l1"
+    },
+    {
+      "id": "LN-L1-005",
+      "claim": "An anchor output is worth exactly 330 satoshis.",
+      "lean_target": "LnLean.Bitcoin.anchorValue_eq",
+      "boltdoc": "BOLT 3 \u00a7to_local_anchor and to_remote_anchor Output",
+      "anchor": "lightning/src/ln/channel.rs:989",
+      "status": "proved",
+      "domain": "l1"
+    },
+    {
+      "id": "LN-L1-006",
+      "claim": "The commitment base weight is the BOLT 3 constant 724 before HTLC outputs.",
+      "lean_target": "LnLean.Bitcoin.commitmentBaseWeight",
+      "boltdoc": "BOLT 3 \u00a7Expected Weight of the Commitment Transaction",
+      "anchor": "lightning/src/ln/chan_utils.rs:281",
+      "status": "statementOnly",
+      "domain": "l1"
+    },
+    {
+      "id": "LN-CR-001",
+      "claim": "Payment hashes are SHA-256 outputs, relying on assumption C1 (collision and preimage resistance).",
+      "lean_target": "LnLean.Crypto.Hash.sha256",
+      "boltdoc": "BOLT 2 \u00a7Adding an HTLC",
+      "anchor": "lightning/src/ln/channel.rs:8370",
+      "status": "statementOnly",
+      "domain": "cryptoWire"
+    },
+    {
+      "id": "LN-CR-002",
+      "claim": "Commitment signatures verify under the counterparty funding key, relying on assumption C3 (ECDSA EUF-CMA).",
+      "lean_target": "LnLean.Crypto.Sig.ecdsaVerify",
+      "boltdoc": "BOLT 3 \u00a7Commitment Transaction Construction",
+      "anchor": "lightning/src/ln/chan_utils.rs:1450",
+      "status": "statementOnly",
+      "domain": "cryptoWire"
+    },
+    {
+      "id": "LN-CR-003",
+      "claim": "Onion integrity checks are HMAC-SHA256 tags, relying on assumption C8 (HMAC PRF).",
+      "lean_target": "LnLean.Crypto.Hash.hmacSha256",
+      "boltdoc": "BOLT 4 \u00a7Packet Structure",
+      "anchor": "lightning/src/ln/onion_payment.rs:505",
+      "status": "statementOnly",
+      "domain": "cryptoWire"
+    },
+    {
+      "id": "LN-CR-004",
+      "claim": "BigSize encoding and decoding are inverse on canonical encodings.",
+      "lean_target": "LnLean.Wire.BigSize.decode_encode",
+      "boltdoc": "BOLT 1 \u00a7Fundamental Types; BOLT 1 Appendix A",
+      "anchor": "lightning/src/util/ser.rs:442",
+      "status": "statementOnly",
+      "domain": "cryptoWire"
+    },
+    {
+      "id": "LN-CR-005",
+      "claim": "A TLV stream is strictly sorted by type and has no duplicate types.",
+      "lean_target": "LnLean.Wire.TLV.WellFormed",
+      "boltdoc": "BOLT 1 \u00a7Type-Length-Value Format",
+      "anchor": "lightning/src/util/ser.rs:369",
+      "status": "statementOnly",
+      "domain": "cryptoWire"
+    },
+    {
+      "id": "LN-CR-006",
+      "claim": "A Lightning message frame's declared length matches the payload actually consumed.",
+      "lean_target": "LnLean.Wire.Message.decode_length",
+      "boltdoc": "BOLT 1 \u00a7Lightning Message Format",
+      "anchor": "lightning/src/ln/peer_handler.rs:331",
+      "status": "statementOnly",
+      "domain": "cryptoWire"
+    },
+    {
+      "id": "LN-CH-001",
+      "claim": "Every ledger transition preserves funding = local + remote + in-flight + fee.",
+      "lean_target": "LnLean.Security.Ledger.step_conserves",
+      "boltdoc": "BOLT 3 \u00a7Commitment Transaction",
+      "anchor": "lightning/src/ln/chan_utils.rs:716",
+      "status": "proved",
+      "domain": "channel"
+    },
+    {
+      "id": "LN-CH-002",
+      "claim": "No commitment output has a negative value and the output sum stays within the funding value.",
+      "lean_target": "LnLean.Channel.Commitment.outputs_nonnegative",
+      "boltdoc": "BOLT 3 \u00a7Commitment Transaction Outputs",
+      "anchor": "lightning/src/ln/chan_utils.rs:1908",
+      "status": "statementOnly",
+      "domain": "channel"
+    },
+    {
+      "id": "LN-CH-003",
+      "claim": "Commitment outputs are ordered by value then script, and dust HTLCs are trimmed.",
+      "lean_target": "LnLean.Channel.Commitment.output_ordering",
+      "boltdoc": "BOLT 3 \u00a7Transaction Output Ordering; BOLT 3 \u00a7Trimmed Outputs",
+      "anchor": "lightning/src/ln/chan_utils.rs:1985",
+      "status": "statementOnly",
+      "domain": "channel"
+    },
+    {
+      "id": "LN-CH-004",
+      "claim": "A committed update never decreases the commitment number.",
+      "lean_target": "LnLean.Security.advance_monotone",
+      "boltdoc": "BOLT 2 \u00a7Committing Updates So Far",
+      "anchor": "lightning/src/ln/channel.rs:6270",
+      "status": "proved",
+      "domain": "channel"
+    },
+    {
+      "id": "LN-CH-005",
+      "claim": "A commitment with an insufficient feerate for its weight is rejected before signing.",
+      "lean_target": "LnLean.Channel.Fee.feeInsufficient",
+      "boltdoc": "BOLT 3 \u00a7Fees; BOLT 5 \u00a7Commitment Transaction",
+      "anchor": "lightning/src/ln/channel.rs:3721",
+      "status": "statementOnly",
+      "domain": "channel"
+    },
+    {
+      "id": "LN-CH-006",
+      "claim": "HTLC exposure and channel reserve bounds are respected by admissible updates.",
+      "lean_target": "LnLean.Channel.Reserve.bounds",
+      "boltdoc": "BOLT 2 \u00a7Bounding exposure to trimmed in-flight HTLCs",
+      "anchor": "lightning/src/ln/channel.rs:4223",
+      "status": "statementOnly",
+      "domain": "channel"
+    },
+    {
+      "id": "LN-HT-001",
+      "claim": "A fulfilled HTLC carries a preimage whose hash is the payment hash.",
+      "lean_target": "LnLean.Security.HtlcRecord.fulfill_sound",
+      "boltdoc": "BOLT 2 \u00a7Removing an HTLC",
+      "anchor": "lightning/src/ln/channel.rs:8640; lightning/src/ln/chan_utils.rs:841",
+      "status": "proved",
+      "domain": "htlcRevocation"
+    },
+    {
+      "id": "LN-HT-002",
+      "claim": "An HTLC is failed only at or after its CLTV expiry.",
+      "lean_target": "LnLean.Security.HtlcRecord.fail_only_after_expiry",
+      "boltdoc": "BOLT 3 \u00a7HTLC-Timeout and HTLC-Success Transactions",
+      "anchor": "lightning/src/ln/chan_utils.rs:875; lightning/src/ln/channel.rs:8671",
+      "status": "proved",
+      "domain": "htlcRevocation"
+    },
+    {
+      "id": "LN-HT-003",
+      "claim": "Offered, received, and trimmed HTLC amounts plus balances and fee equal the funding value.",
+      "lean_target": "LnLean.Channel.HTLC.amount_conservation",
+      "boltdoc": "BOLT 2 \u00a7Adding an HTLC",
+      "anchor": "lightning/src/ln/chan_utils.rs:716",
+      "status": "statementOnly",
+      "domain": "htlcRevocation"
+    },
+    {
+      "id": "LN-HT-004",
+      "claim": "An HTLC id is unique within the live HTLC set of a channel.",
+      "lean_target": "LnLean.Channel.HTLC.id_unique",
+      "boltdoc": "BOLT 2 \u00a7Adding an HTLC",
+      "anchor": "lightning/src/ln/channel.rs:8370",
+      "status": "statementOnly",
+      "domain": "htlcRevocation"
+    },
+    {
+      "id": "LN-HT-005",
+      "claim": "A revoked commitment is strictly older than the current commitment and cannot be the current one.",
+      "lean_target": "LnLean.Security.revoked_commitment_is_old",
+      "boltdoc": "BOLT 3 \u00a7Per-commitment Secret Requirements",
+      "anchor": "lightning/src/ln/chan_utils.rs:518",
+      "status": "proved",
+      "domain": "htlcRevocation"
+    },
+    {
+      "id": "LN-HT-006",
+      "claim": "A punishable breach has a penalty transaction that spends both commitment outputs.",
+      "lean_target": "LnLean.Security.breach_penalty_spends_both",
+      "boltdoc": "BOLT 5 \u00a7Revoked Transaction Close Handling",
+      "anchor": "lightning/src/ln/channel.rs:9471; lightning/src/chain/channelmonitor.rs:5079",
+      "status": "proved",
+      "domain": "htlcRevocation"
+    },
+    {
+      "id": "LN-PR-001",
+      "claim": "open_channel accepts a funding amount only above the dust and minimum-channel bounds.",
+      "lean_target": "LnLean.Protocol.Handshake.open_bounds",
+      "boltdoc": "BOLT 2 \u00a7The open_channel Message",
+      "anchor": "lightning/src/ln/channelmanager.rs:17521",
+      "status": "statementOnly",
+      "domain": "protocol"
+    },
+    {
+      "id": "LN-PR-002",
+      "claim": "The channel enters normal operation only after both channel_ready messages.",
+      "lean_target": "LnLean.Protocol.Handshake.channel_ready_gate",
+      "boltdoc": "BOLT 2 \u00a7The channel_ready Message",
+      "anchor": "lightning/src/ln/channelmanager.rs:17614",
+      "status": "statementOnly",
+      "domain": "protocol"
+    },
+    {
+      "id": "LN-PR-003",
+      "claim": "funding_signed carries a valid signature over the funding transaction.",
+      "lean_target": "LnLean.Protocol.Handshake.funding_signed_valid",
+      "boltdoc": "BOLT 2 \u00a7The funding_signed Message",
+      "anchor": "lightning/src/ln/channel.rs:2107",
+      "status": "statementOnly",
+      "domain": "protocol"
+    },
+    {
+      "id": "LN-PR-004",
+      "claim": "commitment_signed covers exactly the current HTLC set and fee.",
+      "lean_target": "LnLean.Protocol.Messages.commitment_signed_covers",
+      "boltdoc": "BOLT 2 \u00a7Committing Updates So Far",
+      "anchor": "lightning/src/ln/channel.rs:2386; lightning/src/ln/channel.rs:6270",
+      "status": "statementOnly",
+      "domain": "protocol"
+    },
+    {
+      "id": "LN-PR-005",
+      "claim": "channel_reestablish retransmits unacknowledged updates without rolling state back.",
+      "lean_target": "LnLean.Protocol.Peer.reestablish_no_rollback",
+      "boltdoc": "BOLT 2 \u00a7Message Retransmission",
+      "anchor": "lightning/src/ln/channelmanager.rs:17831; lightning/src/ln/channel.rs:10826",
+      "status": "statementOnly",
+      "domain": "protocol"
+    },
+    {
+      "id": "LN-PR-006",
+      "claim": "Negotiated channel features are the intersection of both peers' supported features.",
+      "lean_target": "LnLean.Protocol.Handshake.feature_intersection",
+      "boltdoc": "BOLT 9 \u00a7Features; BOLT 2 \u00a7Defined Channel Types",
+      "anchor": "lightning/src/ln/channel.rs:4702",
+      "status": "statementOnly",
+      "domain": "protocol"
+    },
+    {
+      "id": "LN-RT-001",
+      "claim": "A well-formed route is non-empty, connected end-to-end, and every hop has enough capacity.",
+      "lean_target": "LnLean.Security.Route.wellFormed_connected; LnLean.Security.Route.wellFormed_capacity; LnLean.Security.Route.wellFormed_nonempty",
+      "boltdoc": "BOLT 7 \u00a7Recommendations for Routing",
+      "anchor": "lightning/src/routing/router.rs:825; lightning/src/routing/router.rs:2797",
+      "status": "proved",
+      "domain": "routing"
+    },
+    {
+      "id": "LN-RT-002",
+      "claim": "A newer channel_update replaces an older one only if its timestamp is greater.",
+      "lean_target": "LnLean.Routing.Gossip.update_monotone",
+      "boltdoc": "BOLT 7 \u00a7The channel_update Message",
+      "anchor": "lightning/src/routing/gossip.rs:906; lightning/src/routing/gossip.rs:422",
+      "status": "statementOnly",
+      "domain": "routing"
+    },
+    {
+      "id": "LN-RT-003",
+      "claim": "Peeling one onion layer exposes the next hop or a terminal payload, never both.",
+      "lean_target": "LnLean.Routing.Onion.peel_deterministic",
+      "boltdoc": "BOLT 4 \u00a7Onion Decryption",
+      "anchor": "lightning/src/ln/onion_payment.rs:505",
+      "status": "statementOnly",
+      "domain": "routing"
+    },
+    {
+      "id": "LN-RT-004",
+      "claim": "An onion layer with an invalid HMAC is rejected rather than forwarded.",
+      "lean_target": "LnLean.Routing.Onion.hmac_sound",
+      "boltdoc": "BOLT 4 \u00a7Packet Structure",
+      "anchor": "lightning/src/ln/onion_payment.rs:505",
+      "status": "statementOnly",
+      "domain": "routing"
+    },
+    {
+      "id": "LN-RT-005",
+      "claim": "The CLTV expiry at each hop increases by at least that hop's cltv_expiry_delta.",
+      "lean_target": "LnLean.Routing.Route.cltv_accumulates",
+      "boltdoc": "BOLT 4 \u00a7Payload for the Last Node; BOLT 7 \u00a7HTLC Fees",
+      "anchor": "lightning/src/routing/router.rs:657",
+      "status": "statementOnly",
+      "domain": "routing"
+    },
+    {
+      "id": "LN-RT-006",
+      "claim": "The gossip graph contains only channels with valid announcement signatures.",
+      "lean_target": "LnLean.Routing.Gossip.announcement_valid",
+      "boltdoc": "BOLT 7 \u00a7The channel_announcement Message",
+      "anchor": "lightning/src/routing/gossip.rs:515; lightning/src/routing/gossip.rs:1012",
+      "status": "statementOnly",
+      "domain": "routing"
+    },
+    {
+      "id": "LN-PM-001",
+      "claim": "A consistent invoice has the payment session's hash and amount.",
+      "lean_target": "LnLean.Security.Invoice.consistent_hash; LnLean.Security.Invoice.consistent_amount",
+      "boltdoc": "BOLT 11 \u00a7Tagged Fields",
+      "anchor": "lightning-invoice/src/lib.rs:1662; lightning-invoice/src/lib.rs:1473",
+      "status": "proved",
+      "domain": "payment"
+    },
+    {
+      "id": "LN-PM-002",
+      "claim": "A BOLT 11 invoice signature is valid for the payee node key.",
+      "lean_target": "LnLean.Payment.Invoice.signature_valid",
+      "boltdoc": "BOLT 11 \u00a7Data Part; BOLT 11 \u00a7Payer / Payee Interactions",
+      "anchor": "lightning-invoice/src/lib.rs:272; lightning-invoice/src/lib.rs:588",
+      "status": "statementOnly",
+      "domain": "payment"
+    },
+    {
+      "id": "LN-PM-003",
+      "claim": "The final onion payload's payment secret matches the invoice's payment secret.",
+      "lean_target": "LnLean.Payment.Invoice.payment_secret_match",
+      "boltdoc": "BOLT 4 \u00a7Payload for the Last Node; BOLT 11 \u00a7Tagged Fields",
+      "anchor": "lightning-invoice/src/lib.rs:1195; lightning/src/ln/onion_payment.rs:856",
+      "status": "statementOnly",
+      "domain": "payment"
+    },
+    {
+      "id": "LN-PM-004",
+      "claim": "A settled multipart payment has parts summing exactly to the advertised total.",
+      "lean_target": "LnLean.Security.MppPayment.settle_requires_sum",
+      "boltdoc": "BOLT 4 \u00a7Basic Multi-Part Payments",
+      "anchor": "lightning/src/ln/onion_payment.rs:856",
+      "status": "proved",
+      "domain": "payment"
+    },
+    {
+      "id": "LN-PM-005",
+      "claim": "During MPP collection, each additional part keeps the running total at or below total_msat.",
+      "lean_target": "LnLean.Payment.MPP.running_total_bound",
+      "boltdoc": "BOLT 4 \u00a7Basic Multi-Part Payments",
+      "anchor": "lightning/src/ln/onion_payment.rs:857",
+      "status": "statementOnly",
+      "domain": "payment"
+    },
+    {
+      "id": "LN-PM-006",
+      "claim": "A keysend payment uses the sender-supplied preimage as the payment preimage.",
+      "lean_target": "LnLean.Payment.Keysend.preimage_binding",
+      "boltdoc": "BOLT 4 \u00a7Payload for the Last Node (keysend extension)",
+      "anchor": "lightning/src/ln/onion_payment.rs:454",
+      "status": "statementOnly",
+      "domain": "payment"
+    },
+    {
+      "id": "LN-SEC-001",
+      "claim": "Spending a fresh L1 outpoint preserves the no-double-spend predicate.",
+      "lean_target": "LnLean.Security.L1Ledger.spend_preserves_noDoubleSpend",
+      "boltdoc": "BOLT 5 \u00a7Commitment Transaction",
+      "anchor": "lightning/src/chain/channelmonitor.rs:5079",
+      "status": "proved",
+      "domain": "security"
+    },
+    {
+      "id": "LN-SEC-002",
+      "claim": "Across all channels and the L1 spend set, total value is conserved.",
+      "lean_target": "LnLean.Proofs.Conservation.global_conservation",
+      "boltdoc": "BOLT 3 \u00a7Commitment Transaction",
+      "anchor": "lightning/src/ln/chan_utils.rs:716",
+      "status": "statementOnly",
+      "domain": "security"
+    },
+    {
+      "id": "LN-SEC-003",
+      "claim": "Safety holds under an asynchronous adversarial schedule (without a fairness hypothesis).",
+      "lean_target": "LnLean.Proofs.Security.safety_async",
+      "boltdoc": "BOLT 2 \u00a7Message Retransmission",
+      "anchor": "lightning/src/ln/channelmanager.rs:17831",
+      "status": "statementOnly",
+      "domain": "security"
+    },
+    {
+      "id": "LN-SEC-004",
+      "claim": "After GST every message is delivered within delta of its send time.",
+      "lean_target": "LnLean.Security.partial_synchrony_delivers",
+      "boltdoc": "BOLT 1 \u00a7Lightning Message Format",
+      "anchor": "lightning/src/ln/channelmanager.rs:17831",
+      "status": "proved",
+      "domain": "security"
+    },
+    {
+      "id": "LN-SEC-005",
+      "claim": "A penalty transaction remains economical under the modelled fee spike.",
+      "lean_target": "LnLean.Proofs.Liveness.penalty_economical",
+      "boltdoc": "BOLT 5 \u00a7Revoked Transaction Close Handling",
+      "anchor": "lightning/src/chain/chaininterface.rs:350",
+      "status": "statementOnly",
+      "domain": "security"
+    },
+    {
+      "id": "LN-SEC-006",
+      "claim": "A breach is punished if some party has the revocation secret and a timely L1 transaction, given a live watchtower.",
+      "lean_target": "LnLean.Proofs.Liveness.watchtower_bridge",
+      "boltdoc": "BOLT 5 \u00a7Revoked Transaction Close Handling",
+      "anchor": "lightning/src/chain/channelmonitor.rs:5079",
+      "status": "statementOnly",
+      "domain": "security"
+    }
+  ]
+}

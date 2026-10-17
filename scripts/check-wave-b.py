@@ -82,8 +82,18 @@ def main() -> int:
         for i, line in enumerate(lines):
             code = re.sub(r"--.*$", "", line)
             if SORRY.search(code) and "-- OBLIGATION" not in line:
-                prev = lines[i - 1] if i else ""
-                if "-- OBLIGATION" not in prev:
+                # The marker normally sits above the theorem declaration, not
+                # necessarily on the line immediately before the tactic.
+                j = i - 1
+                found = False
+                while j >= 0 and (i - j) <= 20:
+                    if "-- OBLIGATION" in lines[j]:
+                        found = True
+                        break
+                    if lines[j].strip() == "" and j < i - 1:
+                        break
+                    j -= 1
+                if not found:
                     nearby.append((m, i + 1))
 
     print(f"modules={len(MODULES)} missing={len(missing)}")

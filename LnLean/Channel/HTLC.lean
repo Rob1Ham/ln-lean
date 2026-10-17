@@ -4,26 +4,26 @@ import LnLean.Bitcoin.Seam
 /-!
 # LnLean.Channel.HTLC
 
-English claim.  This module models a single HTLC inside a channel and the
-state transitions that the BOLT 2 update messages induce: an HTLC is added
+English claim.  This module models a single HTLCRecord inside a channel and the
+state transitions that the BOLT 2 update messages induce: an HTLCRecord is added
 in the `offered` or `received` state, is settled either by a fulfillment
 (a 32-byte preimage whose SHA-256 equals the payment hash) or by a failure
 (including an on-chain timeout), and is finally removed.  The on-chain value
-of an HTLC output is the millisatoshi amount rounded down to satoshis minus
+of an HTLCRecord output is the millisatoshi amount rounded down to satoshis minus
 the BOLT 3 second-stage fee; amounts below the dust limit produce no output
 at all.
 
 BOLT anchors.
-* BOLT 2 (adding an HTLC, `update_add_htlc`): `refs/bolts/02-peer-protocol.md:2772`
+* BOLT 2 (adding an HTLCRecord, `update_add_htlc`): `refs/bolts/02-peer-protocol.md:2772`
   (amount in msat, `payment_hash`, `cltv_expiry`, `id`; amount must be
   positive, `cltv_expiry < 500000000`, total in flight bounded by
   `max_htlc_value_in_flight_msat`).
-* BOLT 2 (removing an HTLC, `update_fulfill_htlc` / `update_fail_htlc`):
+* BOLT 2 (removing an HTLCRecord, `update_fulfill_htlc` / `update_fail_htlc`):
   `refs/bolts/02-peer-protocol.md:2913` (32-byte `payment_preimage`; the
-  preimage must hash to the HTLC payment hash).
-* BOLT 3 (offered/received HTLC outputs and trimming):
+  preimage must hash to the HTLCRecord payment hash).
+* BOLT 3 (offered/received HTLCRecord outputs and trimming):
   `refs/bolts/03-transactions.md:199`, `:251`, `:305`.
-* BOLT 5 (revoked-close handling of HTLC outputs):
+* BOLT 5 (revoked-close handling of HTLCRecord outputs):
   `refs/bolts/05-onchain.md:510`.
 
 rust-lightning anchors (commit fe49009).
@@ -32,7 +32,7 @@ rust-lightning anchors (commit fe49009).
   `transaction_output_index`).
 * `lightning/src/ln/chan_utils.rs:735` (`to_bitcoin_amount`, amount / 1000).
 * `lightning/src/ln/chan_utils.rs:875` (`build_htlc_transaction`; locktime is
-  `cltv_expiry` for an offered HTLC).
+  `cltv_expiry` for an offered HTLCRecord).
 * `lightning/src/ln/channel.rs:9444` (a peer-supplied
   `per_commitment_secret` is length-checked on the wire; the analogous
   preimage length is fixed by the BOLT 2 message format).
@@ -68,12 +68,12 @@ def DUST_LIMIT_P2WPKH : Nat := 546
 can spend the whole commitment. `refs/bolts/02-peer-protocol.md:2889`. -/
 def MAX_ACCEPTED_HTLCS : Nat := 483
 
-/-! ## The HTLC record -/
+/-! ## The HTLCRecord record -/
 
-/-- One HTLC inside a channel, from the local endpoint's point of view.
+/-- One HTLCRecord inside a channel, from the local endpoint's point of view.
 Anchored at `HTLCOutputInCommitment`
 (`lightning/src/ln/chan_utils.rs:716`) plus the BOLT 2 `id` and state. -/
-structure HTLC where
+structure HTLCRecord where
   /-- BOLT 2 `update_add_htlc.id`; a 64-bit counter in the protocol. -/
   id : Nat
   /-- `local` = offered by us, `remote` = received by us. -/
@@ -82,7 +82,7 @@ structure HTLC where
   amountMsat : Msat
   /-- `sha256(preimage)` of the payment (`payment_hash`). -/
   paymentHash : PaymentHash
-  /-- Absolute block height at which the HTLC expires (`cltv_expiry`). -/
+  /-- Absolute block height at which the HTLCRecord expires (`cltv_expiry`). -/
   cltvExpiry : Height
   /-- Lifecycle state. -/
   state : HTLCState
@@ -131,22 +131,22 @@ end LnLean
 
 namespace LnLean.Channel
 
-/-- An HTLC is live while it is still in either pre-settlement state. -/
-def HTLC.isLive (h : HTLC) : Bool := h.state.isLive
+/-- An HTLCRecord is live while it is still in either pre-settlement state. -/
+def HTLCRecord.isLive (h : HTLCRecord) : Bool := h.state.isLive
 
 /-- The HTLCs of a commitment that still have (or may still create) an
 output: the unresolved set.  This is the list-level counterpart of
 `HTLCOutputInCommitment` entries with `transaction_output_index.is_some`. -/
-def htlcSet (hs : List HTLC) : List HTLC := hs.filter HTLC.isLive
+def htlcSet (hs : List HTLCRecord) : List HTLCRecord := hs.filter HTLCRecord.isLive
 
 /-- Total value in flight, in millisatoshis. -/
-def totalHtlcValue (hs : List HTLC) : Nat := (hs.map (fun h => h.amountMsat.val)).sum
+def totalHtlcValue (hs : List HTLCRecord) : Nat := (hs.map (fun h => h.amountMsat.val)).sum
 
 /-! ## On-chain output value and dust -/
 
-/-- BOLT 3 charges the HTLC-timeout fee to an offered HTLC and the
-HTLC-success fee to a received HTLC (`03-transactions.md:319`).  From our
-point of view an offered HTLC is `Direction.local`. -/
+/-- BOLT 3 charges the HTLCRecord-timeout fee to an offered HTLCRecord and the
+HTLCRecord-success fee to a received HTLCRecord (`03-transactions.md:319`).  From our
+point of view an offered HTLCRecord is `Direction.local`. -/
 def secondStageFee (dir : Direction) (timeoutFeeSat successFeeSat : Nat) : Nat :=
   match dir with
   | .local => timeoutFeeSat
@@ -157,18 +157,18 @@ def secondStageFee (dir : Direction) (timeoutFeeSat successFeeSat : Nat) : Nat :
 subtraction.  Anchor: `lightning/src/ln/chan_utils.rs:744`
 (`Amount::from_sat(self.amount_msat / 1000)`) and `:922` (`build_htlc_output`
 subtracts the second-stage fee). -/
-def htlcOutputValue (h : HTLC) (timeoutFeeSat successFeeSat : Nat) : Nat :=
+def htlcOutputValue (h : HTLCRecord) (timeoutFeeSat successFeeSat : Nat) : Nat :=
   Msat.toSatFloor h.amountMsat - secondStageFee h.direction timeoutFeeSat successFeeSat
 
-/-- BOLT 3 trimming rule: the HTLC output is absent iff amount minus the
+/-- BOLT 3 trimming rule: the HTLCRecord output is absent iff amount minus the
 second-stage fee is *less than* `dust_limit_satoshis`
 (`refs/bolts/03-transactions.md:330`).  Equality is not dust. -/
-def isDust (h : HTLC) (dustLimitSat timeoutFeeSat successFeeSat : Nat) : Bool :=
+def isDustHTLC (h : HTLCRecord) (dustLimitSat timeoutFeeSat successFeeSat : Nat) : Bool :=
   decide (htlcOutputValue h timeoutFeeSat successFeeSat < dustLimitSat)
 
-/-- The output is present exactly when the HTLC is not dust. -/
-def hasOutput (h : HTLC) (dustLimitSat timeoutFeeSat successFeeSat : Nat) : Bool :=
-  !isDust h dustLimitSat timeoutFeeSat successFeeSat
+/-- The output is present exactly when the HTLCRecord is not dust. -/
+def hasOutput (h : HTLCRecord) (dustLimitSat timeoutFeeSat successFeeSat : Nat) : Bool :=
+  !isDustHTLC h dustLimitSat timeoutFeeSat successFeeSat
 
 theorem secondStageFee_local (timeout success : Nat) :
     secondStageFee .local timeout success = timeout := rfl
@@ -177,22 +177,22 @@ theorem secondStageFee_remote (timeout success : Nat) :
     secondStageFee .remote timeout success = success := rfl
 
 /-- Rounding to satoshis and subtracting a fee never increases the value. -/
-theorem htlcOutputValue_le (h : HTLC) (t s : Nat) :
+theorem htlcOutputValue_le (h : HTLCRecord) (t s : Nat) :
     htlcOutputValue h t s ≤ Msat.toSatFloor h.amountMsat :=
   Nat.sub_le _ _
 
-theorem htlcOutputValue_le_msat (h : HTLC) (t s : Nat) :
+theorem htlcOutputValue_le_msat (h : HTLCRecord) (t s : Nat) :
     htlcOutputValue h t s ≤ h.amountMsat.val :=
   Nat.le_trans (htlcOutputValue_le h t s) (Msat.toSatFloor_le h.amountMsat)
 
-theorem isDust_iff (h : HTLC) (d t s : Nat) :
-    isDust h d t s = true ↔ htlcOutputValue h t s < d := by
-  unfold isDust
+theorem isDust_iff (h : HTLCRecord) (d t s : Nat) :
+    isDustHTLC h d t s = true ↔ htlcOutputValue h t s < d := by
+  unfold isDustHTLC
   exact decide_eq_true_iff
 
-theorem hasOutput_iff (h : HTLC) (d t s : Nat) :
+theorem hasOutput_iff (h : HTLCRecord) (d t s : Nat) :
     hasOutput h d t s = true ↔ d ≤ htlcOutputValue h t s := by
-  unfold hasOutput isDust
+  unfold hasOutput isDustHTLC
   rw [Bool.not_eq_true', decide_eq_false_iff_not, Nat.not_lt]
 
 /-! ## Transitions -/
@@ -203,7 +203,7 @@ counterparty's `max_htlc_value_in_flight_msat`, and
 `cltv_expiry < 500000000`.
 Anchors: `refs/bolts/02-peer-protocol.md:2822-2831`. -/
 def addHTLC (maxHtlcValue currentTotal : Msat) (id : Nat) (dir : Direction)
-    (amount : Msat) (ph : PaymentHash) (cltv : Height) : Result HTLC :=
+    (amount : Msat) (ph : PaymentHash) (cltv : Height) : Result HTLCRecord :=
   if 0 < amount.val ∧ currentTotal.val + amount.val ≤ maxHtlcValue.val ∧
       cltv < MAX_CLTV_EXPIRY then
     .ok
@@ -218,13 +218,13 @@ def addHTLC (maxHtlcValue currentTotal : Msat) (id : Nat) (dir : Direction)
   else
     .error ⟨.update, ByteArray.empty⟩
 
-/-- `update_fulfill_htlc`: a live HTLC may be settled by a preimage that is
+/-- `update_fulfill_htlc`: a live HTLCRecord may be settled by a preimage that is
 32 bytes long and hashes to the payment hash.  Both conditions are part of
 the model's transition guard; the hash condition is the *conditional*
 cryptographic part.  Anchors: `refs/bolts/02-peer-protocol.md:2920` and
 `:3004`. -/
-def fulfillHTLC (hashFn : ByteArray → ByteArray) (h : HTLC) (p : Preimage) :
-    Result HTLC :=
+def fulfillHTLC (hashFn : ByteArray → ByteArray) (h : HTLCRecord) (p : Preimage) :
+    Result HTLCRecord :=
   if h.isLive then
     if decide (p.bytes.size = 32 ∧ hashFn p.bytes = h.paymentHash.bytes) then
       .ok { h with state := .fulfilled }
@@ -233,31 +233,31 @@ def fulfillHTLC (hashFn : ByteArray → ByteArray) (h : HTLC) (p : Preimage) :
   else
     .error ⟨.update, ByteArray.empty⟩
 
-/-- `update_fail_htlc`: a live HTLC may be failed (route failure, malformed
+/-- `update_fail_htlc`: a live HTLCRecord may be failed (route failure, malformed
 onion, or a local policy failure).  `refs/bolts/02-peer-protocol.md:2944`. -/
-def failHTLC (h : HTLC) : Result HTLC :=
+def failHTLC (h : HTLCRecord) : Result HTLCRecord :=
   if h.isLive then
     .ok { h with state := .failed }
   else
     .error ⟨.update, ByteArray.empty⟩
 
-/-- On-chain timeout of an offered HTLC.  BOLT 2: an HTLC SHOULD be failed
-once it has timed out; the HTLC-timeout transaction can only be built after
-`cltv_expiry`, and only for an offered HTLC whose locktime is the expiry.
+/-- On-chain timeout of an offered HTLCRecord.  BOLT 2: an HTLCRecord SHOULD be failed
+once it has timed out; the HTLCRecord-timeout transaction can only be built after
+`cltv_expiry`, and only for an offered HTLCRecord whose locktime is the expiry.
 Anchors: `refs/bolts/02-peer-protocol.md:2974`,
 `refs/bolts/03-transactions.md:355`,
 `lightning/src/ln/chan_utils.rs:889` (`lock_time` =
 `htlc.cltv_expiry` iff `htlc.offered`). -/
-def timeoutHTLC (height : Height) (h : HTLC) : Result HTLC :=
+def timeoutHTLC (height : Height) (h : HTLCRecord) : Result HTLCRecord :=
   if h.isLive ∧ h.direction = .local ∧ h.cltvExpiry ≤ height then
     .ok { h with state := .failed }
   else
     .error ⟨.expiryTooSoon, ByteArray.empty⟩
 
-/-- Remove a settled HTLC from the commitment set.  Only a settled
-(`fulfilled` or `failed`) HTLC can be removed; `removed` is idempotent-free:
+/-- Remove a settled HTLCRecord from the commitment set.  Only a settled
+(`fulfilled` or `failed`) HTLCRecord can be removed; `removed` is idempotent-free:
 a second removal is rejected. -/
-def removeHTLC (h : HTLC) : Result HTLC :=
+def removeHTLC (h : HTLCRecord) : Result HTLCRecord :=
   if h.state = .fulfilled ∨ h.state = .failed then
     .ok { h with state := .removed }
   else
@@ -267,7 +267,7 @@ def removeHTLC (h : HTLC) : Result HTLC :=
 `LnLean.Channel.HTLCLaws`). -/
 
 theorem addHTLC_state_local (max cur : Msat) (id : Nat) (amt : Msat)
-    (ph : PaymentHash) (cltv : Height) (h : HTLC)
+    (ph : PaymentHash) (cltv : Height) (h : HTLCRecord)
     (ok : addHTLC max cur id .local amt ph cltv = .ok h) :
     h.state = .offered := by
   unfold addHTLC at ok
@@ -278,7 +278,7 @@ theorem addHTLC_state_local (max cur : Msat) (id : Nat) (amt : Msat)
   · simp at ok
 
 theorem addHTLC_state_remote (max cur : Msat) (id : Nat) (amt : Msat)
-    (ph : PaymentHash) (cltv : Height) (h : HTLC)
+    (ph : PaymentHash) (cltv : Height) (h : HTLCRecord)
     (ok : addHTLC max cur id .remote amt ph cltv = .ok h) :
     h.state = .received := by
   unfold addHTLC at ok
@@ -288,7 +288,7 @@ theorem addHTLC_state_remote (max cur : Msat) (id : Nat) (amt : Msat)
     rfl
   · simp at ok
 
-theorem fulfillHTLC_hash (hashFn : ByteArray → ByteArray) (h h' : HTLC)
+theorem fulfillHTLC_hash (hashFn : ByteArray → ByteArray) (h h' : HTLCRecord)
     (p : Preimage) (ok : fulfillHTLC hashFn h p = .ok h') :
     p.Valid ∧ hashFn p.bytes = h.paymentHash.bytes := by
   unfold fulfillHTLC at ok
@@ -301,7 +301,7 @@ theorem fulfillHTLC_hash (hashFn : ByteArray → ByteArray) (h h' : HTLC)
     · simp at ok
   · simp at ok
 
-theorem fulfillHTLC_state (hashFn : ByteArray → ByteArray) (h h' : HTLC)
+theorem fulfillHTLC_state (hashFn : ByteArray → ByteArray) (h h' : HTLCRecord)
     (p : Preimage) (ok : fulfillHTLC hashFn h p = .ok h') :
     h' = { h with state := .fulfilled } := by
   unfold fulfillHTLC at ok
@@ -312,7 +312,7 @@ theorem fulfillHTLC_state (hashFn : ByteArray → ByteArray) (h h' : HTLC)
     · simp at ok
   · simp at ok
 
-theorem timeoutHTLC_expiry (height : Height) (h h' : HTLC)
+theorem timeoutHTLC_expiry (height : Height) (h h' : HTLCRecord)
     (ok : timeoutHTLC height h = .ok h') : h.cltvExpiry ≤ height := by
   unfold timeoutHTLC at ok
   split at ok
@@ -320,7 +320,7 @@ theorem timeoutHTLC_expiry (height : Height) (h h' : HTLC)
     exact hg.2.2
   · simp at ok
 
-theorem timeoutHTLC_direction (height : Height) (h h' : HTLC)
+theorem timeoutHTLC_direction (height : Height) (h h' : HTLCRecord)
     (ok : timeoutHTLC height h = .ok h') : h.direction = .local := by
   unfold timeoutHTLC at ok
   split at ok
@@ -328,7 +328,7 @@ theorem timeoutHTLC_direction (height : Height) (h h' : HTLC)
     exact hg.2.1
   · simp at ok
 
-theorem removeHTLC_ok_state (h h' : HTLC) (ok : removeHTLC h = .ok h') :
+theorem removeHTLC_ok_state (h h' : HTLCRecord) (ok : removeHTLC h = .ok h') :
     h' = { h with state := .removed } := by
   unfold removeHTLC at ok
   split at ok

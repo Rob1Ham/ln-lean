@@ -50,7 +50,7 @@ hash interface in `LnLean.Crypto.Model` / `LnLean.Crypto.Hash`:
   `payment_preimage` field.
 * `lightning/src/offers/merkle.rs:34-76` — `TaggedHash`, including
   `sha256::Hash::hash(tag.as_bytes())` and the BIP 340 `tagged_hash` call.
-  (`lightning/src/util/sha256.rs` does not exist at this commit; the pinned
+  (`util/sha256.rs` does not exist at this commit; the pinned
   implementation uses `bitcoin_hashes::sha256::Hash` throughout, as cited
   above.)
 
@@ -261,7 +261,7 @@ def tagPrefix (M : PrimitiveModel) (tag : ByteArray) : ByteArray :=
   M.sha256 tag ++ M.sha256 tag
 
 /-- The BIP 340 tagged hash `SHA256(SHA256(tag) || SHA256(tag) || msg)`. -/
-def taggedHash (M : PrimitiveModel) (tag msg : ByteArray) : ByteArray :=
+def taggedHashSha256 (M : PrimitiveModel) (tag msg : ByteArray) : ByteArray :=
   M.sha256 (tagPrefix M tag ++ msg)
 
 /-- The tag prefix is 64 bytes: two 32-byte SHA-256 outputs.  This is a
@@ -273,7 +273,7 @@ theorem tagPrefix_width (M : PrimitiveModel) (tag : ByteArray) :
 
 /-- A tagged hash is a 32-byte digest, like any SHA-256 image. -/
 theorem taggedHash_output_width (M : PrimitiveModel) (tag msg : ByteArray) :
-    (taggedHash M tag msg).size = 32 :=
+    (taggedHashSha256 M tag msg).size = 32 :=
   M.sha256_size _
 
 /-- Cancellation for two identical copies: if `a ++ a = b ++ b` and the two
@@ -309,14 +309,14 @@ domain separation holds unless SHA-256 is broken, and no unsatisfiable
 injectivity hypothesis is assumed.  The encoding-level half is the structural
 lemma `tagPrefix_separates_hashed_tags`. -/
 theorem taggedHash_collision_witness (M : PrimitiveModel) {t₁ t₂ msg : ByteArray}
-    (htag : t₁ ≠ t₂) (heq : taggedHash M t₁ msg = taggedHash M t₂ msg) :
+    (htag : t₁ ≠ t₂) (heq : taggedHashSha256 M t₁ msg = taggedHashSha256 M t₂ msg) :
     ∃ x y : ByteArray, x ≠ y ∧ M.sha256 x = M.sha256 y := by
   by_cases hsha : M.sha256 t₁ = M.sha256 t₂
   · exact ⟨t₁, t₂, htag, hsha⟩
   · refine ⟨tagPrefix M t₁ ++ msg, tagPrefix M t₂ ++ msg, ?_, ?_⟩
     · intro hxy
       exact tagPrefix_separates_hashed_tags M hsha (append_right_cancel hxy)
-    · simpa [taggedHash] using heq
+    · simpa [taggedHashSha256] using heq
 
 /-! ## 8. Recorded interface obligation -/
 
