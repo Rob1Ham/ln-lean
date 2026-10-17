@@ -223,18 +223,100 @@ theorem advanceReceived_counters_monotone (c : ChannelRecord) (m : Msg) :
         (c.advanceReceived m).reestablish.nextRevocationNumber :=
   ⟨advanceReceived_nextCommitment_ge c m, advanceReceived_nextRevocation_ge c m⟩
 
+/-- A list-level lookup lemma: mapping a list by a function that fixes every
+element failing the predicate, and sends the found element to a value still
+satisfying the predicate, preserves the lookup result. -/
+private theorem List.find?_map_of_find?_eq_some {α : Type} (l : List α)
+    (p : α → Bool) (g : α → α)
+    (hoff : ∀ x, p x = false → g x = x)
+    (c : α) (h : l.find? p = some c) (hon : p (g c) = true) :
+    (l.map g).find? p = some (g c) := by
+  induction l with
+  | nil => simp at h
+  | cons a l ih =>
+      by_cases ha : p a = true
+      · have hac : a = c := by
+          simpa [ha] using h
+        subst c
+        simp [hon]
+      · have haf : p a = false := by
+          simpa using ha
+        have hg : g a = a := hoff a haf
+        have htail : l.find? p = some c := by
+          simpa [haf] using h
+        calc
+          ((a :: l).map g).find? p = (a :: l.map g).find? p := by
+            rw [List.map_cons, hg]
+          _ = (l.map g).find? p := by simp [haf]
+          _ = some (g c) := ih htail
+
+/-- Looking up a channel after `updateChannel` returns the updated record,
+provided the update preserves the channel identifier of the found channel. -/
+private theorem findChannel_updateChannel_of_channelId
+    (s : PeerState) (cid : ChannelId) (f : ChannelRecord → ChannelRecord)
+    (c : ChannelRecord) (h : findChannel s cid = some c)
+    (hf : (f c).channelId = c.channelId) :
+    findChannel (updateChannel s cid f) cid = some (f c) := by
+  unfold findChannel updateChannel
+  change (s.channels.map
+      (fun x => if x.channelId == cid then f x else x)).find?
+      (fun x => x.channelId == cid) = some (f c)
+  have h' : s.channels.find? (fun x => x.channelId == cid) = some c := by
+    simpa [findChannel] using h
+  have hp : (c.channelId == cid) = true :=
+    List.find?_some (p := fun x => x.channelId == cid) (a := c) h'
+  have hgc : (if c.channelId == cid then f c else c) = f c := by simp [hp]
+  have hmain := List.find?_map_of_find?_eq_some
+      (l := s.channels) (p := fun x => x.channelId == cid)
+      (g := fun x => if x.channelId == cid then f x else x)
+      (by intro x hx; simp [hx]) c h' (by simp [hp, hf])
+  simpa [hgc] using hmain
+
+/-- A receipt never changes a channel's identifier. -/
+private theorem advanceReceived_channelId (c : ChannelRecord) (m : Msg) :
+    (c.advanceReceived m).channelId = c.channelId := by
+  unfold ChannelRecord.advanceReceived
+  split <;> (try split) <;> rfl
+
+/-- The branch of `receive` taken by a non-handshake channel message. -/
+private theorem receive_of_no_event
+    (s s' : PeerState) (m : Msg) (cid : ChannelId) (c : ChannelRecord)
+    (hrecv : receive s m = some s')
+    (he : receiveEvent? m = none) (hc : channelId? m = some cid)
+    (hf : findChannel s cid = some c) :
+    s' = updateChannel s cid (fun _ => c.advanceReceived m) := by
+  unfold receive at hrecv
+  cases ht : s.transport <;> simp [ht, he, hc, hf] at hrecv
+  exact hrecv.symm
+
+/-- The branch of `receive` taken by a handshake message. -/
+private theorem receive_of_event
+    (s s' : PeerState) (m : Msg) (e : HandshakeEvent) (hs : HandshakeState)
+    (hrecv : receive s m = some s')
+    (he : receiveEvent? m = some e)
+    (hstep : handshakeStep s.handshake e = some hs) :
+    s' = { s with handshake := hs } := by
+  unfold receive at hrecv
+  cases ht : s.transport <;> simp [ht, he, hstep] at hrecv
+  exact hrecv.symm
+
 /-- **Reestablish receipt law.**  If `receive` accepts a
 `channel_reestablish`, then the counters of the addressed channel are exactly
 those it had before, hence not earlier. -/
--- OBLIGATION: LN-REEST-001 receiving a `channel_reestablish` leaves the addressed
--- channel record's counters unchanged; the remaining step is the list lemma
--- `findChannel (updateChannel s cid f) cid = some (f c)`.
 theorem receive_channelReestablish_preserves_counters
     (s s' : PeerState) (m : ChannelReestablish) (c : ChannelRecord)
     (hrecv : receive s (.channelReestablish m) = some s')
     (hfind : findChannel s m.channelId = some c) :
     ∃ c', findChannel s' m.channelId = some c' ∧ c'.reestablish = c.reestablish := by
-  sorry
+  have he : receiveEvent? (.channelReestablish m) = none := rfl
+  have hc : channelId? (.channelReestablish m) = some m.channelId := rfl
+  have hs' := receive_of_no_event s s' (.channelReestablish m) m.channelId c hrecv he hc hfind
+  rw [hs']
+  refine ⟨c.advanceReceived (.channelReestablish m), ?_, ?_⟩
+  · exact findChannel_updateChannel_of_channelId s m.channelId
+      (fun _ => c.advanceReceived (.channelReestablish m)) c hfind
+      (advanceReceived_channelId c (.channelReestablish m))
+  · exact advanceReceived_channelReestablish c m
 
 /-! ## 3. Retransmission does not advance the counters -/
 
@@ -335,9 +417,6 @@ theorem advanceReceivedNumbered_monotone (c : ChannelRecord) (k : Nat) :
 
 /-- A `receive` that is accepted cannot lower either counter of the addressed
 channel record. -/
--- OBLIGATION: LN-REEST-002 an accepted `receive` is monotone in both reestablish
--- counters; the remaining step is the same `findChannel`/`updateChannel` list lemma
--- as LN-REEST-001.
 theorem receive_counters_monotone
     (s s' : PeerState) (m : Msg) (cid : ChannelId) (c : ChannelRecord)
     (hrecv : receive s m = some s') (hmsg : channelId? m = some cid)
@@ -345,7 +424,27 @@ theorem receive_counters_monotone
     ∃ c', findChannel s' cid = some c' ∧
       c.reestablish.nextCommitmentNumber ≤ c'.reestablish.nextCommitmentNumber ∧
       c.reestablish.nextRevocationNumber ≤ c'.reestablish.nextRevocationNumber := by
-  sorry
+  by_cases he : receiveEvent? m = none
+  · have hs' := receive_of_no_event s s' m cid c hrecv he hmsg hfind
+    rw [hs']
+    exact ⟨c.advanceReceived m,
+      findChannel_updateChannel_of_channelId s cid (fun _ => c.advanceReceived m) c hfind
+        (advanceReceived_channelId c m),
+      (advanceReceived_counters_monotone c m).1,
+      (advanceReceived_counters_monotone c m).2⟩
+  · cases hstep : receiveEvent? m with
+    | none => exact absurd hstep he
+    | some e =>
+        cases hhs : handshakeStep s.handshake e with
+        | none =>
+            have hr : receive s m = none := by
+              cases ht : s.transport <;> simp [receive, ht, hstep, hhs]
+            rw [hr] at hrecv
+            exact absurd hrecv (by simp)
+        | some hs =>
+            have hs' := receive_of_event s s' m e hs hrecv hstep hhs
+            rw [hs']
+            exact ⟨c, by simpa [findChannel] using hfind, Nat.le_refl _, Nat.le_refl _⟩
 
 /-! ## 4. The bridge to `Channel` commitment numbers -/
 
