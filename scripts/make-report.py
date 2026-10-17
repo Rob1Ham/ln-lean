@@ -20,10 +20,56 @@ SORRY = re.compile(r"\bsorry\b")
 
 
 def strip_comments(text: str) -> str:
-    """Crude comment stripper for reporting counts, not for policy checks."""
-    text = re.sub(r"/-.*?-/", "", text, flags=re.S)
-    text = re.sub(r"--[^\n]*", "", text)
-    return text
+    """Remove Lean comments/strings, preserving newlines for line numbers."""
+    out = []
+    i = 0
+    depth = 0
+    in_str = False
+    n = len(text)
+    while i < n:
+        if depth > 0:
+            if text.startswith("/-", i):
+                depth += 1
+                i += 2
+            elif text.startswith("-/", i):
+                depth -= 1
+                i += 2
+            else:
+                if text[i] == "\n":
+                    out.append("\n")
+                i += 1
+            continue
+        if in_str:
+            if text[i] == "\\":
+                i += 2 if i + 1 < n else 1
+            elif text[i] == '"':
+                in_str = False
+                out.append('"')
+                i += 1
+            else:
+                if text[i] == "\n":
+                    out.append("\n")
+                i += 1
+            continue
+        if text.startswith("/-", i):
+            depth = 1
+            i += 2
+            continue
+        if text.startswith("--", i):
+            j = text.find("\n", i)
+            if j == -1:
+                break
+            out.append("\n")
+            i = j + 1
+            continue
+        if text[i] == '"':
+            in_str = True
+            out.append('"')
+            i += 1
+            continue
+        out.append(text[i])
+        i += 1
+    return "".join(out)
 
 
 def count_decls(paths):
@@ -45,9 +91,12 @@ def main():
     subj = subprocess.run(["git", "log", "-1", "--format=%s"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
     a_status = status_lines("A")
     b_status = status_lines("B")
+    c_status = status_lines("C")
     a_done = sum(1 for l in a_status if re.search(r"exit=", l))
     b_done = sum(1 for l in b_status if re.search(r"exit=", l))
     b_ok = sum(1 for l in b_status if "exit=0" in l)
+    c_done = sum(1 for l in c_status if re.search(r"exit=", l))
+    c_ok = sum(1 for l in c_status if "exit=0" in l)
     green = (ROOT / "agents" / "status" / "A-GREEN").read_text(encoding="utf-8").strip() if (ROOT / "agents" / "status" / "A-GREEN").exists() else "absent"
 
     all_lean = sorted((ROOT / "LnLean").rglob("*.lean"))
@@ -79,6 +128,7 @@ def main():
         f"- HEAD: `{head}` ({subj})",
         f"- wave A: **{a_done}/8** agents exited, gate: `{green}`",
         f"- wave B: **{b_done}/32** agents exited, **{b_ok}** with RC 0 (B02 exited 130 after writing its module; the module builds)",
+        f"- wave C: **{c_done}/16** agents exited, **{c_ok}** with RC 0; 20/25 obligations closed, **{len(sorries)}** open",
         f"- vendor integrity: **{vendor}**",
         f"- full build: **{build_rc}**",
         "",
@@ -90,6 +140,12 @@ def main():
         f"- wave-A catalog rows: **{catalog}** ({catalog_proved} proved, {catalog - catalog_proved} statement-only)",
         f"- wave-B `-- OBLIGATION:` markers: **{markers}**",
         f"- `sorry` sites under `Proofs/`: **{len(sorries)}**",
+        "",
+        "## Remaining `sorry` sites",
+        "",
+        "| File | Line |",
+        "|---|---:|",
+        *[f"| `{p}` | {ln} |" for p, ln in sorries],
         "",
         "## Wave-B files",
         "",
@@ -110,11 +166,15 @@ def main():
         "```",
         *a_status,
         *b_status,
+        *c_status,
         "```",
         "",
         "## Honest limits",
         "",
-        "This is a scaffold.  The wave-A catalog is metadata; most rows are",
+        "This is a scaffold.  Wave C closed 20 of the 25 wave-B `sorry` sites;",
+        "the remaining sites are either false as stated for the current model or",
+        "need a missing model field (see the individual `C` reports).  The wave-A",
+        "catalog is metadata; most rows are",
         "`statementOnly`.  Wave-B files add theorem statements and obligation",
         "markers, and many contain `sorry`.  Cryptographic facts are `Prop`",
         "hypotheses, not axioms.  The report does not upgrade an obligation to a",

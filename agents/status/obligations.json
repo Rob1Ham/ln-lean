@@ -1,77 +1,51 @@
 {
   "files": 33,
-  "obligations": 48,
+  "obligations": 32,
   "catalog_obligations": 48,
-  "declarations": 1541,
-  "sorries": 25,
+  "declarations": 1547,
+  "sorries": 5,
   "by_domain": {
-    "Bitcoin": 7,
-    "Channel": 27,
-    "Conservation.lean": 1,
-    "Crypto": 3,
-    "Payment": 2,
-    "Protocol": 3,
-    "Routing": 4,
-    "Wire": 1
+    "Bitcoin": 4,
+    "Channel": 24,
+    "Routing": 4
   },
   "by_kind": {
     "abbrev": 3,
     "def": 347,
     "inductive": 17,
     "structure": 41,
-    "theorem": 1133
+    "theorem": 1139
   },
   "duplicate_ids": [],
   "catalog_duplicate_ids": [],
   "rows": [
     {
-      "id": "LN-ANCHOR-007",
-      "claim": "equal anchor witness scripts imply equal funding keys",
-      "domain": "Bitcoin",
-      "file": "LnLean/Proofs/Bitcoin/AnchorProps.lean",
-      "line": 447
-    },
-    {
-      "id": "LN-ANCHOR-008",
-      "claim": "collision-resistant P2WSH programs separate the two anchors",
-      "domain": "Bitcoin",
-      "file": "LnLean/Proofs/Bitcoin/AnchorProps.lean",
-      "line": 461
-    },
-    {
-      "id": "LN-FUND-002",
-      "claim": "capacity is bounded by 21M BTC expressed in msat (`Msat.MAX`).",
-      "domain": "Bitcoin",
-      "file": "LnLean/Proofs/Bitcoin/FundingProps.lean",
-      "line": 298
-    },
-    {
       "id": "LN-FUND-001",
       "claim": "the wave-A script parser rejects `OP_CHECKMULTISIG`.",
       "domain": "Bitcoin",
       "file": "LnLean/Proofs/Bitcoin/FundingProps.lean",
-      "line": 423
+      "line": 455
     },
     {
       "id": "LN-SCRIPT-001",
       "claim": "The fixed-width four-byte little-endian push is injective on values below 2^32.",
       "domain": "Bitcoin",
       "file": "LnLean/Proofs/Bitcoin/ScriptProps.lean",
-      "line": 699
+      "line": 713
     },
     {
       "id": "LN-SCRIPT-002",
       "claim": "Distinct CLTV expiries yield distinct received-HTLC witness scripts, so the script commits to the expiry.",
       "domain": "Bitcoin",
       "file": "LnLean/Proofs/Bitcoin/ScriptProps.lean",
-      "line": 712
+      "line": 746
     },
     {
       "id": "LN-SCRIPT-003",
       "claim": "Distinct 20-byte payment-hash digests yield distinct offered-HTLC witness scripts, so the script commits to the payment hash.",
       "domain": "Bitcoin",
       "file": "LnLean/Proofs/Bitcoin/ScriptProps.lean",
-      "line": 723
+      "line": 766
     },
     {
       "id": "LN-BREACH-013",
@@ -235,95 +209,11 @@
       "line": 524
     },
     {
-      "id": "LN-HTLCRecord-010",
-      "claim": "Removing an HTLCRecord id commutes with filtering to the live HTLCRecord set.",
-      "domain": "Channel",
-      "file": "LnLean/Proofs/Channel/HTLCProps.lean",
-      "line": 425
-    },
-    {
-      "id": "LN-HTLCRecord-011",
-      "claim": "The in-flight value of a finite HTLCRecord set is at most its size times any pointwise amount bound.",
-      "domain": "Channel",
-      "file": "LnLean/Proofs/Channel/HTLCProps.lean",
-      "line": 432
-    },
-    {
       "id": "LN-CH-101",
       "claim": "a committed update preserves settled-plus-in-flight value",
       "domain": "Channel",
       "file": "LnLean/Proofs/Channel/ReserveProps.lean",
-      "line": 566
-    },
-    {
-      "id": "LN-CH-010",
-      "claim": "a trace from negotiating to normal contains fundingLocked",
-      "domain": "Channel",
-      "file": "LnLean/Proofs/Channel/StateMachineProps.lean",
-      "line": 399
-    },
-    {
-      "id": "LN-CONS-004",
-      "claim": "erasing one HTLC output from a commitment output list removes exactly its value from the output sum, so crediting that value to a balance preserves the conservation equation even with duplicate-valued HTLC outputs",
-      "domain": "Conservation.lean",
-      "file": "LnLean/Proofs/Conservation.lean",
-      "line": 631
-    },
-    {
-      "id": "LN-ECDSA-001",
-      "claim": "full DER body acceptance implies the envelope predicate within 71--73 bytes",
-      "domain": "Crypto",
-      "file": "LnLean/Proofs/Crypto/EcdsaProps.lean",
-      "line": 551
-    },
-    {
-      "id": "LN-ECDSA-002",
-      "claim": "a full DER parse fixes the two INTEGER lengths and their sum plus the sighash byte",
-      "domain": "Crypto",
-      "file": "LnLean/Proofs/Crypto/EcdsaProps.lean",
-      "line": 559
-    },
-    {
-      "id": "LN-CR-007",
-      "claim": "`ByteArray` has more elements than the 2^256 possible 32-byte outputs, so no `H` with `(H b).size = 32` for all `b` is injective; the global `PreimageResistant` field of `PrimitiveModel` is therefore incompatible with `sha256_size`, and the consistent hypothesis is injectivity on 32-byte preimages.",
-      "domain": "Crypto",
-      "file": "LnLean/Proofs/Crypto/Sha256Props.lean",
-      "line": 332
-    },
-    {
-      "id": "LN-KS-001",
-      "claim": "A keysend whose every settlement outcome is a failure never reveals its preimage.",
-      "domain": "Payment",
-      "file": "LnLean/Proofs/Payment/KeysendProps.lean",
-      "line": 443
-    },
-    {
-      "id": "LN-PAY-MPP-001",
-      "claim": "the duplicate-free collected total is invariant under any permutation of the part list",
-      "domain": "Payment",
-      "file": "LnLean/Proofs/Payment/MPPProps.lean",
-      "line": 647
-    },
-    {
-      "id": "LN-REEST-001",
-      "claim": "receiving a `channel_reestablish` leaves the addressed",
-      "domain": "Protocol",
-      "file": "LnLean/Proofs/Protocol/ChannelReestablishProps.lean",
-      "line": 229
-    },
-    {
-      "id": "LN-REEST-002",
-      "claim": "an accepted `receive` is monotone in both reestablish",
-      "domain": "Protocol",
-      "file": "LnLean/Proofs/Protocol/ChannelReestablishProps.lean",
-      "line": 338
-    },
-    {
-      "id": "LN-FEAT-012",
-      "claim": "Bitwise AND cannot introduce an unknown required bit.",
-      "domain": "Protocol",
-      "file": "LnLean/Proofs/Protocol/FeaturesProps.lean",
-      "line": 467
+      "line": 585
     },
     {
       "id": "LN-GOSSIP-001",
@@ -351,14 +241,7 @@
       "claim": "every path returned by simplePaths is a walk of enabled edges (either orientation)",
       "domain": "Routing",
       "file": "LnLean/Proofs/Routing/GraphProps.lean",
-      "line": 474
-    },
-    {
-      "id": "LN-WIRE-001",
-      "claim": "canonical TLV streams round-trip through encodeTLV/decodeTLV",
-      "domain": "Wire",
-      "file": "LnLean/Proofs/Wire/TLVProps.lean",
-      "line": 290
+      "line": 512
     }
   ],
   "catalog_rows": [

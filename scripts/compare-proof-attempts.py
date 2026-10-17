@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare wave-c/235 with origin/phase-c per proof file.
+"""Compare wave-c/235 with the phase-c branch per proof file.
 
 Prints remaining `sorry` counts, diff size, and whether an existing
 theorem/lemma line was removed.  It does not modify the worktree.
@@ -11,6 +11,7 @@ import sys
 
 ROOT = pathlib.Path("/home/ubuntu/ln-lean")
 BASE = "b891a59"
+OTHER = "phasec/phase-c"
 SORRY = re.compile(r"\bsorry\b")
 FILES = [
     "LnLean/Proofs/Bitcoin/AnchorProps.lean",
@@ -60,19 +61,19 @@ def removed_statement(ref: str, path: str) -> bool:
 
 def main() -> int:
     try:
-        subprocess.run(["git", "rev-parse", "--verify", "origin/phase-c"], cwd=ROOT, check=True, capture_output=True)
+        subprocess.run(["git", "rev-parse", "--verify", OTHER], cwd=ROOT, check=True, capture_output=True)
     except subprocess.CalledProcessError:
-        print("origin/phase-c is not fetched; run: git fetch origin phase-c")
+        print(f"{OTHER} is not fetched; fetch the phase-c branch first")
         return 2
     print(f"{'file':58} {'base':>4} {'ours':>4} {'PC':>3} {'ours±':>6} {'PC±':>5} flags")
     for path in FILES:
-        b, o, p = count(BASE, path), count("wave-c/235", path), count("origin/phase-c", path)
+        b, o, p = count(BASE, path), count("wave-c/235", path), count(OTHER, path)
         flags = []
         if removed_statement("wave-c/235", path):
             flags.append("ours-stmt")
-        if removed_statement("origin/phase-c", path):
+        if removed_statement(OTHER, path):
             flags.append("pc-stmt")
-        print(f"{path:58} {b:4} {o:4} {p:3} {diff_lines('wave-c/235', path):6} {diff_lines('origin/phase-c', path):5} {','.join(flags)}")
+        print(f"{path:58} {b:4} {o:4} {p:3} {diff_lines('wave-c/235', path):6} {diff_lines(OTHER, path):5} {','.join(flags)}")
     return 0
 
 

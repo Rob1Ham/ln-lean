@@ -1,12 +1,13 @@
 # Integrator report
 
 - repository: `/home/ubuntu/ln-lean`
-- HEAD: `78c2f3f59d8f65886f2009a1da1f41000b0cba3b` ([LN-INTEGRATION] green two-wave scaffold: 69 Lean files, 1541 declarations, 48 obligations)
+- HEAD: `6d71ce3e2ca2ae21de161939d230ad03c86fc90c` ([C02] close proof obligations in FundingProps)
 - wave A: **8/8** agents exited, gate: `A-GREEN 2026-10-17T22:35:33Z
 modules=35
 vendor=ok
 check=ok`
 - wave B: **32/32** agents exited, **31** with RC 0 (B02 exited 130 after writing its module; the module builds)
+- wave C: **16/16** agents exited, **16** with RC 0; 20/25 obligations closed, **5** open
 - vendor integrity: **OK**
 - full build: **0**
 
@@ -14,39 +15,49 @@ check=ok`
 
 - Lean files: **69** (36 model, 33 proof)
 - model declarations: **1075**
-- proof declarations: **1541**
+- proof declarations: **1547**
 - wave-A catalog rows: **48** (13 proved, 35 statement-only)
-- wave-B `-- OBLIGATION:` markers: **48**
-- `sorry` sites under `Proofs/`: **25**
+- wave-B `-- OBLIGATION:` markers: **32**
+- `sorry` sites under `Proofs/`: **5**
+
+## Remaining `sorry` sites
+
+| File | Line |
+|---|---:|
+| `LnLean/Proofs/Bitcoin/FundingProps.lean` | 456 |
+| `LnLean/Proofs/Channel/ReserveProps.lean` | 586 |
+| `LnLean/Proofs/Routing/GossipProps.lean` | 878 |
+| `LnLean/Proofs/Routing/GossipProps.lean` | 887 |
+| `LnLean/Proofs/Routing/GossipProps.lean` | 897 |
 
 ## Wave-B files
 
 | File | Declarations | Obligation markers |
 |---|---:|---:|
-| `LnLean/Proofs/Bitcoin/AnchorProps.lean` | 48 | 2 |
-| `LnLean/Proofs/Bitcoin/FundingProps.lean` | 37 | 2 |
+| `LnLean/Proofs/Bitcoin/AnchorProps.lean` | 48 | 0 |
+| `LnLean/Proofs/Bitcoin/FundingProps.lean` | 37 | 1 |
 | `LnLean/Proofs/Bitcoin/ScriptProps.lean` | 63 | 3 |
 | `LnLean/Proofs/Bitcoin/WeightProps.lean` | 47 | 0 |
 | `LnLean/Proofs/Channel/BreachProps.lean` | 28 | 19 |
 | `LnLean/Proofs/Channel/CommitmentTxProps.lean` | 50 | 4 |
 | `LnLean/Proofs/Channel/FeeProps.lean` | 32 | 0 |
-| `LnLean/Proofs/Channel/HTLCProps.lean` | 44 | 2 |
+| `LnLean/Proofs/Channel/HTLCProps.lean` | 44 | 0 |
 | `LnLean/Proofs/Channel/PenaltyProps.lean` | 28 | 0 |
-| `LnLean/Proofs/Channel/ReserveProps.lean` | 54 | 1 |
+| `LnLean/Proofs/Channel/ReserveProps.lean` | 55 | 1 |
 | `LnLean/Proofs/Channel/RevocationProps.lean` | 27 | 0 |
-| `LnLean/Proofs/Channel/StateMachineProps.lean` | 28 | 1 |
-| `LnLean/Proofs/Conservation.lean` | 53 | 1 |
-| `LnLean/Proofs/Crypto/EcdsaProps.lean` | 53 | 2 |
+| `LnLean/Proofs/Channel/StateMachineProps.lean` | 28 | 0 |
+| `LnLean/Proofs/Conservation.lean` | 53 | 0 |
+| `LnLean/Proofs/Crypto/EcdsaProps.lean` | 53 | 0 |
 | `LnLean/Proofs/Crypto/SchnorrProps.lean` | 50 | 0 |
-| `LnLean/Proofs/Crypto/Sha256Props.lean` | 26 | 1 |
+| `LnLean/Proofs/Crypto/Sha256Props.lean` | 26 | 0 |
 | `LnLean/Proofs/Liveness.lean` | 47 | 0 |
 | `LnLean/Proofs/Payment/InvoiceProps.lean` | 42 | 0 |
-| `LnLean/Proofs/Payment/KeysendProps.lean` | 65 | 1 |
+| `LnLean/Proofs/Payment/KeysendProps.lean` | 65 | 0 |
 | `LnLean/Proofs/Payment/LiquidityProps.lean` | 64 | 0 |
-| `LnLean/Proofs/Payment/MPPProps.lean` | 59 | 1 |
-| `LnLean/Proofs/Protocol/ChannelReestablishProps.lean` | 54 | 2 |
+| `LnLean/Proofs/Payment/MPPProps.lean` | 64 | 0 |
+| `LnLean/Proofs/Protocol/ChannelReestablishProps.lean` | 54 | 0 |
 | `LnLean/Proofs/Protocol/ErrorProps.lean` | 39 | 0 |
-| `LnLean/Proofs/Protocol/FeaturesProps.lean` | 75 | 1 |
+| `LnLean/Proofs/Protocol/FeaturesProps.lean` | 75 | 0 |
 | `LnLean/Proofs/Protocol/HandshakeProps.lean` | 40 | 0 |
 | `LnLean/Proofs/Routing/GossipProps.lean` | 74 | 3 |
 | `LnLean/Proofs/Routing/GraphProps.lean` | 37 | 1 |
@@ -54,7 +65,7 @@ check=ok`
 | `LnLean/Proofs/Routing/RouteBlindingProps.lean` | 66 | 0 |
 | `LnLean/Proofs/Security/ThreatModelProps.lean` | 85 | 0 |
 | `LnLean/Proofs/Traceability.lean` | 54 | 0 |
-| `LnLean/Proofs/Wire/TLVProps.lean` | 26 | 1 |
+| `LnLean/Proofs/Wire/TLVProps.lean` | 26 | 0 |
 
 ## Status records
 
@@ -102,11 +113,30 @@ B22 exit=0 2026-10-17T22:42:27Z
 B24 exit=0 2026-10-17T22:42:43Z
 B29 exit=0 2026-10-17T22:43:03Z
 B02 exit=130 2026-10-17T22:44:07Z
+C13 exit=0 2026-10-17T23:05:17Z
+C10 exit=0 2026-10-17T23:05:19Z
+C15 exit=0 2026-10-17T23:05:35Z
+C04 exit=0 2026-10-17T23:05:47Z
+C01 exit=0 2026-10-17T23:05:54Z
+C08 exit=0 2026-10-17T23:06:37Z
+C06 exit=0 2026-10-17T23:06:42Z
+C11 exit=0 2026-10-17T23:07:00Z
+C03 exit=0 2026-10-17T23:07:02Z
+C05 exit=0 2026-10-17T23:07:03Z
+C14 exit=0 2026-10-17T23:07:59Z
+C12 exit=0 2026-10-17T23:08:00Z
+C07 exit=0 2026-10-17T23:08:10Z
+C16 exit=0 2026-10-17T23:08:30Z
+C09 exit=0 2026-10-17T23:08:51Z
+C02 exit=0 2026-10-17T23:10:05Z
 ```
 
 ## Honest limits
 
-This is a scaffold.  The wave-A catalog is metadata; most rows are
+This is a scaffold.  Wave C closed 20 of the 25 wave-B `sorry` sites;
+the remaining sites are either false as stated for the current model or
+need a missing model field (see the individual `C` reports).  The wave-A
+catalog is metadata; most rows are
 `statementOnly`.  Wave-B files add theorem statements and obligation
 markers, and many contain `sorry`.  Cryptographic facts are `Prop`
 hypotheses, not axioms.  The report does not upgrade an obligation to a

@@ -13,6 +13,59 @@ PROOFS = ROOT / "LnLean" / "Proofs"
 OUT_MD = ROOT / "docs" / "OBLIGATIONS-GENERATED.md"
 OUT_JSON = ROOT / "agents" / "status" / "obligations.json"
 
+
+def strip_comments(text: str) -> str:
+    """Remove Lean comments/strings, preserving newlines for line numbers."""
+    out = []
+    i = 0
+    depth = 0
+    in_str = False
+    n = len(text)
+    while i < n:
+        if depth > 0:
+            if text.startswith("/-", i):
+                depth += 1
+                i += 2
+            elif text.startswith("-/", i):
+                depth -= 1
+                i += 2
+            else:
+                if text[i] == "\n":
+                    out.append("\n")
+                i += 1
+            continue
+        if in_str:
+            if text[i] == "\\":
+                i += 2 if i + 1 < n else 1
+            elif text[i] == '"':
+                in_str = False
+                out.append('"')
+                i += 1
+            else:
+                if text[i] == "\n":
+                    out.append("\n")
+                i += 1
+            continue
+        if text.startswith("/-", i):
+            depth = 1
+            i += 2
+            continue
+        if text.startswith("--", i):
+            j = text.find("\n", i)
+            if j == -1:
+                break
+            out.append("\n")
+            i = j + 1
+            continue
+        if text[i] == '"':
+            in_str = True
+            out.append('"')
+            i += 1
+            continue
+        out.append(text[i])
+        i += 1
+    return "".join(out)
+
 OBLIGATION = re.compile(r"--\s*OBLIGATION:\s*(LN-[A-Za-z0-9_-]+)\s+(.*)$")
 DECL = re.compile(
     r"^\s*(theorem|lemma|def|structure|inductive|abbrev)\s+"
@@ -50,6 +103,11 @@ for path in files:
     text = path.read_text(encoding="utf-8")
     rel = path.relative_to(ROOT)
     domain = rel.parts[2] if len(rel.parts) > 2 else "Root"
+    code_lines = strip_comments(text).splitlines()
+    code_line_set = set()
+    for i, line in enumerate(code_lines, 1):
+        if re.search(r"\bsorry\b", line):
+            code_line_set.add(i)
     for i, line in enumerate(text.splitlines(), 1):
         m = OBLIGATION.search(line)
         if m:
@@ -69,7 +127,7 @@ for path in files:
                 "file": str(rel),
                 "line": i,
             })
-        if re.search(r"\bsorry\b", line):
+        if i in code_line_set:
             sorries.append({"file": str(rel), "line": i, "text": line.strip()})
 
 by_domain = Counter(r["domain"] for r in rows)

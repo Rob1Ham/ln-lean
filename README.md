@@ -6,8 +6,11 @@ on the existing `btc-lean` Bitcoin L1 formalization.
 **This is scaffolding, not a completed proof.** The tree compiles, the
 definitions are anchored to BOLTs and `rust-lightning`, and every unproved
 claim is a named obligation.  Wave A (8 agents) built the 35 executable model
-modules; wave B (32 agents) adds the proof statements under
-`LnLean/Proofs/`.  See `docs/WAVE-STATUS.md`.
+modules; wave B (32 agents) added the proof statements under
+`LnLean/Proofs/`; wave C (16 agents) closed 20 of the 25 remaining proof
+obligations.  Five obligations remain, each documented as either false for
+the current model or requiring a missing model invariant.  See
+`docs/WAVE-STATUS.md` and `agents/reports/WAVE-C-INTEGRATOR.md`.
 
 ## Layout
 

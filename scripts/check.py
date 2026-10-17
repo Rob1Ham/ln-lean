@@ -16,7 +16,7 @@ import sys
 ROOT = pathlib.Path("/home/ubuntu/ln-lean")
 FORBIDDEN = re.compile(r"\b(axiom|native_decide|unsafe|admit)\b|@\[implemented_by\]")
 SORRY = re.compile(r"\bsorry\b")
-OBLIGATION = re.compile(r"--\s*OBLIGATION:\s*(\S+)")
+OBLIGATION = re.compile(r"^\s*--\s*OBLIGATION:\s*(\S+)", re.M)
 
 def strip_comments(text: str) -> str:
     """Remove Lean line/block comments and string literals, preserving newlines.

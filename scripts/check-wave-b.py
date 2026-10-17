@@ -53,6 +53,58 @@ DECL = re.compile(r"^\s*(theorem|lemma|def|structure|inductive|abbrev)\s+([A-Za-
 MARK = re.compile(r"--\s*OBLIGATION:\s*(LN-\S+)")
 SORRY = re.compile(r"\bsorry\b")
 
+def strip_comments(text: str) -> str:
+    """Remove Lean comments/strings, preserving newlines for line numbers."""
+    out = []
+    i = 0
+    depth = 0
+    in_str = False
+    n = len(text)
+    while i < n:
+        if depth > 0:
+            if text.startswith("/-", i):
+                depth += 1
+                i += 2
+            elif text.startswith("-/", i):
+                depth -= 1
+                i += 2
+            else:
+                if text[i] == "\n":
+                    out.append("\n")
+                i += 1
+            continue
+        if in_str:
+            if text[i] == "\\":
+                i += 2 if i + 1 < n else 1
+            elif text[i] == '"':
+                in_str = False
+                out.append('"')
+                i += 1
+            else:
+                if text[i] == "\n":
+                    out.append("\n")
+                i += 1
+            continue
+        if text.startswith("/-", i):
+            depth = 1
+            i += 2
+            continue
+        if text.startswith("--", i):
+            j = text.find("\n", i)
+            if j == -1:
+                break
+            out.append("\n")
+            i = j + 1
+            continue
+        if text[i] == '"':
+            in_str = True
+            out.append('"')
+            i += 1
+            continue
+        out.append(text[i])
+        i += 1
+    return "".join(out)
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -70,7 +122,8 @@ def main() -> int:
             missing.append(m)
             continue
         t = p.read_text(encoding="utf-8")
-        stats[m] = (len(DECL.findall(t)), len(MARK.findall(t)), len(SORRY.findall(t)))
+        code_text = strip_comments(t)
+        stats[m] = (len(DECL.findall(code_text)), len(MARK.findall(t)), len(SORRY.findall(code_text)))
         for line in t.splitlines():
             if line.startswith("import LnLean.Proofs.") and "Obligations" not in line:
                 bad_imports.append((m, line.strip()))
@@ -79,9 +132,9 @@ def main() -> int:
         if stats[m][2] > 0 and stats[m][1] == 0:
             no_marker.append(m)
         lines = t.splitlines()
-        for i, line in enumerate(lines):
-            code = re.sub(r"--.*$", "", line)
-            if SORRY.search(code) and "-- OBLIGATION" not in line:
+        code_lines = strip_comments(t).splitlines()
+        for i, line in enumerate(code_lines):
+            if SORRY.search(line) and "-- OBLIGATION" not in lines[i]:
                 # The marker normally sits above the theorem declaration, not
                 # necessarily on the line immediately before the tactic.
                 j = i - 1
