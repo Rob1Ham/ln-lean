@@ -6,3 +6,4 @@
 agents/logs/
 refs/rust-lightning/
 refs/bolts/
+vendor/

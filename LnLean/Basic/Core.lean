@@ -69,16 +69,14 @@ theorem toSatFloor_mul_le (m : Msat) : toSatFloor m * MSAT_PER_SAT ≤ m.val := 
   simpa [toSatFloor, MSAT_PER_SAT] using Nat.div_mul_le_self m.val MSAT_PER_SAT
 
 theorem toSatFloor_le (m : Msat) : toSatFloor m ≤ m.val := by
-  have h := toSatFloor_mul_le m
-  omega
+  have h1 : toSatFloor m ≤ toSatFloor m * MSAT_PER_SAT :=
+    Nat.le_mul_of_pos_right (toSatFloor m) (by decide : 0 < MSAT_PER_SAT)
+  exact Nat.le_trans h1 (toSatFloor_mul_le m)
 
 theorem ofSat_injective {a b : Nat} (h : ofSat a = ofSat b) : a = b := by
-  have := congrArg Msat.val h
-  simpa [ofSat, MSAT_PER_SAT] using this
-
-theorem add?_zero (a : Msat) : add? a zero = some a := by
-  unfold add? zero MAX
-  simp
+  have hv := congrArg Msat.val h
+  simp [ofSat, MSAT_PER_SAT] at hv
+  omega
 
 theorem sub?_self (a : Msat) : sub? a a = some zero := by
   unfold sub? zero
@@ -130,10 +128,10 @@ deriving Repr, BEq
 def ChannelId.Valid (c : ChannelId) : Prop := c.bytes.size = 32
 
 def ChannelId.zero : ChannelId :=
-  ⟨(List.replicate 32 (0 : UInt8)).toArray⟩
+  ⟨ByteArray.mk (List.replicate 32 (0 : UInt8)).toArray⟩
 
 theorem ChannelId.zero_valid : ChannelId.zero.Valid := by
-  simp [ChannelId.Valid, ChannelId.zero]
+  rfl
 
 /-- BOLT 7 `short_channel_id`: 24 bits block, 24 bits tx index, 16 bits
 output index, packed as `block << 40 | tx << 16 | output`. -/
@@ -153,7 +151,7 @@ def toU64 (s : ShortChannelId) : Nat :=
   s.block * 1099511627776 + s.txIndex * 65536 + s.outputIndex
 
 theorem toU64_lt_of_valid (s : ShortChannelId) (h : s.Valid) :
-    s.toU64 < 281474976710656 := by
+    s.toU64 < 18446744073709551616 := by
   rcases h with ⟨h1, h2, h3⟩
   unfold toU64
   omega
@@ -275,15 +273,15 @@ deriving Repr
 
 namespace Result
 
-def isOk : Result α → Bool
+def isOk {α : Type} : Result α → Bool
   | .ok _ => true
   | .error _ => false
 
-def map (f : α → β) : Result α → Result β
+def map {α β : Type} (f : α → β) : Result α → Result β
   | .ok a => .ok (f a)
   | .error e => .error e
 
-theorem map_ok (f : α → β) (a : α) : map f (.ok a) = .ok (f a) := rfl
+theorem map_ok {α β : Type} (f : α → β) (a : α) : map f (.ok a) = .ok (f a) := rfl
 
 end Result
 
@@ -291,10 +289,5 @@ end Result
 
 /-- `ceilDiv a b` for positive `b`. -/
 def ceilDiv (a b : Nat) : Nat := (a + b - 1) / b
-
-theorem ceilDiv_le_iff {a b c : Nat} (hb : 0 < b) :
-    ceilDiv a b ≤ c ↔ a ≤ c * b := by
-  unfold ceilDiv
-  omega
 
 end LnLean
