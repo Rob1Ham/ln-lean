@@ -76,3 +76,16 @@ python3 scripts/check-wave-b.py --build
 * Never force-push `main`; never rewrite another branch's history.
 * If `main` advances, rebase `wave-c/235` before requesting a merge and
   re-run the full gate.
+
+### Observed overlap
+
+The other box launched its own 16 `PC` agents at `2026-10-17T23:04:32Z`
+on the same 16 files.  Both lanes are therefore independent attempts at the
+same obligations.  Integration must compare per file (remaining `sorry`
+count, build verdict, statement preservation) and keep **one** version per
+file; do not merge two competing bodies into the same theorem.
+
+`scripts/compare-proof-attempts.py` prints the comparison once
+`origin/phase-c` is fetched.  A file with a lower `sorry` count is the
+candidate; ties require a green exact-module build and a statement check.
+
