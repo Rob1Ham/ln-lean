@@ -65,8 +65,9 @@ What is explicitly NOT modelled.
   interpreter bridge.  The 16-block CSV anyone-sweep path is not proved.
 * SHA256 and collision resistance.  `CommitmentParams.HashesMatch` is taken
   as a hypothesis, so the link from a witness script to its P2WSH program is
-  assumed, not computed.  The byte-level key-injectivity lemma is left as
-  `LN-ANCHOR-007`.
+  assumed, not computed.  The byte-level key-injectivity lemma `LN-ANCHOR-007`
+  is proved below (`anchorWitnessScript_key_injective`); only the hash
+  bridge itself stays assumed.
 * The BOLT 3 no-HTLC dust exception in which only one anchor is emitted when
   one commitment output is below the dust limit.  `commitmentOutputs` is the
   both-outputs-present template, so this module proves two anchors for that
@@ -436,21 +437,51 @@ theorem conservation_separates_fee (a : AnchorAccounting) :
   unfold AnchorAccounting.Conserves
   constructor <;> intro h <;> omega
 
-/-! ## Open byte-level obligations -/
+/-! ## Byte-level obligations -/
 
-/-- Two equal anchor witness scripts commit to equal funding keys.  The proof
-needs ByteArray append-cancellation/prefix lemmas that the L1 snapshot does
-not expose at this level. -/
+/-- Left cancellation for `ByteArray` append.  The L1 snapshot does not
+export this at `ByteArray` level, so it is derived from the `List` lemma on
+`toList` and `Array.toList_inj`. -/
+theorem byteArray_append_cancel_left {a b c : ByteArray}
+    (h : a ++ b = a ++ c) : b = c := by
+  have h' := congrArg (fun x : ByteArray => x.data.toList) h
+  simp only [ByteArray.toList_data_append] at h'
+  apply ByteArray.ext
+  rw [← Array.toList_inj]
+  exact List.append_cancel_left h'
+
+/-- Right cancellation for `ByteArray` append. -/
+theorem byteArray_append_cancel_right {a b c : ByteArray}
+    (h : a ++ b = c ++ b) : a = c := by
+  have h' := congrArg (fun x : ByteArray => x.data.toList) h
+  simp only [ByteArray.toList_data_append] at h'
+  apply ByteArray.ext
+  rw [← Array.toList_inj]
+  exact List.append_cancel_right h'
+
+/-- Two equal anchor witness scripts commit to equal funding keys.  The
+anchor witness script is `pushData key.bytes` followed by the fixed six-opcode
+tail; for valid (33-byte) keys the push prefix is the single byte `0x21`.
+Cancelling the common push prefix and the common opcode tail leaves the two
+key byte strings equal. -/
 theorem anchorWitnessScript_key_injective
     (k₁ k₂ : PubKey) (h₁ : k₁.Valid) (h₂ : k₂.Valid)
     (h : anchorWitnessScript k₁ = anchorWitnessScript k₂) : k₁ = k₂ := by
-  -- OBLIGATION: LN-ANCHOR-007 equal anchor witness scripts imply equal funding keys
-  sorry
+  have hb : (anchorWitnessScript k₁).bytes = (anchorWitnessScript k₂).bytes :=
+    congrArg (fun s : Script => s.bytes) h
+  have h1' : k₁.bytes.size = 33 := h₁
+  have h2' : k₂.bytes.size = 33 := h₂
+  simp only [anchorWitnessScript, pushData, h1', h2', ByteArray.append_assoc] at hb
+  have hmid := byteArray_append_cancel_left hb
+  have hk := byteArray_append_cancel_right hmid
+  cases k₁
+  cases k₂
+  simp_all
 
 /-- Under SHA256 collision resistance, distinct funding keys give distinct
-anchor P2WSH programs.  This composes `LN-ANCHOR-007` with the assumed hash
-bridge `HashesMatch`; it is recorded separately because the crypto assumption
-must remain visible. -/
+anchor P2WSH programs.  This composes `anchorWitnessScript_key_injective` with
+the assumed hash bridge `HashesMatch`; it is recorded separately because the
+crypto assumption must remain visible. -/
 theorem localAnchor_hash_ne_remoteAnchor_hash
     (p : CommitmentParams) (sha256 : Script → ByteArray)
     (h : p.HashesMatch sha256)
@@ -458,7 +489,13 @@ theorem localAnchor_hash_ne_remoteAnchor_hash
     (hk₁ : p.localFundingKey.Valid) (hk₂ : p.remoteFundingKey.Valid)
     (hkeys : p.localFundingKey ≠ p.remoteFundingKey) :
     p.localAnchorWitnessScriptHash ≠ p.remoteAnchorWitnessScriptHash := by
-  -- OBLIGATION: LN-ANCHOR-008 collision-resistant P2WSH programs separate the two anchors
-  sorry
+  intro heq
+  have hscript : anchorWitnessScript p.localFundingKey =
+      anchorWitnessScript p.remoteFundingKey := by
+    apply hcr
+    rw [h.2.2.1, h.2.2.2] at heq
+    exact heq
+  exact hkeys (anchorWitnessScript_key_injective
+    p.localFundingKey p.remoteFundingKey hk₁ hk₂ hscript)
 
 end LnLean.Bitcoin
