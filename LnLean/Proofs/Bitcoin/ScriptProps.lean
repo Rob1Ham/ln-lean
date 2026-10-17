@@ -689,6 +689,20 @@ theorem commitmentSequence_low24 (factor n : Nat) :
   rw [Nat.add_comm (2^24 * _) _, Nat.add_mul_mod_self_left]
   rw [← Nat.and_two_pow_sub_one_eq_mod]
 
+/-! ## Local helpers for the script-number and byte-string proofs -/
+
+/-- The fixed-width four-byte little-endian encoding always has length four. -/
+private theorem pushUInt32LE_size (n : Nat) : (pushUInt32LE n).size = 4 := by
+  unfold pushUInt32LE
+  simp
+
+/-- `pushData` is injective when both payloads have the same length. -/
+private theorem pushData_injective_of_size_eq {a b : ByteArray}
+    (ha : a.size = b.size) (h : pushData a = pushData b) : a = b := by
+  unfold pushData at h
+  rw [ha] at h
+  exact (ByteArray.append_right_inj (ByteArray.empty.push b.size.toUInt8)).mp h
+
 /-! ## Open proof obligations -/
 
 /-- `pushScriptNum32` is injective on values below `2^32`; this is the
@@ -697,7 +711,27 @@ expiry, and for the minimal script-number encoding bridge. -/
 theorem pushScriptNum32_injective {a b : Nat} (ha : a < 2^32) (hb : b < 2^32)
     (h : pushScriptNum32 a = pushScriptNum32 b) : a = b := by
   -- OBLIGATION: LN-SCRIPT-001 The fixed-width four-byte little-endian push is injective on values below 2^32.
-  sorry
+  have hx : pushUInt32LE a = pushUInt32LE b := by
+    unfold pushScriptNum32 at h
+    exact pushData_injective_of_size_eq
+      (by rw [pushUInt32LE_size, pushUInt32LE_size]) h
+  have hlist : (pushUInt32LE a).data.toList = (pushUInt32LE b).data.toList := by
+    rw [hx]
+  simp [pushUInt32LE] at hlist
+  rcases hlist with ⟨e0, e1, e2, e3⟩
+  have h0 : a % 256 = b % 256 := by
+    have := congrArg UInt8.toNat e0
+    simpa using this
+  have h1 : (a / 256) % 256 = (b / 256) % 256 := by
+    have := congrArg UInt8.toNat e1
+    simpa [Nat.shiftRight_eq_div_pow] using this
+  have h2 : (a / 65536) % 256 = (b / 65536) % 256 := by
+    have := congrArg UInt8.toNat e2
+    simpa [Nat.shiftRight_eq_div_pow] using this
+  have h3 : (a / 16777216) % 256 = (b / 16777216) % 256 := by
+    have := congrArg UInt8.toNat e3
+    simpa [Nat.shiftRight_eq_div_pow] using this
+  omega
 
 /-- Distinct CLTV expiries (< 2^32) give distinct received-HTLC witness
 scripts when all other parameters are held fixed. -/
@@ -710,7 +744,16 @@ theorem receivedHtlcWitnessScript_cltv_injective
         receivedHtlcWitnessScript revocationKeyHash160 paymentHash160
           remoteHtlcKey localHtlcKey c2) : c1 = c2 := by
   -- OBLIGATION: LN-SCRIPT-002 Distinct CLTV expiries yield distinct received-HTLC witness scripts, so the script commits to the expiry.
-  sorry
+  have hb : (receivedHtlcWitnessScript revocationKeyHash160 paymentHash160
+          remoteHtlcKey localHtlcKey c1).bytes =
+        (receivedHtlcWitnessScript revocationKeyHash160 paymentHash160
+          remoteHtlcKey localHtlcKey c2).bytes := by
+    rw [h]
+  unfold receivedHtlcWitnessScript at hb
+  simp only [ByteArray.append_assoc] at hb
+  have hx : pushScriptNum32 c1 = pushScriptNum32 c2 := by
+    simpa only [ByteArray.append_right_inj, ByteArray.append_left_inj] using hb
+  exact pushScriptNum32_injective h1 h2 hx
 
 /-- Distinct 20-byte payment-hash digests give distinct offered-HTLC witness
 scripts when all other parameters are held fixed. -/
@@ -721,6 +764,13 @@ theorem offeredHtlcWitnessScript_paymentHash_injective
         offeredHtlcWitnessScript revocationKeyHash160 h2 remoteHtlcKey localHtlcKey) :
     h1 = h2 := by
   -- OBLIGATION: LN-SCRIPT-003 Distinct 20-byte payment-hash digests yield distinct offered-HTLC witness scripts, so the script commits to the payment hash.
-  sorry
+  have hb : (offeredHtlcWitnessScript revocationKeyHash160 h1 remoteHtlcKey localHtlcKey).bytes =
+        (offeredHtlcWitnessScript revocationKeyHash160 h2 remoteHtlcKey localHtlcKey).bytes := by
+    rw [h]
+  unfold offeredHtlcWitnessScript at hb
+  simp only [ByteArray.append_assoc] at hb
+  have hx : pushData h1 = pushData h2 := by
+    simpa only [ByteArray.append_right_inj, ByteArray.append_left_inj] using hb
+  exact pushData_injective_of_size_eq (by omega) hx
 
 end LnLean.Proofs.Bitcoin.ScriptProps
