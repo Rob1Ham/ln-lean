@@ -16,11 +16,16 @@ protocol, routing/onion, payments, and security/liveness.
 BOLT sections.  BOLT 1--5, 7, 9, 11 (and the keysend extension noted where
 applicable).
 
-`rust-lightning` anchors at commit `fe49009`:
-`lightning/src/ln/channel.rs`, `channelmanager.rs`, `chan_utils.rs`,
-`onion_payment.rs`, `routing/gossip.rs`, `routing/router.rs`,
-`lightning-invoice/src/lib.rs`, plus `chain/channelmonitor.rs` and
-`util/ser.rs` where the property is outside the listed hot files.
+`rust-lightning` anchors at commit `fe49009` (every row also carries its own
+`path:line`): `lightning/src/ln/channel.rs:8370` (`update_add_htlc`),
+`lightning/src/ln/channelmanager.rs:10210` (`claim_funds`),
+`lightning/src/ln/chan_utils.rs:841` (`get_htlc_redeemscript`),
+`lightning/src/ln/onion_payment.rs:505` (`peel_payment_onion`),
+`lightning/src/routing/gossip.rs:906` (`ChannelUpdateInfo`),
+`lightning/src/routing/router.rs:825` (`Route`),
+`lightning-invoice/src/lib.rs:1662` (`amount_milli_satoshis`), plus
+`chain/channelmonitor.rs:5079` and `util/ser.rs:442` where the property is
+outside the listed hot files.
 
 What is NOT modelled.  Obligation records are metadata, not proofs.  A
 `.statementOnly` row is a promise about a future declaration; the string in
