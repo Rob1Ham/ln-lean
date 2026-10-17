@@ -689,15 +689,136 @@ theorem commitmentSequence_low24 (factor n : Nat) :
   rw [Nat.add_comm (2^24 * _) _, Nat.add_mul_mod_self_left]
   rw [← Nat.and_two_pow_sub_one_eq_mod]
 
-/-! ## Open proof obligations -/
+/-! ## Script-number and HTLC binding injectivity -/
 
-/-- `pushScriptNum32` is injective on values below `2^32`; this is the
-missing ingredient for saying that the received-HTLC script binds the CLTV
-expiry, and for the minimal script-number encoding bridge. -/
+/-- `pushUInt32LE` always writes exactly four bytes. -/
+private theorem pushUInt32LE_size (n : Nat) : (pushUInt32LE n).size = 4 := by
+  simp [pushUInt32LE]
+
+/-- Byte 0 of the fixed-width four-byte little-endian encoding. -/
+private theorem pushUInt32LE_get0 (n : Nat) : (pushUInt32LE n)[0]! = n.toUInt8 := by
+  unfold pushUInt32LE
+  simp only [ByteArray.getElem!_push, ByteArray.size_push, ByteArray.size_empty,
+    Nat.reduceAdd]
+  simp
+
+/-- Byte 1 of the fixed-width four-byte little-endian encoding. -/
+private theorem pushUInt32LE_get1 (n : Nat) : (pushUInt32LE n)[1]! = (n >>> 8).toUInt8 := by
+  unfold pushUInt32LE
+  simp only [ByteArray.getElem!_push, ByteArray.size_push, ByteArray.size_empty,
+    Nat.reduceAdd]
+  simp
+
+/-- Byte 2 of the fixed-width four-byte little-endian encoding. -/
+private theorem pushUInt32LE_get2 (n : Nat) : (pushUInt32LE n)[2]! = (n >>> 16).toUInt8 := by
+  unfold pushUInt32LE
+  simp only [ByteArray.getElem!_push, ByteArray.size_push, ByteArray.size_empty,
+    Nat.reduceAdd]
+  simp
+
+/-- Byte 3 of the fixed-width four-byte little-endian encoding. -/
+private theorem pushUInt32LE_get3 (n : Nat) : (pushUInt32LE n)[3]! = (n >>> 24).toUInt8 := by
+  unfold pushUInt32LE
+  simp only [ByteArray.getElem!_push, ByteArray.size_push, ByteArray.size_empty,
+    Nat.reduceAdd]
+  simp
+
+/-- `pushScriptNum32 n` is a one-byte length prefix (`4`) followed by the
+four little-endian bytes of `n`. -/
+private theorem pushScriptNum32_eq (n : Nat) :
+    pushScriptNum32 n = (ByteArray.empty.push (4 : UInt8)) ++ pushUInt32LE n := by
+  simp [pushScriptNum32, pushData, pushUInt32LE_size]
+
+/-- `pushData` is injective, because its one-byte length prefix can be
+cancelled. -/
+private theorem pushData_injective {a b : ByteArray} (h : pushData a = pushData b) :
+    a = b := by
+  unfold pushData at h
+  exact ((ByteArray.append_eq_append_iff_of_size_eq_left (by simp)).mp h).2
+
+/-- The received-HTLC witness script decomposes into a parameter prefix, the
+fixed-width CLTV push, and a constant suffix. -/
+private theorem receivedHtlcWitnessScript_decompose
+    (revocationKeyHash160 paymentHash160 : ByteArray)
+    (remoteHtlcKey localHtlcKey : PubKey) (cltvExpiry : Height) :
+    (receivedHtlcWitnessScript revocationKeyHash160 paymentHash160
+        remoteHtlcKey localHtlcKey cltvExpiry).bytes =
+      ((ByteArray.empty.push OP_DUP ++ ByteArray.empty.push OP_HASH160 ++
+        pushData revocationKeyHash160 ++ ByteArray.empty.push OP_EQUAL ++
+        ByteArray.empty.push OP_IF ++ ByteArray.empty.push OP_CHECKSIG ++
+        ByteArray.empty.push OP_ELSE ++ pushData remoteHtlcKey.bytes ++
+        ByteArray.empty.push OP_SWAP ++ ByteArray.empty.push OP_SIZE ++
+        pushData (ByteArray.empty.push 32) ++ ByteArray.empty.push OP_EQUAL ++
+        ByteArray.empty.push OP_IF ++ ByteArray.empty.push OP_HASH160 ++
+        pushData paymentHash160 ++ ByteArray.empty.push OP_EQUALVERIFY ++
+        ByteArray.empty.push OP_2 ++ ByteArray.empty.push OP_SWAP ++
+        pushData localHtlcKey.bytes ++ ByteArray.empty.push OP_2 ++
+        ByteArray.empty.push OP_CHECKMULTISIG ++ ByteArray.empty.push OP_ELSE ++
+        ByteArray.empty.push OP_DROP) ++
+        pushScriptNum32 cltvExpiry ++
+        (ByteArray.empty.push OP_CLTV ++ ByteArray.empty.push OP_DROP ++
+         ByteArray.empty.push OP_CHECKSIG ++ ByteArray.empty.push OP_ENDIF ++
+         ByteArray.empty.push OP_1 ++ ByteArray.empty.push OP_CSV ++
+         ByteArray.empty.push OP_DROP ++ ByteArray.empty.push OP_ENDIF)) := by
+  unfold receivedHtlcWitnessScript
+  simp only [ByteArray.append_assoc]
+
+/-- The offered-HTLC witness script decomposes into a parameter prefix, the
+payment-hash push, and a constant suffix. -/
+private theorem offeredHtlcWitnessScript_decompose
+    (revocationKeyHash160 paymentHash160 : ByteArray)
+    (remoteHtlcKey localHtlcKey : PubKey) :
+    (offeredHtlcWitnessScript revocationKeyHash160 paymentHash160
+        remoteHtlcKey localHtlcKey).bytes =
+      ((ByteArray.empty.push OP_DUP ++ ByteArray.empty.push OP_HASH160 ++
+        pushData revocationKeyHash160 ++ ByteArray.empty.push OP_EQUAL ++
+        ByteArray.empty.push OP_IF ++ ByteArray.empty.push OP_CHECKSIG ++
+        ByteArray.empty.push OP_ELSE ++ pushData remoteHtlcKey.bytes ++
+        ByteArray.empty.push OP_SWAP ++ ByteArray.empty.push OP_SIZE ++
+        pushData (ByteArray.empty.push 32) ++ ByteArray.empty.push OP_EQUAL ++
+        ByteArray.empty.push OP_NOTIF ++ ByteArray.empty.push OP_DROP ++
+        ByteArray.empty.push OP_2 ++ ByteArray.empty.push OP_SWAP ++
+        pushData localHtlcKey.bytes ++ ByteArray.empty.push OP_2 ++
+        ByteArray.empty.push OP_CHECKMULTISIG ++ ByteArray.empty.push OP_ELSE ++
+        ByteArray.empty.push OP_HASH160) ++
+        pushData paymentHash160 ++
+        (ByteArray.empty.push OP_EQUALVERIFY ++ ByteArray.empty.push OP_CHECKSIG ++
+         ByteArray.empty.push OP_ENDIF ++ ByteArray.empty.push OP_1 ++
+         ByteArray.empty.push OP_CSV ++ ByteArray.empty.push OP_DROP ++
+         ByteArray.empty.push OP_ENDIF)) := by
+  unfold offeredHtlcWitnessScript
+  simp only [ByteArray.append_assoc]
+
+/-- `pushScriptNum32` is injective on values below `2^32`: read the four
+little-endian bytes back out and reconstruct the value. -/
 theorem pushScriptNum32_injective {a b : Nat} (ha : a < 2^32) (hb : b < 2^32)
     (h : pushScriptNum32 a = pushScriptNum32 b) : a = b := by
-  -- OBLIGATION: LN-SCRIPT-001 The fixed-width four-byte little-endian push is injective on values below 2^32.
-  sorry
+  have h' : (ByteArray.empty.push (4 : UInt8)) ++ pushUInt32LE a =
+      (ByteArray.empty.push (4 : UInt8)) ++ pushUInt32LE b := by
+    rw [← pushScriptNum32_eq a, ← pushScriptNum32_eq b]
+    exact h
+  have hbytes : pushUInt32LE a = pushUInt32LE b :=
+    ((ByteArray.append_eq_append_iff_of_size_eq_left rfl).mp h').2
+  have e0 : a % 256 = b % 256 := by
+    have hc := congrArg (fun x : ByteArray => x[0]!) hbytes
+    have hc' := congrArg UInt8.toNat hc
+    simpa [pushUInt32LE_get0, Nat.toUInt8_eq, UInt8.toNat_ofNat'] using hc'
+  have e1 : a / 256 % 256 = b / 256 % 256 := by
+    have hc := congrArg (fun x : ByteArray => x[1]!) hbytes
+    have hc' := congrArg UInt8.toNat hc
+    simpa [pushUInt32LE_get1, Nat.toUInt8_eq, UInt8.toNat_ofNat',
+      Nat.shiftRight_eq_div_pow] using hc'
+  have e2 : a / 65536 % 256 = b / 65536 % 256 := by
+    have hc := congrArg (fun x : ByteArray => x[2]!) hbytes
+    have hc' := congrArg UInt8.toNat hc
+    simpa [pushUInt32LE_get2, Nat.toUInt8_eq, UInt8.toNat_ofNat',
+      Nat.shiftRight_eq_div_pow] using hc'
+  have e3 : a / 16777216 % 256 = b / 16777216 % 256 := by
+    have hc := congrArg (fun x : ByteArray => x[3]!) hbytes
+    have hc' := congrArg UInt8.toNat hc
+    simpa [pushUInt32LE_get3, Nat.toUInt8_eq, UInt8.toNat_ofNat',
+      Nat.shiftRight_eq_div_pow] using hc'
+  omega
 
 /-- Distinct CLTV expiries (< 2^32) give distinct received-HTLC witness
 scripts when all other parameters are held fixed. -/
@@ -709,8 +830,16 @@ theorem receivedHtlcWitnessScript_cltv_injective
           remoteHtlcKey localHtlcKey c1 =
         receivedHtlcWitnessScript revocationKeyHash160 paymentHash160
           remoteHtlcKey localHtlcKey c2) : c1 = c2 := by
-  -- OBLIGATION: LN-SCRIPT-002 Distinct CLTV expiries yield distinct received-HTLC witness scripts, so the script commits to the expiry.
-  sorry
+  have hb := congrArg (fun s : Script => s.bytes) h
+  have hd1 := receivedHtlcWitnessScript_decompose revocationKeyHash160 paymentHash160
+    remoteHtlcKey localHtlcKey c1
+  have hd2 := receivedHtlcWitnessScript_decompose revocationKeyHash160 paymentHash160
+    remoteHtlcKey localHtlcKey c2
+  rw [hd1, hd2] at hb
+  have hX : pushScriptNum32 c1 = pushScriptNum32 c2 := by
+    simpa only [ByteArray.append_assoc, ByteArray.append_right_inj,
+      ByteArray.append_left_inj] using hb
+  exact pushScriptNum32_injective h1 h2 hX
 
 /-- Distinct 20-byte payment-hash digests give distinct offered-HTLC witness
 scripts when all other parameters are held fixed. -/
@@ -720,7 +849,19 @@ theorem offeredHtlcWitnessScript_paymentHash_injective
     (h : offeredHtlcWitnessScript revocationKeyHash160 h1 remoteHtlcKey localHtlcKey =
         offeredHtlcWitnessScript revocationKeyHash160 h2 remoteHtlcKey localHtlcKey) :
     h1 = h2 := by
-  -- OBLIGATION: LN-SCRIPT-003 Distinct 20-byte payment-hash digests yield distinct offered-HTLC witness scripts, so the script commits to the payment hash.
-  sorry
+  -- The size hypotheses belong to the statement; `pushData` is injective
+  -- without them, but keeping them referenced avoids an unused-binder warning.
+  have _ := hh1
+  have _ := hh2
+  have hb := congrArg (fun s : Script => s.bytes) h
+  have hd1 := offeredHtlcWitnessScript_decompose revocationKeyHash160 h1
+    remoteHtlcKey localHtlcKey
+  have hd2 := offeredHtlcWitnessScript_decompose revocationKeyHash160 h2
+    remoteHtlcKey localHtlcKey
+  rw [hd1, hd2] at hb
+  have hX : pushData h1 = pushData h2 := by
+    simpa only [ByteArray.append_assoc, ByteArray.append_right_inj,
+      ByteArray.append_left_inj] using hb
+  exact pushData_injective hX
 
 end LnLean.Proofs.Bitcoin.ScriptProps
