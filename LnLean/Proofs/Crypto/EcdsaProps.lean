@@ -518,7 +518,8 @@ The envelope predicate above checks only the `SEQUENCE` tag, the declared
 length, and the leading `INTEGER` tag.  A real DER decoder additionally
 checks both INTEGER headers, their lengths, and the absence of trailing
 bytes.  `derFullOK` writes that shape down so the gap is formal rather than
-prose; its byte-arithmetic lemmas are the module's open obligations. -/
+prose; the byte-arithmetic lemmas below prove that the full parser refines the
+envelope and determines the two INTEGER lengths. -/
 
 /-- Full structural DER shape: `30 <len> 02 <rLen> r 02 <sLen> s <sighash>`
 with both INTEGER lengths positive and the declared length consistent with
@@ -542,22 +543,63 @@ def derFullOK (b : ByteArray) : Bool :=
 /-- The 71-byte test vector also passes the full structural parser. -/
 theorem derFullOK_accepts_derSig71 : derFullOK derSig71 = true := by decide
 
-/-- **Obligation.**  A string accepted by the full DER parser, and inside the
-BOLT 3 witness-size window, is accepted by the envelope-based wire predicate.
-This is the soundness direction of the parser refinement; it is true by the
-shape of `derFullOK` and the pending work is the byte-offset arithmetic. -/
+/-- The full DER parser exposes the same three-byte header as the envelope:
+`SEQUENCE` tag, declared length, and the leading `INTEGER` tag. -/
+private theorem derFullOK_header {b : ByteArray} (h : derFullOK b = true) :
+    byteAt b 0 = some 0x30 ∧
+      byteAt b 1 = some (UInt8.ofNat (b.size - 3)) ∧
+      byteAt b 2 = some 0x02 := by
+  unfold derFullOK at h
+  -- `&&` is left-associative, so peel the conjunction from the left.
+  rw [Bool.and_eq_true] at h
+  obtain ⟨h, _⟩ := h
+  rw [Bool.and_eq_true] at h
+  obtain ⟨h, h2⟩ := h
+  rw [Bool.and_eq_true] at h
+  obtain ⟨h0, h1⟩ := h
+  exact ⟨(beq_iff_eq).mp h0, (beq_iff_eq).mp h1, (beq_iff_eq).mp h2⟩
+
+/-- **A full DER parse implies the envelope.**  A string accepted by the full
+DER parser, and inside the BOLT 3 witness-size window, is accepted by the
+envelope-based wire predicate.  The envelope checks exactly the first three
+header bytes, which `derFullOK` contains as its leading conjuncts, so the
+refinement is immediate once the size window is known. -/
 theorem derFullOK_imp_wireSigOK (b : ByteArray) (h : derFullOK b = true)
     (hlo : 71 ≤ b.size) (hhi : b.size ≤ 73) : wireSigOK b = true := by
-  -- OBLIGATION: LN-ECDSA-001 full DER body acceptance implies the envelope predicate within 71--73 bytes
-  sorry
+  obtain ⟨h0, h1, h2⟩ := derFullOK_header h
+  have henv : derEnvelope b = true := by
+    unfold derEnvelope
+    simp [h0, h1, h2, hlo, hhi]
+  unfold wireSigOK
+  rw [Bool.or_eq_true]
+  exact Or.inr henv
 
-/-- **Obligation.**  A full DER parse determines the two INTEGER lengths, and
-they partition the byte string: `size = 7 + rLen + sLen` (two INTEGER tags,
-both lengths, the `SEQUENCE` header, and one sighash byte). -/
+/-- **A full DER parse fixes the two INTEGER lengths.**  Peeling the parser's
+conjuncts exposes the length byte of `r`, the length byte of `s`, and the
+consistency equation `rLen + sLen + 7 = b.size`; the latter is rearranged into
+the stated partition of the byte string. -/
 theorem derFullOK_length_exact (b : ByteArray) (h : derFullOK b = true) :
     ∃ rLen sLen : Nat, b.size = 7 + rLen + sLen := by
-  -- OBLIGATION: LN-ECDSA-002 a full DER parse fixes the two INTEGER lengths and their sum plus the sighash byte
-  sorry
+  unfold derFullOK at h
+  -- `&&` is left-associative: the header bytes are the left spine and the
+  -- dependent match on the `r` length byte is the final conjunct.
+  rw [Bool.and_eq_true] at h
+  obtain ⟨_, h⟩ := h
+  cases h3 : byteAt b 3 with
+  | none => simp [h3] at h
+  | some rLen =>
+      simp only [h3] at h
+      rw [Bool.and_eq_true] at h
+      obtain ⟨_, h⟩ := h
+      -- The trailing conjunct is the match on the `s` length byte.
+      cases h5 : byteAt b (5 + rLen.toNat) with
+      | none => simp [h5] at h
+      | some sLen =>
+          simp only [h5] at h
+          rw [Bool.and_eq_true] at h
+          obtain ⟨_, hEq⟩ := h
+          rw [decide_eq_true_eq] at hEq
+          exact ⟨rLen.toNat, sLen.toNat, by omega⟩
 
 /-- The `SEQUENCE` length byte of the 71-byte test vector is `0x44 = 68`,
 i.e. `size - 3`: one byte is the sighash type, which is outside the DER body. -/
