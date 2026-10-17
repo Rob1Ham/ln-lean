@@ -22,7 +22,29 @@ DECL = re.compile(
 rows = []
 decls = []
 sorries = []
+catalog_rows = []
 files = sorted(PROOFS.rglob("*.lean")) if PROOFS.exists() else []
+
+# The wave-A catalog is a Lean list of records, not `-- OBLIGATION:` comments.
+CATALOG = ROOT / "LnLean" / "Proofs" / "Obligations.lean"
+if CATALOG.exists():
+    text = CATALOG.read_text(encoding="utf-8")
+    for m in re.finditer(r'\{\s*id := "(LN-[^"]+)"(.*?)\}(?:,|\s*\])', text, re.S):
+        oid, body = m.group(1), m.group(2)
+        def field(name, default=""):
+            fm = re.search(rf'\b{name} := "([^"]*)"', body)
+            return fm.group(1) if fm else default
+        sm = re.search(r'\bstatus := \.(\w+)', body)
+        dm = re.search(r'\bdomain := \.(\w+)', body)
+        catalog_rows.append({
+            "id": oid,
+            "claim": field("claim"),
+            "lean_target": field("leanTarget"),
+            "boltdoc": field("boltdoc"),
+            "anchor": field("rlAnchor"),
+            "status": sm.group(1) if sm else "unknown",
+            "domain": dm.group(1) if dm else "unknown",
+        })
 
 for path in files:
     text = path.read_text(encoding="utf-8")
@@ -56,15 +78,20 @@ ids = [r["id"] for r in rows]
 duplicates = sorted({i for i in ids if ids.count(i) > 1})
 
 OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
+catalog_ids = [r["id"] for r in catalog_rows]
+catalog_dups = sorted({i for i in catalog_ids if catalog_ids.count(i) > 1})
 OUT_JSON.write_text(json.dumps({
     "files": len(files),
     "obligations": len(rows),
+    "catalog_obligations": len(catalog_rows),
     "declarations": len(decls),
     "sorries": len(sorries),
     "by_domain": dict(sorted(by_domain.items())),
     "by_kind": dict(sorted(by_kind.items())),
     "duplicate_ids": duplicates,
+    "catalog_duplicate_ids": catalog_dups,
     "rows": rows,
+    "catalog_rows": catalog_rows,
 }, indent=2), encoding="utf-8")
 
 lines = [
@@ -75,10 +102,13 @@ lines = [
     "a proof: a listed obligation may still be `sorry`.",
     "",
     f"- proof files: **{len(files)}**",
-    f"- obligations: **{len(rows)}**",
+    f"- wave-B obligation markers: **{len(rows)}**",
+    f"- wave-A catalog obligations: **{len(catalog_rows)}** "
+    f"({sum(1 for r in catalog_rows if r['status'] == 'proved')} proved, "
+    f"{sum(1 for r in catalog_rows if r['status'] == 'statementOnly')} statement-only)",
     f"- declarations: **{len(decls)}**",
     f"- `sorry` sites: **{len(sorries)}**",
-    f"- duplicate ids: **{len(duplicates)}**",
+    f"- duplicate marker ids: **{len(duplicates)}**",
     "",
     "## By domain",
     "",
@@ -91,6 +121,10 @@ lines += ["", "## Obligations", "", "| Id | Domain | File:line | Claim |", "|---
 for r in rows:
     claim = r["claim"].replace("|", "\\|")
     lines.append(f"| `{r['id']}` | {r['domain']} | `{r['file']}:{r['line']}` | {claim} |")
+lines += ["", "## Wave-A catalog", "", "| Id | Domain | Status | Lean target | Claim |", "|---|---|---|---|---|"]
+for r in catalog_rows:
+    claim = r["claim"].replace("|", "\\|")
+    lines.append(f"| `{r['id']}` | {r['domain']} | {r['status']} | `{r['lean_target']}` | {claim} |")
 lines += ["", "## Declarations", "", "| Kind | Name | File:line |", "|---|---|---|"]
 for d in decls:
     lines.append(f"| {d['kind']} | `{d['name']}` | `{d['file']}:{d['line']}` |")
@@ -99,6 +133,7 @@ if duplicates:
     lines += [f"- `{x}`" for x in duplicates]
 OUT_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-print(f"files={len(files)} obligations={len(rows)} declarations={len(decls)} "
-      f"sorries={len(sorries)} duplicate_ids={len(duplicates)}")
+print(f"files={len(files)} markers={len(rows)} catalog={len(catalog_rows)} "
+      f"declarations={len(decls)} sorries={len(sorries)} "
+      f"duplicate_marker_ids={len(duplicates)}")
 print("by_domain:", dict(sorted(by_domain.items())))
