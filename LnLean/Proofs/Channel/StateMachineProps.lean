@@ -388,6 +388,42 @@ theorem channelReady_reachable_without_fundingSigned :
     trace_channelReady_without_fundingSigned, ?_⟩
   simp
 
+/-- Inductive core of the `fundingLocked` occurrence theorem, stated with
+phase ranks so that the hypothesis survives the `fundingCreated` step (which
+lands in `awaitingLockin`, rank 1).  A trace that starts below `normal` and
+ends at rank at least 2 must contain `fundingLocked`: among the constructors
+of `Step`, only `fundingLocked` has a target of rank 2 while its source has
+rank below 2. -/
+theorem trace_contains_fundingLocked_of_phaseRank_lt_two {a d : Channel}
+    {es : List ProtocolEvent} (ht : Trace a es d)
+    (ha : phaseRank a.phase < 2) (hd : 2 ≤ phaseRank d.phase) :
+    ProtocolEvent.fundingLocked ∈ es := by
+  induction ht with
+  | nil c =>
+      omega
+  | cons hs _ ih =>
+      cases hs with
+      | openChannel hphase =>
+          exact List.mem_cons_of_mem _ (ih ha hd)
+      | acceptChannel hphase =>
+          exact List.mem_cons_of_mem _ (ih ha hd)
+      | fundingCreated hphase =>
+          exact List.mem_cons_of_mem _ (ih (by simp [phaseRank]) hd)
+      | fundingSigned hphase =>
+          exact List.mem_cons_of_mem _ (ih ha hd)
+      | fundingLocked hphase =>
+          simp
+      | commitmentSigned hphase =>
+          exact absurd ha (by simp [hphase, phaseRank])
+      | revokeAndAck hphase =>
+          exact absurd ha (by simp [hphase, phaseRank])
+      | updateFee hphase r =>
+          exact absurd ha (by simp [hphase, phaseRank])
+      | shutdown hphase =>
+          exact absurd ha (by simp [hphase, phaseRank])
+      | closingSigned hphase =>
+          exact absurd ha (by simp [hphase, phaseRank])
+
 /-- If a trace starts in `negotiating` and ends in `normal`, then it must
 contain `fundingLocked`: that is the only constructor of `Step` whose target
 phase is `normal` from a lower phase, and the phase rank never decreases.
@@ -396,7 +432,7 @@ theorem trace_to_normal_contains_fundingLocked {c d : Channel}
     {es : List ProtocolEvent} (ht : Trace c es d)
     (hc : c.phase = .negotiating) (hd : d.phase = .normal) :
     ProtocolEvent.fundingLocked ∈ es := by
-  -- OBLIGATION: LN-CH-010 a trace from negotiating to normal contains fundingLocked
-  sorry
+  exact trace_contains_fundingLocked_of_phaseRank_lt_two ht
+    (by rw [hc]; simp [phaseRank]) (by rw [hd]; simp [phaseRank])
 
 end LnLean.Channel
