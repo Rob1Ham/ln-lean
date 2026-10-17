@@ -245,6 +245,69 @@ new parts are first seen (most recent first). -/
 def addParts (ps : List MPPPart) : List MPPPart :=
   ps.foldl addPart []
 
+/-- Membership in the result of one `addPart` step: the new element is
+present, and membership in the accumulator is unchanged. -/
+theorem mem_addPart {acc : List MPPPart} {q p : MPPPart} :
+    p ∈ addPart acc q ↔ p = q ∨ p ∈ acc := by
+  unfold addPart
+  by_cases hq : q ∈ acc
+  · have hc : containsPart acc q = true := (containsPart_iff acc q).mpr hq
+    rw [ite_eq_left hc]
+    exact ⟨Or.inr, fun h => h.elim (fun hpq => hpq ▸ hq) id⟩
+  · have hc : containsPart acc q ≠ true := fun h => hq ((containsPart_iff acc q).mp h)
+    rw [ite_eq_right hc]
+    exact List.mem_cons
+
+/-- Membership in a fold of `addPart`: the collected list contains exactly
+the elements of the accumulator together with the elements of the input. -/
+theorem mem_foldl_addPart (ps acc : List MPPPart) (p : MPPPart) :
+    p ∈ ps.foldl addPart acc ↔ p ∈ acc ∨ p ∈ ps := by
+  induction ps generalizing acc with
+  | nil => simp
+  | cons q qs ih =>
+      rw [List.foldl_cons, ih, mem_addPart]
+      constructor
+      · intro h
+        rcases h with (hpq | hp) | hq
+        · exact Or.inr (by simp [hpq])
+        · exact Or.inl hp
+        · exact Or.inr (by simp [hq])
+      · intro h
+        rcases h with hp | hpq
+        · exact Or.inl (Or.inr hp)
+        · rcases List.mem_cons.mp hpq with hpq | hq
+          · exact Or.inl (Or.inl hpq)
+          · exact Or.inr hq
+
+/-- The collected list is duplicate-free whenever the accumulator is. -/
+theorem nodup_foldl_addPart (ps acc : List MPPPart) (hacc : acc.Nodup) :
+    (ps.foldl addPart acc).Nodup := by
+  induction ps generalizing acc with
+  | nil => exact hacc
+  | cons q qs ih =>
+      rw [List.foldl_cons]
+      apply ih
+      unfold addPart
+      by_cases hq : q ∈ acc
+      · have hc : containsPart acc q = true := (containsPart_iff acc q).mpr hq
+        rw [ite_eq_left hc]
+        exact hacc
+      · have hc : containsPart acc q ≠ true := fun h => hq ((containsPart_iff acc q).mp h)
+        rw [ite_eq_right hc]
+        exact List.nodup_cons.mpr ⟨hq, hacc⟩
+
+/-- The collector always returns a duplicate-free list. -/
+theorem nodup_addParts (ps : List MPPPart) : (addParts ps).Nodup :=
+  nodup_foldl_addPart ps [] (by simp)
+
+/-- The collected list has exactly the membership of the raw list: collecting
+removes duplicates but never drops a distinct part. -/
+theorem mem_addParts (ps : List MPPPart) (p : MPPPart) :
+    p ∈ addParts ps ↔ p ∈ ps := by
+  unfold addParts
+  rw [mem_foldl_addPart]
+  simp
+
 /-- The collected total never exceeds the raw list total: duplicate handling
 can only remove amount, never invent it. -/
 theorem sumParts_addParts_le_aux (ps acc : List MPPPart) :
@@ -639,13 +702,17 @@ theorem sumParts_perm {ps qs : List MPPPart} (h : ps.Perm qs) :
   | trans _ _ ih1 ih2 => exact ih1.trans ih2
 
 /-- The collected (duplicate-free) total depends only on the multiset of
-parts, not on their arrival order.  The proof needs a fold invariant that
-carries both the membership set and the sum through `List.Perm`; it is left
-as the smallest open duplicate-handling step. -/
+parts, not on their arrival order.  Proof: the collector preserves membership
+(`mem_addParts`) and produces duplicate-free lists (`nodup_addParts`); two
+duplicate-free lists with the same elements are permutations
+(`List.perm_ext_iff_of_nodup`), and `sumParts` is permutation invariant
+(`sumParts_perm`). -/
 theorem sumParts_addParts_perm {ps qs : List MPPPart} (h : ps.Perm qs) :
     sumParts (addParts ps) = sumParts (addParts qs) := by
-  -- OBLIGATION: LN-PAY-MPP-001 the duplicate-free collected total is invariant under any permutation of the part list
-  sorry
+  have hperm : (addParts ps).Perm (addParts qs) :=
+    (List.perm_ext_iff_of_nodup (nodup_addParts ps) (nodup_addParts qs)).mpr
+      (fun a => by rw [mem_addParts, mem_addParts]; exact h.mem_iff)
+  exact sumParts_perm hperm
 
 end MPPProps
 
