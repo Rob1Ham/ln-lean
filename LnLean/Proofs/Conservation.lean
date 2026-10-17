@@ -605,7 +605,7 @@ theorem ledger_no_value_creation (l : ChannelLedger)
   rw [← hfund]
   exact conserved_no_value_creation c hcons
 
-/-! ## Open obligation -/
+/-! ## Erase-based settlement (LN-CONS-004) -/
 
 /-- Erase-based settlement: the same operation as
 `settleHTLCOutputAt`, but locating the output with `List.erase` instead of a
@@ -620,7 +620,109 @@ def settleHTLCOutputErase (c : Commitment)
         htlcs := c.htlcs.erase h }
   else c
 
-/-- **Obligation LN-CONS-004.**  Erasing one HTLC output from the list
+/-- Boolean equality on `Direction` agrees with propositional equality.  The
+derived `BEq` instance is fieldwise, so this is proved by case analysis on the
+two constructors rather than by the generic `LawfulBEq` instance (which is
+tied to `instBEqOfDecidableEq`, not to the derived `BEq`). -/
+theorem direction_eq_of_beq {a b : Direction} (h : (a == b) = true) :
+    a = b := by
+  cases a <;> cases b <;> first | rfl | (cases h)
+
+/-- Boolean equality on `HTLCState` agrees with propositional equality. -/
+theorem htlcState_eq_of_beq {a b : HTLCState} (h : (a == b) = true) :
+    a = b := by
+  cases a <;> cases b <;> first | rfl | (cases h)
+
+/-- The derived `BEq` on `Direction` is reflexive. -/
+theorem direction_beq_refl (a : Direction) : (a == a) = true := by
+  cases a <;> rfl
+
+/-- The derived `BEq` on `HTLCState` is reflexive. -/
+theorem htlcState_beq_refl (a : HTLCState) : (a == a) = true := by
+  cases a <;> rfl
+
+/-- The derived `BEq` on `CommitmentHTLCOutput` is reflexive. -/
+theorem commitmentHTLCOutput_beq_refl (a : CommitmentHTLCOutput) :
+    (a == a) = true := by
+  cases a with
+  | mk da aa ca sa =>
+  change LnLean.Channel.instBEqCommitmentHTLCOutput.beq
+      { direction := da, amountSat := aa, cltvExpiry := ca, state := sa }
+      { direction := da, amountSat := aa, cltvExpiry := ca, state := sa } = true
+  simp [LnLean.Channel.instBEqCommitmentHTLCOutput.beq,
+    direction_beq_refl, htlcState_beq_refl]
+
+/-- Boolean equality on `CommitmentHTLCOutput` agrees with propositional
+equality.  This is what lets `List.erase` identify an HTLC output by its
+whole record (direction, amount, expiry, state), including duplicate-valued
+outputs. -/
+theorem commitmentHTLCOutput_eq_of_beq {a b : CommitmentHTLCOutput}
+    (h : (a == b) = true) : a = b := by
+  cases a with
+  | mk da aa ca sa =>
+  cases b with
+  | mk db ab cb sb =>
+  change LnLean.Channel.instBEqCommitmentHTLCOutput.beq
+      { direction := da, amountSat := aa, cltvExpiry := ca, state := sa }
+      { direction := db, amountSat := ab, cltvExpiry := cb, state := sb } = true at h
+  simp only [LnLean.Channel.instBEqCommitmentHTLCOutput.beq,
+    Bool.and_eq_true] at h
+  simp only [CommitmentHTLCOutput.mk.injEq]
+  rcases h with ⟨h1, h2, h3, h4⟩
+  exact ⟨direction_eq_of_beq h1, eq_of_beq h2, eq_of_beq h3,
+    htlcState_eq_of_beq h4⟩
+
+/-- Erasing the first occurrence of `h` from a list of HTLC outputs removes
+exactly `h.amountSat` from the HTLC value sum.  This holds without a
+`Nodup` hypothesis: if several entries are equal to `h`, `List.erase` removes
+only one of them and every such entry carries the same `amountSat`, so the
+subtracted value is still exactly that of the erased output. -/
+theorem htlcOutputsValue_erase_add (l : List CommitmentHTLCOutput)
+    (h : CommitmentHTLCOutput) (hmem : h ∈ l) :
+    htlcOutputsValue (l.erase h) + h.amountSat = htlcOutputsValue l := by
+  induction l with
+  | nil => simp at hmem
+  | cons x xs ih =>
+      rw [List.erase_cons]
+      by_cases hx : x == h
+      · have hxh : x = h := commitmentHTLCOutput_eq_of_beq hx
+        subst hxh
+        rw [ite_eq_left hx]
+        simp [htlcOutputsValue]
+        omega
+      · have hxh : x ≠ h := by
+          intro heq
+          subst heq
+          exact hx (commitmentHTLCOutput_beq_refl x)
+        have hmem' : h ∈ xs := by
+          rcases List.mem_cons.mp hmem with h1 | h1
+          · exact absurd h1.symm hxh
+          · exact h1
+        rw [ite_eq_right hx]
+        have hih := ih hmem'
+        simp [htlcOutputsValue]
+        omega
+
+/-- Removing one HTLC output from the list and crediting its value to a
+balance leaves the total output value unchanged.  The erased entry is
+identified by whole-record equality (`List.erase`), not by its value, so
+duplicate-valued outputs are handled correctly. -/
+theorem totalOutputValue_credit_erase (c : Commitment)
+    (h : CommitmentHTLCOutput) (side : BalanceSide)
+    (hmem : h ∈ c.htlcs) :
+    ({ creditCommitment c side h.amountSat with htlcs := c.htlcs.erase h } :
+        Commitment).totalOutputValue = c.totalOutputValue := by
+  have hval := htlcOutputsValue_erase_add c.htlcs h hmem
+  have hanch : (creditCommitment c side h.amountSat).anchorOutputValue =
+      c.anchorOutputValue := by
+    cases side <;> simp [creditCommitment]
+  rw [totalOutputValue_setHtlcs (creditCommitment c side h.amountSat)
+    (c.htlcs.erase h), hanch, Commitment.totalOutputValue_eq c]
+  cases side <;>
+    simp [creditCommitment, Commitment.htlcOutputValue] at hval ⊢ <;>
+    omega
+
+/-- **LN-CONS-004 (proved).**  Erasing one HTLC output from the list
 removes exactly its value from the output sum (including when equal-valued
 outputs are duplicated), so crediting that value to a balance preserves the
 conservation equation. -/
@@ -628,7 +730,15 @@ theorem settleHTLCOutputErase_conserved (c : Commitment)
     (h : CommitmentHTLCOutput) (fulfilled hadOutput : Bool)
     (hc : CommitmentConserved c) (hmem : h ∈ c.htlcs) :
     CommitmentConserved (settleHTLCOutputErase c h fulfilled hadOutput) := by
-  -- OBLIGATION: LN-CONS-004 erasing one HTLC output from a commitment output list removes exactly its value from the output sum, so crediting that value to a balance preserves the conservation equation even with duplicate-valued HTLC outputs
-  sorry
+  unfold settleHTLCOutputErase
+  cases hadOutput with
+  | false => exact hc
+  | true =>
+      dsimp only
+      simp only [ite_true]
+      generalize hside : fundingSide c (if fulfilled then h.direction.flip else h.direction) = side
+      unfold CommitmentConserved at hc ⊢
+      rw [totalOutputValue_credit_erase c h side hmem]
+      cases side <;> simpa [creditCommitment] using hc
 
 end LnLean.Proofs
