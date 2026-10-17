@@ -7,6 +7,9 @@ export PATH=/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/bin:$PATH
 echo "== vendor integrity =="
 ./scripts/verify-vendor.sh
 
+echo "== anchor integrity =="
+python3 scripts/verify-anchors.py
+
 echo "== policy checks =="
 ./scripts/check.sh
 
