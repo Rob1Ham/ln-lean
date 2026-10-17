@@ -471,10 +471,51 @@ def Graph.Walk (g : Graph) : List NodeId → Prop
   | [_] => True
   | a :: b :: rest => Graph.Adjacent g a b ∧ Graph.Walk g (b :: rest)
 
+/-- Auxiliary walk invariant of the path enumerator: every path produced by
+`simplePathsAux` is a `Graph.Walk`, independently of the starting `visited`
+prefix and the current node.  The recursive step uses `Graph.simplePathsAux_head`
+to identify the second node of `current :: q` with the neighbour `next` that
+the enumerator chose, and `mem_neighbors_iff` to turn that choice into
+`Graph.Adjacent`. -/
+private theorem simplePathsAux_walk {g : Graph} {dst : NodeId} :
+    ∀ (fuel : Nat) (visited : List NodeId) (current : NodeId) (p : List NodeId),
+      p ∈ Graph.simplePathsAux g dst fuel visited current → g.Walk p := by
+  intro fuel
+  induction fuel with
+  | zero =>
+    intro visited current p h
+    simp [Graph.simplePathsAux] at h
+  | succ fuel ih =>
+    intro visited current p h
+    simp only [Graph.simplePathsAux] at h
+    split at h
+    · rename_i hcurdst
+      simp only [List.mem_singleton] at h
+      subst h
+      simp [Graph.Walk]
+    · rcases List.mem_flatMap.mp h with ⟨next, hnext, hp⟩
+      by_cases hcontains : visited.contains next = true
+      · rw [ite_eq_left hcontains] at hp
+        simp at hp
+      · rw [ite_eq_right hcontains] at hp
+        rcases List.mem_map.mp hp with ⟨q, hq, rfl⟩
+        have hqhead : q.head? = some next := Graph.simplePathsAux_head hq
+        have hwalkq : g.Walk q := ih (next :: visited) next q hq
+        have hadj : g.Adjacent current next := adjacent_of_mem_neighbors hnext
+        cases q with
+        | nil => simp [Graph.Walk]
+        | cons b rest =>
+          have hb : b = next := by simpa using hqhead
+          subst hb
+          exact ⟨hadj, hwalkq⟩
+
 -- OBLIGATION: LN-GRAPH-001 every path returned by simplePaths is a walk of enabled edges (either orientation)
 theorem simplePaths_walk {g : Graph} {src dst : NodeId} {maxHops : Nat}
     {p : List NodeId} (h : p ∈ Graph.simplePaths g src dst maxHops) :
     g.Walk p := by
-  sorry
+  unfold Graph.simplePaths at h
+  split at h
+  · simp at h
+  · exact simplePathsAux_walk maxHops [src] src p h
 
 end LnLean.Routing
