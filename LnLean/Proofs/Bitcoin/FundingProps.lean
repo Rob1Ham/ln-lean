@@ -291,12 +291,17 @@ theorem fundingValue_independent_of_push (p : FundingParams) (q : Msat) :
       = p.fundingSatoshis := rfl
 
 /-- Capacity is bounded by 21M BTC expressed in millisatoshis (`Msat.MAX`)
-for well-formed parameters.  Recorded as an obligation: this is arithmetic
-over the `Int` capacity representation and is not needed by the seam proofs. -/
+for well-formed parameters.  This is pure `Int` arithmetic: well-formedness
+bounds `fundingSatoshis` by `Bitcoin.Data.MAX_MONEY = 21M * 10^8`, and the
+capacity is that value times `1000`. -/
 theorem channelCapacityMsat_le_MSAT_MAX (p : FundingParams) (h : p.WellFormed) :
     channelCapacityMsat p ≤ (Msat.MAX.val : Int) := by
-  -- OBLIGATION: LN-FUND-002 capacity is bounded by 21M BTC expressed in msat (`Msat.MAX`).
-  sorry
+  rcases h with ⟨-, hmax, -, -, -, -⟩
+  have hM : (Msat.MAX.val : Int) = 21000000 * 100000000 * 1000 := by decide
+  unfold channelCapacityMsat Msat.MSAT_PER_SAT
+  rw [hM]
+  unfold Bitcoin.Data.MAX_MONEY Bitcoin.Data.COIN at hmax
+  exact Int.mul_le_mul_of_nonneg_right hmax (by decide)
 
 /-! ## Temporary to final channel id -/
 
@@ -413,15 +418,377 @@ theorem fundingSpend_reveals_witnessScript
     fundingSpend_conditional_2of2_only hbridge hacc
   exact ⟨s1, s2, hw⟩
 
+/-! ### Parser lemmas for the 2-of-2 witness script
+
+The following lemmas expose just enough of `Bitcoin.Data.Script.parse` to
+reason about the BOLT 3 witness script.  They are local to this module and do
+not add a `ScriptInstr` constructor. -/
+
+private theorem getElem?_append_lt (a b : ByteArray) (i : Nat) (h : i < a.size) :
+    (a ++ b)[i]? = a[i]? := by
+  rw [show (a ++ b)[i]? = (a ++ b).data[i]? from rfl,
+      ByteArray.data_append, Array.getElem?_append, ite_eq_left (by simpa using h)]
+  rw [show a[i]? = a.data[i]? from rfl]
+
+private theorem getElem?_append_ge (a b : ByteArray) (i : Nat) (h : a.size ≤ i) :
+    (a ++ b)[i]? = b[i - a.size]? := by
+  rw [show (a ++ b)[i]? = (a ++ b).data[i]? from rfl,
+      ByteArray.data_append, Array.getElem?_append, ite_eq_right (by simpa using h)]
+  rw [show b[i - a.size]? = b.data[i - a.size]? from rfl]
+  rfl
+
+private theorem getElem?_push_eq (a : ByteArray) (x : UInt8) :
+    (a.push x)[a.size]? = some x := by
+  rw [show (a.push x)[a.size]? = (a.push x).data[a.size]? from rfl,
+      ByteArray.data_push, Array.getElem?_push,
+      ite_eq_left (show a.size = a.data.size from rfl)]
+
+private theorem getElem?_push_lt (a : ByteArray) (x : UInt8) (i : Nat) (h : i < a.size) :
+    (a.push x)[i]? = a[i]? := by
+  rw [show (a.push x)[i]? = (a.push x).data[i]? from rfl,
+      ByteArray.data_push, Array.getElem?_push,
+      ite_eq_right (by simpa using Nat.ne_of_lt h)]
+  rw [show a[i]? = a.data[i]? from rfl]
+
+private theorem getElem?_pushData_len (pre k rest : ByteArray) :
+    (pre ++ (ByteArray.empty.push k.size.toUInt8 ++ k) ++ rest)[pre.size]?
+      = some k.size.toUInt8 := by
+  rw [getElem?_append_lt (pre ++ (ByteArray.empty.push k.size.toUInt8 ++ k)) rest pre.size
+    (by simp only [ByteArray.size_append, ByteArray.size_push]; omega)]
+  rw [getElem?_append_ge pre (ByteArray.empty.push k.size.toUInt8 ++ k) pre.size (by omega)]
+  simp only [Nat.sub_self]
+  rw [show (0 : Nat) = ByteArray.empty.size from rfl]
+  rw [getElem?_append_lt (ByteArray.empty.push k.size.toUInt8) k ByteArray.empty.size
+    (by simp only [ByteArray.size_push, ByteArray.size_empty]; omega)]
+  exact getElem?_push_eq _ _
+
+private theorem getElem?_pushData_key (pre k rest : ByteArray) (j : Nat) (hj : j < k.size) :
+    (pre ++ (ByteArray.empty.push k.size.toUInt8 ++ k) ++ rest)[pre.size + 1 + j]?
+      = k[j]? := by
+  rw [getElem?_append_lt (pre ++ (ByteArray.empty.push k.size.toUInt8 ++ k)) rest
+    (pre.size + 1 + j)
+    (by simp only [ByteArray.size_append, ByteArray.size_push]; omega)]
+  rw [getElem?_append_ge pre (ByteArray.empty.push k.size.toUInt8 ++ k)
+    (pre.size + 1 + j) (by omega)]
+  rw [show pre.size + 1 + j - pre.size = 1 + j from by omega]
+  rw [getElem?_append_ge (ByteArray.empty.push k.size.toUInt8) k (1 + j)
+    (by simp only [ByteArray.size_push, ByteArray.size_empty]; omega)]
+  rw [show (ByteArray.empty.push k.size.toUInt8).size = 1 from by simp]
+  rw [show 1 + j - 1 = j from by omega]
+
+private theorem foldl_range_get_eq_extract (b : ByteArray) (i n : Nat)
+    (h : i + n ≤ b.size) :
+    (List.range n).foldl (fun acc k => acc.push (b.get! (i + k))) ByteArray.empty
+      = b.extract i (i + n) := by
+  induction n with
+  | zero => simp
+  | succ n ih =>
+    rw [List.range_succ, List.foldl_append]
+    simp only [List.foldl_cons, List.foldl_nil]
+    rw [ih (by omega)]
+    have hlt : i + n < b.size := by omega
+    have hget : b.get! (i + n) = b[i + n] := by
+      show b.data[i + n]! = b[i + n]
+      rw [getElem!_pos b.data (i + n) (by simpa using hlt)]
+      rfl
+    rw [hget]
+    rw [← ByteArray.append_toByteArray_singleton]
+    have hone : b.extract (i + n) (i + n + 1) = [b[i + n]].toByteArray :=
+      ByteArray.extract_add_one (by omega)
+    rw [← hone]
+    have hsplit : b.extract (min i (i + n)) (max (i + n) (i + n + 1)) =
+        b.extract i (i + n) ++ b.extract (i + n) (i + n + 1) :=
+      ByteArray.extract_append_extract.symm
+    rw [show min i (i + n) = i from Nat.min_eq_left (by omega),
+        show max (i + n) (i + n + 1) = i + n + 1 from Nat.max_eq_right (by omega)] at hsplit
+    rw [show i + (n + 1) = i + n + 1 from by omega]
+    exact hsplit.symm
+
+private theorem takeBytes_eq_extract (b : ByteArray) (i n : Nat)
+    (h : i + n ≤ b.size) :
+    Bitcoin.Data.takeBytes b i n = some (b.extract i (i + n)) := by
+  unfold Bitcoin.Data.takeBytes
+  rw [ite_eq_left h, foldl_range_get_eq_extract b i n h]
+
+private theorem extract_push33 (pre k rest : ByteArray) (hk : k.size = 33) :
+    (pre ++ (ByteArray.empty.push k.size.toUInt8 ++ k) ++ rest).extract
+        (pre.size + 1) (pre.size + 34) = k := by
+  rw [ByteArray.extract_append]
+  have hrest : rest.extract
+      ((pre.size + 1) - (pre ++ (ByteArray.empty.push k.size.toUInt8 ++ k)).size)
+      ((pre.size + 34) - (pre ++ (ByteArray.empty.push k.size.toUInt8 ++ k)).size)
+      = ByteArray.empty := by
+    rw [ByteArray.extract_eq_empty_iff]
+    simp only [ByteArray.size_append, ByteArray.size_push, ByteArray.size_empty, hk]
+    omega
+  rw [hrest, ByteArray.append_empty]
+  rw [ByteArray.extract_append_size_add]
+  rw [show (1 : Nat) = (ByteArray.empty.push k.size.toUInt8).size + 0 from by simp]
+  rw [show (34 : Nat) = (ByteArray.empty.push k.size.toUInt8).size + k.size from by simp [hk]]
+  rw [ByteArray.extract_append_size_add]
+  rw [ByteArray.extract_zero_size]
+
+private theorem decodeOp_pushData33 (pre k rest : ByteArray) (hk : k.size = 33) :
+    Bitcoin.Data.decodeOp (pre ++ (ByteArray.empty.push k.size.toUInt8 ++ k) ++ rest) pre.size
+      = some (.push k, pre.size + 34) := by
+  unfold Bitcoin.Data.decodeOp
+  rw [getElem?_pushData_len pre k rest]
+  have hn : k.size.toUInt8.toNat = 33 := by simp [hk]
+  simp only [hn]
+  rw [ite_eq_right (by decide : ¬ (33 : Nat) = 0)]
+  rw [ite_eq_left (by decide : (33 : Nat) ≤ 75)]
+  rw [takeBytes_eq_extract]
+  · rw [extract_push33 pre k rest hk]
+  · simp only [ByteArray.size_append, ByteArray.size_push, ByteArray.size_empty]
+    omega
+
+private theorem decodeOp_const2_at (pre rest : ByteArray) :
+    Bitcoin.Data.decodeOp (pre ++ ByteArray.empty.push 0x52 ++ rest) pre.size
+      = some (.const 2, pre.size + 1) := by
+  have hbyte : (pre ++ ByteArray.empty.push 0x52 ++ rest)[pre.size]? = some (0x52 : UInt8) := by
+    rw [getElem?_append_lt (pre ++ ByteArray.empty.push 0x52) rest pre.size
+      (by simp only [ByteArray.size_append, ByteArray.size_push]; omega)]
+    rw [getElem?_append_ge pre (ByteArray.empty.push 0x52) pre.size (by omega)]
+    rw [show pre.size - pre.size = 0 from by omega]
+    rw [show (0 : Nat) = ByteArray.empty.size from rfl]
+    exact getElem?_push_eq _ _
+  unfold Bitcoin.Data.decodeOp
+  rw [hbyte]
+  simp
+
+private theorem getElem?_checkMultisig (pre : ByteArray) :
+    (pre ++ ByteArray.empty.push OP_CHECKMULTISIG)[pre.size]? = some OP_CHECKMULTISIG := by
+  rw [getElem?_append_ge pre (ByteArray.empty.push OP_CHECKMULTISIG) pre.size (by omega)]
+  rw [show pre.size - pre.size = 0 from by omega]
+  rw [show (0 : Nat) = ByteArray.empty.size from rfl]
+  exact getElem?_push_eq _ _
+
+private theorem decodeOp_checkMultisig (pre rest : ByteArray) :
+    Bitcoin.Data.decodeOp (pre ++ ByteArray.empty.push OP_CHECKMULTISIG ++ rest) pre.size
+      = none := by
+  have hbyte : (pre ++ ByteArray.empty.push OP_CHECKMULTISIG ++ rest)[pre.size]?
+      = some OP_CHECKMULTISIG := by
+    rw [getElem?_append_lt (pre ++ ByteArray.empty.push OP_CHECKMULTISIG) rest pre.size
+      (by simp only [ByteArray.size_append, ByteArray.size_push]; omega)]
+    rw [getElem?_append_ge pre (ByteArray.empty.push OP_CHECKMULTISIG) pre.size (by omega)]
+    rw [show pre.size - pre.size = 0 from by omega]
+    rw [show (0 : Nat) = ByteArray.empty.size from rfl]
+    exact getElem?_push_eq _ _
+  unfold Bitcoin.Data.decodeOp
+  rw [hbyte]
+  have hn : OP_CHECKMULTISIG.toNat = 174 := by rfl
+  simp [hn]
+
+private theorem parseWith_step (b : ByteArray) (i i' fuel : Nat)
+    (acc : List Bitcoin.Data.ScriptInstr) (op : Bitcoin.Data.ScriptInstr)
+    (hi : i < b.size) (hdec : Bitcoin.Data.decodeOp b i = some (op, i')) :
+    Bitcoin.Data.Script.parse.parseWith b (fuel + 1) i acc
+      = Bitcoin.Data.Script.parse.parseWith b fuel i' (op :: acc) := by
+  have hni : ¬ b.size ≤ i := by omega
+  simp [Bitcoin.Data.Script.parse.parseWith, hni, hdec]
+
+private theorem parseWith_checkMultisig (b : ByteArray) (i fuel : Nat)
+    (acc : List Bitcoin.Data.ScriptInstr)
+    (h : b[i]? = some OP_CHECKMULTISIG) :
+    Bitcoin.Data.Script.parse.parseWith b (fuel + 1) i acc = none := by
+  have hi : i < b.size := by
+    rcases Nat.lt_or_ge i b.size with h' | h'
+    · exact h'
+    · have hnone : b[i]? = none := by simp [h']
+      rw [h] at hnone
+      simp at hnone
+  have hb : b[i] = OP_CHECKMULTISIG := by
+    have h' := h
+    simp [hi] at h'
+    exact h'
+  have hn : OP_CHECKMULTISIG.toNat = 174 := by rfl
+  simp [Bitcoin.Data.Script.parse.parseWith, Bitcoin.Data.decodeOp, hi, hb, hn]
+
+private theorem parseWith_witnessScript (k1 k2 : ByteArray)
+    (hk1 : k1.size = 33) (hk2 : k2.size = 33) :
+    Bitcoin.Data.Script.parse.parseWith
+      (ByteArray.empty.push 0x52
+        ++ (ByteArray.empty.push k1.size.toUInt8 ++ k1)
+        ++ (ByteArray.empty.push k2.size.toUInt8 ++ k2)
+        ++ ByteArray.empty.push 0x52
+        ++ ByteArray.empty.push OP_CHECKMULTISIG) 71 0 [] = none := by
+  let B : ByteArray :=
+    ByteArray.empty.push 0x52
+      ++ (ByteArray.empty.push k1.size.toUInt8 ++ k1)
+      ++ (ByteArray.empty.push k2.size.toUInt8 ++ k2)
+      ++ ByteArray.empty.push 0x52
+      ++ ByteArray.empty.push OP_CHECKMULTISIG
+  change Bitcoin.Data.Script.parse.parseWith B 71 0 [] = none
+  have d0 : Bitcoin.Data.decodeOp B 0 = some (.const 2, 1) := by
+    simpa [B, ByteArray.append_assoc] using decodeOp_const2_at ByteArray.empty
+      ((ByteArray.empty.push k1.size.toUInt8 ++ k1)
+        ++ (ByteArray.empty.push k2.size.toUInt8 ++ k2)
+        ++ ByteArray.empty.push 0x52 ++ ByteArray.empty.push OP_CHECKMULTISIG)
+  have d1 : Bitcoin.Data.decodeOp B 1 = some (.push k1, 35) := by
+    simpa [B, ByteArray.append_assoc, ByteArray.size_append, ByteArray.size_push,
+      ByteArray.size_empty]
+      using decodeOp_pushData33 (ByteArray.empty.push 0x52) k1
+        ((ByteArray.empty.push k2.size.toUInt8 ++ k2)
+          ++ ByteArray.empty.push 0x52 ++ ByteArray.empty.push OP_CHECKMULTISIG) hk1
+  have d2 : Bitcoin.Data.decodeOp B 35 = some (.push k2, 69) := by
+    simpa [B, ByteArray.append_assoc, ByteArray.size_append, ByteArray.size_push,
+      ByteArray.size_empty, hk1]
+      using decodeOp_pushData33
+        (ByteArray.empty.push 0x52 ++ (ByteArray.empty.push k1.size.toUInt8 ++ k1)) k2
+        (ByteArray.empty.push 0x52 ++ ByteArray.empty.push OP_CHECKMULTISIG) hk2
+  have d3 : Bitcoin.Data.decodeOp B 69 = some (.const 2, 70) := by
+    simpa [B, ByteArray.append_assoc, ByteArray.size_append, ByteArray.size_push,
+      ByteArray.size_empty, hk1, hk2]
+      using decodeOp_const2_at
+        (ByteArray.empty.push 0x52 ++ (ByteArray.empty.push k1.size.toUInt8 ++ k1)
+          ++ (ByteArray.empty.push k2.size.toUInt8 ++ k2))
+        (ByteArray.empty.push OP_CHECKMULTISIG)
+  rw [parseWith_step B 0 1 70 [] (.const 2) (by simp [B, hk1, hk2]) d0]
+  rw [parseWith_step B 1 35 69 [.const 2] (.push k1) (by simp [B, hk1, hk2]) d1]
+  rw [parseWith_step B 35 69 68 [.push k1, .const 2] (.push k2)
+    (by simp [B, hk1, hk2]) d2]
+  rw [parseWith_step B 69 70 67 [.push k2, .push k1, .const 2] (.const 2)
+    (by simp [B, hk1, hk2]) d3]
+  apply parseWith_checkMultisig B 70 66 [.const 2, .push k2, .push k1, .const 2]
+  simpa [B, ByteArray.append_assoc, ByteArray.size_append, ByteArray.size_push,
+    ByteArray.size_empty, hk1, hk2]
+    using getElem?_checkMultisig
+      (ByteArray.empty.push 0x52 ++ (ByteArray.empty.push k1.size.toUInt8 ++ k1)
+        ++ (ByteArray.empty.push k2.size.toUInt8 ++ k2) ++ ByteArray.empty.push 0x52)
+
 /-- btc-lean's `Script.parse` rejects the 2-of-2 funding witness script because
 `ScriptInstr` has no `OP_CHECKMULTISIG` constructor
 (`vendor/btc-lean-core/Bitcoin/Data/Script.lean:31-41`, `decodeOp` `:53-71`);
 consequently the concrete interpreter bridge cannot yet be stated or proved.
-Recorded as an obligation. -/
+
+**Status: the statement below is false as written.**  It quantifies over
+arbitrary `FundingParams`, but `FundingParams` does not require the funding
+keys to be 33 bytes; `pushData` truncates a length to `UInt8`, so a key of
+length at least 256 makes the parser reinterpret key bytes as opcodes and can
+make it accept the script.  `witnessScript_parse_ne_none_counterexample`
+exhibits such a `p`, and `witnessScript_parse_eq_none_of_wellFormed` proves
+the true conditional form for `p.WellFormed` (which forces 33-byte keys).
+The placeholder is kept only for the refuted statement, with its exact
+missing hypothesis recorded. -/
 theorem witnessScript_parse_eq_none (p : FundingParams) :
     p.witnessScript.parse = none := by
-  -- OBLIGATION: LN-FUND-001 the wave-A script parser rejects `OP_CHECKMULTISIG`.
+  -- OBLIGATION: LN-FUND-001 the stated claim is missing `p.WellFormed`
+  -- (equivalently 33-byte funding keys); see the counterexample and the
+  -- conditional proof below.  The parser really does lack a
+  -- `ScriptInstr.checkMultisig` constructor.
   sorry
+
+/-- The true conditional form of `witnessScript_parse_eq_none`: for
+well-formed parameters (33-byte keys, hence an exact `0x21` direct push for
+each key) the wave-A parser reaches the trailing `OP_CHECKMULTISIG` and
+rejects the script. -/
+theorem witnessScript_parse_eq_none_of_wellFormed (p : FundingParams)
+    (h : p.WellFormed) :
+    p.witnessScript.parse = none := by
+  rcases h with ⟨-, -, hk1, hk2, -, -⟩
+  have hk1' : p.localFundingKey.bytes.size = 33 := hk1
+  have hk2' : p.remoteFundingKey.bytes.size = 33 := hk2
+  rcases orderedFundingKeys_pair p.localFundingKey p.remoteFundingKey with hord | hord
+  · simp only [FundingParams.witnessScript, pushData, hord]
+    change Bitcoin.Data.Script.parse.parseWith
+      (ByteArray.empty.push 0x52
+        ++ (ByteArray.empty.push p.localFundingKey.bytes.size.toUInt8 ++ p.localFundingKey.bytes)
+        ++ (ByteArray.empty.push p.remoteFundingKey.bytes.size.toUInt8 ++ p.remoteFundingKey.bytes)
+        ++ ByteArray.empty.push 0x52
+        ++ ByteArray.empty.push OP_CHECKMULTISIG)
+      (ByteArray.empty.push 0x52
+        ++ (ByteArray.empty.push p.localFundingKey.bytes.size.toUInt8 ++ p.localFundingKey.bytes)
+        ++ (ByteArray.empty.push p.remoteFundingKey.bytes.size.toUInt8 ++ p.remoteFundingKey.bytes)
+        ++ ByteArray.empty.push 0x52
+        ++ ByteArray.empty.push OP_CHECKMULTISIG).size 0 [] = none
+    rw [show (ByteArray.empty.push 0x52
+        ++ (ByteArray.empty.push p.localFundingKey.bytes.size.toUInt8 ++ p.localFundingKey.bytes)
+        ++ (ByteArray.empty.push p.remoteFundingKey.bytes.size.toUInt8 ++ p.remoteFundingKey.bytes)
+        ++ ByteArray.empty.push 0x52
+        ++ ByteArray.empty.push OP_CHECKMULTISIG).size = 71 from by
+      simp only [ByteArray.size_append, ByteArray.size_push, ByteArray.size_empty, hk1', hk2']]
+    exact parseWith_witnessScript p.localFundingKey.bytes p.remoteFundingKey.bytes hk1' hk2'
+  · simp only [FundingParams.witnessScript, pushData, hord]
+    change Bitcoin.Data.Script.parse.parseWith
+      (ByteArray.empty.push 0x52
+        ++ (ByteArray.empty.push p.remoteFundingKey.bytes.size.toUInt8 ++ p.remoteFundingKey.bytes)
+        ++ (ByteArray.empty.push p.localFundingKey.bytes.size.toUInt8 ++ p.localFundingKey.bytes)
+        ++ ByteArray.empty.push 0x52
+        ++ ByteArray.empty.push OP_CHECKMULTISIG)
+      (ByteArray.empty.push 0x52
+        ++ (ByteArray.empty.push p.remoteFundingKey.bytes.size.toUInt8 ++ p.remoteFundingKey.bytes)
+        ++ (ByteArray.empty.push p.localFundingKey.bytes.size.toUInt8 ++ p.localFundingKey.bytes)
+        ++ ByteArray.empty.push 0x52
+        ++ ByteArray.empty.push OP_CHECKMULTISIG).size 0 [] = none
+    rw [show (ByteArray.empty.push 0x52
+        ++ (ByteArray.empty.push p.remoteFundingKey.bytes.size.toUInt8 ++ p.remoteFundingKey.bytes)
+        ++ (ByteArray.empty.push p.localFundingKey.bytes.size.toUInt8 ++ p.localFundingKey.bytes)
+        ++ ByteArray.empty.push 0x52
+        ++ ByteArray.empty.push OP_CHECKMULTISIG).size = 71 from by
+      simp only [ByteArray.size_append, ByteArray.size_push, ByteArray.size_empty, hk1', hk2']]
+    exact parseWith_witnessScript p.remoteFundingKey.bytes p.localFundingKey.bytes hk2' hk1'
+
+/-- When both funding keys are identical, lexicographic ordering is irrelevant:
+`orderedFundingKeys` returns the pair unchanged. -/
+theorem orderedFundingKeys_self (a : PubKey) : orderedFundingKeys a a = (a, a) := by
+  unfold orderedFundingKeys
+  split <;> rfl
+
+/-- A concrete key of 81 bytes whose length byte (`0x51`) is decoded as
+`OP_1` by the wave-A parser: the parser then interprets the key body as
+opcodes.  The bytes at offsets 0, 70, and 76 are chosen so that successive
+pushes skip over the second key and consume the trailing `OP_CHECKMULTISIG`
+as push data. -/
+private def cexKey : ByteArray :=
+  ([0x4b] ++ List.replicate 69 (0x00 : UInt8) ++ [0x0c]
+    ++ List.replicate 5 (0x00 : UInt8) ++ [0x4b]
+    ++ List.replicate 4 (0x00 : UInt8)).toByteArray
+
+/-- Counterexample parameters with two identical 256-kind keys (no
+well-formedness hypothesis): the witness script is accepted by
+`Script.parse`, so `witnessScript_parse_eq_none` is false without
+`p.WellFormed`. -/
+private def cexP : FundingParams :=
+  { fundingSatoshis := 0
+    pushMsat := ⟨0⟩
+    localFundingKey := ⟨cexKey⟩
+    remoteFundingKey := ⟨cexKey⟩
+    witnessScriptHash := ByteArray.empty
+    temporaryChannelId := ⟨⟨ByteArray.empty⟩⟩ }
+
+set_option maxRecDepth 10000 in
+/-- **Counterexample to `witnessScript_parse_eq_none` as stated.**  The script
+built from `cexKey` parses successfully: the parser sees `OP_1` where the
+81-byte key's length byte `0x51` should be a push, then follows the key body
+as opcodes until a push swallows the final `OP_CHECKMULTISIG`. -/
+theorem witnessScript_parse_ne_none_counterexample :
+    ∃ p : FundingParams, p.witnessScript.parse ≠ none := by
+  refine ⟨cexP, ?_⟩
+  let B : ByteArray := ByteArray.empty.push 0x52
+      ++ (ByteArray.empty.push cexKey.size.toUInt8 ++ cexKey)
+      ++ (ByteArray.empty.push cexKey.size.toUInt8 ++ cexKey)
+      ++ ByteArray.empty.push 0x52 ++ ByteArray.empty.push OP_CHECKMULTISIG
+  have hbytes : cexP.witnessScript.bytes = B := by
+    simp [B, FundingParams.witnessScript, pushData, cexP, orderedFundingKeys_self]
+  have hsize : B.size = 167 := by decide
+  have d0 : Bitcoin.Data.decodeOp B 0 = some (.const 2, 1) := by decide
+  have d1 : Bitcoin.Data.decodeOp B 1 = some (.const 1, 2) := by decide
+  have d2 : Bitcoin.Data.decodeOp B 2 = some (.push (B.extract 3 78), 78) := by decide
+  have d3 : Bitcoin.Data.decodeOp B 78 = some (.push (B.extract 79 154), 154) := by decide
+  have d4 : Bitcoin.Data.decodeOp B 154 = some (.push (B.extract 155 167), 167) := by decide
+  unfold Bitcoin.Data.Script.parse
+  rw [hbytes, hsize]
+  rw [parseWith_step B 0 1 166 [] (.const 2) (by rw [hsize]; omega) d0]
+  rw [parseWith_step B 1 2 165 [.const 2] (.const 1) (by rw [hsize]; omega) d1]
+  rw [parseWith_step B 2 78 164 [.const 1, .const 2]
+    (.push (B.extract 3 78)) (by rw [hsize]; omega) d2]
+  rw [parseWith_step B 78 154 163
+    [.push (B.extract 3 78), .const 1, .const 2]
+    (.push (B.extract 79 154)) (by rw [hsize]; omega) d3]
+  rw [parseWith_step B 154 167 162
+    [.push (B.extract 79 154), .push (B.extract 3 78), .const 1, .const 2]
+    (.push (B.extract 155 167)) (by rw [hsize]; omega) d4]
+  simp [Bitcoin.Data.Script.parse.parseWith, hsize]
 
 end FundingProps
 end LnLean.Proofs.Bitcoin
