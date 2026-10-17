@@ -1,12 +1,12 @@
 # Integrator report
 
 - repository: `/home/ubuntu/ln-lean`
-- HEAD: `811d1d23e9b80d1f8cddab4c45f845cc50b5d48f` ([B02] commitment scripts)
+- HEAD: `78c2f3f59d8f65886f2009a1da1f41000b0cba3b` ([LN-INTEGRATION] green two-wave scaffold: 69 Lean files, 1541 declarations, 48 obligations)
 - wave A: **8/8** agents exited, gate: `A-GREEN 2026-10-17T22:35:33Z
 modules=35
 vendor=ok
 check=ok`
-- wave B: **32/32** agents exited, **31** with RC 0
+- wave B: **32/32** agents exited, **31** with RC 0 (B02 exited 130 after writing its module; the module builds)
 - vendor integrity: **OK**
 - full build: **0**
 
@@ -14,7 +14,7 @@ check=ok`
 
 - Lean files: **69** (36 model, 33 proof)
 - model declarations: **1075**
-- proof declarations: **1540**
+- proof declarations: **1541**
 - wave-A catalog rows: **48** (13 proved, 35 statement-only)
 - wave-B `-- OBLIGATION:` markers: **48**
 - `sorry` sites under `Proofs/`: **25**
@@ -23,38 +23,38 @@ check=ok`
 
 | File | Declarations | Obligation markers |
 |---|---:|---:|
-| `LnLean/Proofs/Bitcoin/AnchorProps.lean` | 48 | 0 |
-| `LnLean/Proofs/Bitcoin/FundingProps.lean` | 37 | 0 |
-| `LnLean/Proofs/Bitcoin/ScriptProps.lean` | 63 | 0 |
+| `LnLean/Proofs/Bitcoin/AnchorProps.lean` | 48 | 2 |
+| `LnLean/Proofs/Bitcoin/FundingProps.lean` | 37 | 2 |
+| `LnLean/Proofs/Bitcoin/ScriptProps.lean` | 63 | 3 |
 | `LnLean/Proofs/Bitcoin/WeightProps.lean` | 47 | 0 |
-| `LnLean/Proofs/Channel/BreachProps.lean` | 28 | 0 |
-| `LnLean/Proofs/Channel/CommitmentTxProps.lean` | 50 | 0 |
+| `LnLean/Proofs/Channel/BreachProps.lean` | 28 | 19 |
+| `LnLean/Proofs/Channel/CommitmentTxProps.lean` | 50 | 4 |
 | `LnLean/Proofs/Channel/FeeProps.lean` | 32 | 0 |
-| `LnLean/Proofs/Channel/HTLCProps.lean` | 44 | 0 |
+| `LnLean/Proofs/Channel/HTLCProps.lean` | 44 | 2 |
 | `LnLean/Proofs/Channel/PenaltyProps.lean` | 28 | 0 |
-| `LnLean/Proofs/Channel/ReserveProps.lean` | 54 | 0 |
+| `LnLean/Proofs/Channel/ReserveProps.lean` | 54 | 1 |
 | `LnLean/Proofs/Channel/RevocationProps.lean` | 27 | 0 |
-| `LnLean/Proofs/Channel/StateMachineProps.lean` | 28 | 0 |
-| `LnLean/Proofs/Conservation.lean` | 53 | 0 |
-| `LnLean/Proofs/Crypto/EcdsaProps.lean` | 53 | 0 |
+| `LnLean/Proofs/Channel/StateMachineProps.lean` | 28 | 1 |
+| `LnLean/Proofs/Conservation.lean` | 53 | 1 |
+| `LnLean/Proofs/Crypto/EcdsaProps.lean` | 53 | 2 |
 | `LnLean/Proofs/Crypto/SchnorrProps.lean` | 50 | 0 |
-| `LnLean/Proofs/Crypto/Sha256Props.lean` | 26 | 0 |
+| `LnLean/Proofs/Crypto/Sha256Props.lean` | 26 | 1 |
 | `LnLean/Proofs/Liveness.lean` | 47 | 0 |
 | `LnLean/Proofs/Payment/InvoiceProps.lean` | 42 | 0 |
-| `LnLean/Proofs/Payment/KeysendProps.lean` | 65 | 0 |
+| `LnLean/Proofs/Payment/KeysendProps.lean` | 65 | 1 |
 | `LnLean/Proofs/Payment/LiquidityProps.lean` | 64 | 0 |
-| `LnLean/Proofs/Payment/MPPProps.lean` | 59 | 0 |
-| `LnLean/Proofs/Protocol/ChannelReestablishProps.lean` | 54 | 0 |
+| `LnLean/Proofs/Payment/MPPProps.lean` | 59 | 1 |
+| `LnLean/Proofs/Protocol/ChannelReestablishProps.lean` | 54 | 2 |
 | `LnLean/Proofs/Protocol/ErrorProps.lean` | 39 | 0 |
-| `LnLean/Proofs/Protocol/FeaturesProps.lean` | 75 | 0 |
+| `LnLean/Proofs/Protocol/FeaturesProps.lean` | 75 | 1 |
 | `LnLean/Proofs/Protocol/HandshakeProps.lean` | 40 | 0 |
-| `LnLean/Proofs/Routing/GossipProps.lean` | 74 | 0 |
-| `LnLean/Proofs/Routing/GraphProps.lean` | 37 | 0 |
+| `LnLean/Proofs/Routing/GossipProps.lean` | 74 | 3 |
+| `LnLean/Proofs/Routing/GraphProps.lean` | 37 | 1 |
 | `LnLean/Proofs/Routing/OnionProps.lean` | 40 | 0 |
 | `LnLean/Proofs/Routing/RouteBlindingProps.lean` | 66 | 0 |
 | `LnLean/Proofs/Security/ThreatModelProps.lean` | 85 | 0 |
 | `LnLean/Proofs/Traceability.lean` | 54 | 0 |
-| `LnLean/Proofs/Wire/TLVProps.lean` | 26 | 0 |
+| `LnLean/Proofs/Wire/TLVProps.lean` | 26 | 1 |
 
 ## Status records
 

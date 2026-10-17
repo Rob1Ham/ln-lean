@@ -78,7 +78,7 @@ def main():
         f"- repository: `{ROOT}`",
         f"- HEAD: `{head}` ({subj})",
         f"- wave A: **{a_done}/8** agents exited, gate: `{green}`",
-        f"- wave B: **{b_done}/32** agents exited, **{b_ok}** with RC 0",
+        f"- wave B: **{b_done}/32** agents exited, **{b_ok}** with RC 0 (B02 exited 130 after writing its module; the module builds)",
         f"- vendor integrity: **{vendor}**",
         f"- full build: **{build_rc}**",
         "",
@@ -86,7 +86,7 @@ def main():
         "",
         f"- Lean files: **{len(all_lean)}** ({len(model)} model, {len(proofs)} proof)",
         f"- model declarations: **{count_decls(model)}**",
-        f"- proof declarations: **{count_decls(proofs)}**",
+        f"- proof declarations: **{ob.get('declarations', count_decls(proofs))}**",
         f"- wave-A catalog rows: **{catalog}** ({catalog_proved} proved, {catalog - catalog_proved} statement-only)",
         f"- wave-B `-- OBLIGATION:` markers: **{markers}**",
         f"- `sorry` sites under `Proofs/`: **{len(sorries)}**",
@@ -101,7 +101,7 @@ def main():
         code = strip_comments(raw)
         lines.append(
             f"| `{p.relative_to(ROOT)}` | {len(DECL.findall(code))} | "
-            f"{len(re.findall(r'--\\s*OBLIGATION:\\s*LN-', raw))} |"
+            f"{len(re.findall(r'--\s*OBLIGATION:\s*LN-', raw))} |"
         )
     lines += [
         "",

@@ -17,15 +17,26 @@ from missing or broken imports.
 
 ## Current status
 
-Wave A is complete: all **8/8** agents exited with RC 0, all **35** expected
-modules build, all four wave-A docs exist, and the vendor checksum, policy
-checks, and pinned-anchor checker pass.  The A-green gate was written at
+Both waves are complete.
+
+Wave A: all **8/8** agents exited with RC 0, all **35** expected modules
+build, all four wave-A docs exist, and the vendor checksum, policy checks,
+and pinned-anchor checker pass.  The A-green gate was written at
 `2026-10-17T22:35:33Z`; the 32 wave-B agents started immediately after it.
+
+Wave B: all **32/32** agents wrote their expected modules.  **31** exited
+with RC 0; B02 hit the wrapper budget (`exit=130`) after writing its
+726-line `ScriptProps` module, and the integrator removed one redundant
+tactic and verified the module.  The final tree has **69** Lean files
+(36 model, 33 proof), **1541** proof declarations, **48** wave-B obligation
+markers, and **25** `sorry` sites under `LnLean/Proofs/`.  The full root
+build is **77 jobs, RC 0** at integration commit `78c2f3f`.
 
 The wave-A catalog has **48** obligations: 13 are marked `proved` against the
 small security models, 35 are `statementOnly`.  That distinction is the
 honest status: a statement-only row is a tracked future theorem, not a
-result.
+result.  The wave-B markers are additional named proof targets; they do not
+change the catalog's status.
 
 ## Reproduce
 
@@ -34,11 +45,13 @@ export PATH=/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/bin:$PATH
 cd /home/ubuntu/ln-lean
 
 ./scripts/verify-vendor.sh          # L1 snapshot checksums and read-only modes
-python3 scripts/check-wave-a.py     # presence of all wave-A modules/docs
-python3 scripts/check-wave-a.py --build
+python3 scripts/verify-anchors.py   # BOLT/LDK path:line anchors
 ./scripts/check.sh                  # forbidden constructs, unmarked sorry, duplicate ids
+python3 scripts/check-wave-a.py --build
+python3 scripts/check-wave-b.py --build
 ./scripts/regen-root.sh             # regenerate LnLean.lean
 flock -w 1800 /tmp/ln-build.lock lake build
+./scripts/finalize.sh               # full integration gate + generated indexes/report
 ```
 
 ## Integrity
