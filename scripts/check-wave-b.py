@@ -74,6 +74,8 @@ def main() -> int:
         for line in t.splitlines():
             if line.startswith("import LnLean.Proofs.") and "Obligations" not in line:
                 bad_imports.append((m, line.strip()))
+            if line.startswith("import Mathlib"):
+                bad_imports.append((m, line.strip()))
         if stats[m][0] > 0 and stats[m][1] == 0:
             no_marker.append(m)
         lines = t.splitlines()
