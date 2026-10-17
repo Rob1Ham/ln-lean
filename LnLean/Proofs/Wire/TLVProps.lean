@@ -36,7 +36,8 @@ header.  The wave-A `TLV` docstring says the reference parser rejects
 non-increasing types; the implementation in `LnLean/Wire/TLV.lean` does not
 check ordering, and `decodeTLV_accepts_duplicate_types` below is a checked
 counterexample.  The full parser round trip is therefore stated only for
-canonical input and left as an obligation.
+canonical input (whose `InDomain` component is what the round trip actually
+needs; `Canonical` remains essential for the uniqueness guarantee).
 -/
 
 import LnLean.Wire.BigSize
@@ -279,16 +280,251 @@ theorem encodeTLV_size_le_of_sum_le (s : TLVStream)
   rw [encodeTLV_size_eq s]
   exact h
 
-/-! ## TLV: parser round trip (obligation) -/
+/-! ## TLV: parser round trip -/
+
+/-- Appending bytes to a payload does not change a successful `decodePayload`:
+the decoder only inspects the first `len` bytes. -/
+theorem decodePayload_append_of_some {tag : UInt8} {len : Nat}
+    {rest extra : List UInt8} {v k : Nat}
+    (h : decodePayload tag len rest = some (v, k)) :
+    decodePayload tag len (rest ++ extra) = some (v, k) := by
+  unfold decodePayload at h ⊢
+  by_cases hlen : rest.length < len
+  · rw [ite_eq_left hlen] at h
+    cases h
+  · rw [ite_eq_right hlen] at h
+    have hlen' : ¬ (rest ++ extra).length < len := by
+      rw [List.length_append]
+      omega
+    rw [ite_eq_right hlen']
+    rw [List.take_append_of_le_length (by omega)]
+    exact h
+
+/-- A successful BigSize decode is unaffected by appending bytes after the
+bytes it consumes. -/
+theorem decode_append_of_some {pre extra : List UInt8} {n k : Nat}
+    (h : decode pre.toByteArray = some (n, k)) :
+    decode (pre ++ extra).toByteArray = some (n, k) := by
+  cases pre with
+  | nil =>
+      rw [List.toByteArray_nil] at h
+      simp [decode, bytesToList] at h
+  | cons x xs =>
+      unfold decode at h ⊢
+      rw [bytesToList_toByteArray] at h ⊢
+      by_cases hx : x.toNat < 0xfd
+      · simp [hx] at h ⊢
+        exact h
+      · by_cases hxfd : x = 0xfd
+        · simp [hxfd] at h ⊢
+          exact decodePayload_append_of_some h
+        · by_cases hxfe : x = 0xfe
+          · simp [hxfe] at h ⊢
+            exact decodePayload_append_of_some h
+          · simp [hx, hxfd, hxfe] at h ⊢
+            exact decodePayload_append_of_some h
+
+/-- Decoding a canonical BigSize at the head of a longer byte list consumes
+exactly its encoding. -/
+theorem decode_encode_bytesToList_append (n : Nat)
+    (hn : n < 18446744073709551616) (extra : List UInt8) :
+    decode ((bytesToList (encode n)) ++ extra).toByteArray =
+      some (n, (encode n).size) := by
+  apply decode_append_of_some
+  have hdecode : decode (bytesToList (encode n)).toByteArray = decode (encode n) := by
+    unfold decode
+    rw [bytesToList_toByteArray]
+  rw [hdecode, decode_encode n hn]
+
+/-- The byte list of a record encoding splits into its two BigSize fields and
+its value. -/
+theorem bytesToList_encode_record (r : TLVRecord) :
+    bytesToList (TLVRecord.encode r) =
+      bytesToList (encode r.type) ++ bytesToList (encode r.value.size) ++
+        bytesToList r.value := by
+  simp [TLVRecord.encode, bytesToList_append, List.append_assoc]
+
+/-- The reference parser reads one record when the input starts with a
+well-formed record encoding followed by arbitrary bytes. -/
+theorem parseRecord_append_of_decode
+    (A B V rest : List UInt8) (ty : Nat)
+    (hA : decode A.toByteArray = some (ty, A.length))
+    (hB : decode B.toByteArray = some (V.length, B.length)) :
+    parseRecord (A ++ (B ++ (V ++ rest))) = some (⟨ty, V.toByteArray⟩, rest) := by
+  unfold parseRecord
+  rw [decode_append_of_some (extra := B ++ (V ++ rest)) hA]
+  dsimp only
+  have hdrop1 : List.drop A.length (A ++ (B ++ (V ++ rest))) =
+      B ++ (V ++ rest) := by
+    rw [List.drop_append_of_le_length (Nat.le_refl _)]
+    simp
+  rw [hdrop1]
+  rw [decode_append_of_some (pre := B) (extra := V ++ rest) hB]
+  dsimp only
+  have hdrop2 : List.drop B.length (B ++ (V ++ rest)) = V ++ rest := by
+    rw [List.drop_append_of_le_length (Nat.le_refl _)]
+    simp
+  rw [hdrop2]
+  have hlen : ¬ (V ++ rest).length < V.length := by simp
+  rw [ite_eq_right hlen]
+  have htake : List.take V.length (V ++ rest) = V := by
+    rw [List.take_append_of_le_length (Nat.le_refl _), List.take_length]
+  have hdrop3 : List.drop V.length (V ++ rest) = rest := by
+    rw [List.drop_append_of_le_length (Nat.le_refl _)]
+    simp
+  rw [htake, hdrop3]
+
+/-- Parsing a record encoding followed by arbitrary bytes returns that record
+and the untouched tail. -/
+theorem parseRecord_encode_append (r : TLVRecord) (h : r.InDomain)
+    (rest : List UInt8) :
+    parseRecord (bytesToList (TLVRecord.encode r) ++ rest) = some (r, rest) := by
+  obtain ⟨hty, hlen⟩ := h
+  rw [bytesToList_encode_record r]
+  have hA : decode (bytesToList (encode r.type)).toByteArray =
+      some (r.type, (bytesToList (encode r.type)).length) := by
+    have hh := decode_encode_bytesToList_append r.type hty []
+    simpa [bytesToList_length] using hh
+  have hB : decode (bytesToList (encode r.value.size)).toByteArray =
+      some ((bytesToList r.value).length,
+        (bytesToList (encode r.value.size)).length) := by
+    have hh := decode_encode_bytesToList_append r.value.size hlen []
+    simpa [bytesToList_length] using hh
+  have harg : bytesToList (encode r.type) ++ bytesToList (encode r.value.size) ++
+        bytesToList r.value ++ rest =
+      bytesToList (encode r.type) ++
+        (bytesToList (encode r.value.size) ++ (bytesToList r.value ++ rest)) := by
+    simp [List.append_assoc]
+  rw [harg]
+  have := parseRecord_append_of_decode
+    (A := bytesToList (encode r.type))
+    (B := bytesToList (encode r.value.size))
+    (V := bytesToList r.value) (rest := rest) (ty := r.type) hA hB
+  simpa [toByteArray_bytesToList] using this
+
+/-- A nonempty byte array has a nonempty `bytesToList`. -/
+theorem bytesToList_ne_nil_of_ne_empty {b : ByteArray}
+    (h : b ≠ ByteArray.empty) : bytesToList b ≠ [] := by
+  intro hl
+  apply h
+  have := congrArg (fun l : List UInt8 => l.toByteArray) hl
+  simpa [toByteArray_bytesToList, List.toByteArray_nil] using this
+
+/-- Every TLV record encoding is nonempty (its type field is at least one
+byte). -/
+theorem TLVRecord.encode_ne_empty (r : TLVRecord) :
+    TLVRecord.encode r ≠ ByteArray.empty := by
+  intro h
+  have hs : (TLVRecord.encode r).size = 0 := by rw [h]; rfl
+  rw [TLVRecord.encode_size] at hs
+  unfold TLVRecord.encodedSize at hs
+  have h1 : 0 < (Wire.encode r.type).size := by
+    rcases encode_size_cases r.type with h1 | h1 | h1 | h1 <;> omega
+  omega
+
+/-- One step of the fuel-bounded parser: it reads the next record encoding and
+delegates the remaining bytes to the tail parse. -/
+theorem decodeTLVGo_append_record (fuel : Nat) (r : TLVRecord)
+    (rest : List UInt8) (hdom : r.InDomain) :
+    decodeTLVGo fuel.succ (bytesToList (TLVRecord.encode r) ++ rest) =
+      (match decodeTLVGo fuel rest with
+       | none => none
+       | some rs => some (r :: rs)) := by
+  have hne : bytesToList (TLVRecord.encode r) ++ rest ≠ [] :=
+    List.append_ne_nil_of_left_ne_nil
+      (bytesToList_ne_nil_of_ne_empty (TLVRecord.encode_ne_empty r)) rest
+  rw [decodeTLVGo.eq_3 _ fuel hne]
+  rw [parseRecord_encode_append r hdom rest]
+  rfl
+
+/-- Folding record encodings into a byte array concatenates their byte lists. -/
+theorem bytesToList_foldl_encode_records (acc : ByteArray)
+    (rs : List TLVRecord) :
+    bytesToList (rs.foldl (fun acc r => acc ++ TLVRecord.encode r) acc) =
+      bytesToList acc ++
+        (rs.map (fun r => bytesToList (TLVRecord.encode r))).flatten := by
+  induction rs generalizing acc with
+  | nil => simp
+  | cons r rs ih =>
+      simp only [List.foldl]
+      rw [ih (acc ++ TLVRecord.encode r), bytesToList_append]
+      simp [List.map_cons, List.flatten_cons, List.append_assoc]
+
+/-- The byte list of an encoded TLV stream is the concatenation of the record
+encodings. -/
+theorem bytesToList_encodeTLV (rs : List TLVRecord) :
+    bytesToList (encodeTLV (TLVStream.mk rs)) =
+      (rs.map (fun r => bytesToList (TLVRecord.encode r))).flatten := by
+  unfold encodeTLV TLVStream.encode
+  rw [bytesToList_foldl_encode_records ByteArray.empty rs]
+  simp [bytesToList]
+
+/-- The fuel-bounded parser inverts the encoding of any list of in-domain
+records, provided there is at least one fuel unit per record. -/
+theorem decodeTLVGo_encodeTLV_records (rs : List TLVRecord)
+    (hdom : ∀ r ∈ rs, r.InDomain) :
+    ∀ fuel, rs.length ≤ fuel →
+      decodeTLVGo fuel (bytesToList (encodeTLV (TLVStream.mk rs))) = some rs := by
+  induction rs with
+  | nil =>
+      intro fuel hfuel
+      rw [bytesToList_encodeTLV]
+      simp only [List.map_nil, List.flatten_nil]
+      cases fuel with
+      | zero => simp [decodeTLVGo]
+      | succ f => simp [decodeTLVGo]
+  | cons r rs ih =>
+      intro fuel hfuel
+      have hdom_r : r.InDomain := hdom r (by simp)
+      have hdom_rs : ∀ x ∈ rs, x.InDomain := by
+        intro x hx
+        exact hdom x (by simp [hx])
+      rw [bytesToList_encodeTLV]
+      simp only [List.map_cons, List.flatten_cons]
+      rw [← bytesToList_encodeTLV rs]
+      cases fuel with
+      | zero => simp at hfuel
+      | succ f =>
+          have hlen : rs.length ≤ f := by
+            simp at hfuel
+            omega
+          rw [decodeTLVGo_append_record f r _ hdom_r]
+          rw [ih hdom_rs f hlen]
+
+/-- Each record contributes at least two bytes, so the number of records is
+bounded by the encoded stream size. -/
+theorem records_length_le_encodeTLV_size (rs : List TLVRecord) :
+    rs.length ≤ (encodeTLV (TLVStream.mk rs)).size := by
+  rw [encodeTLV_size_eq]
+  induction rs with
+  | nil => simp
+  | cons r rs ih =>
+      have ih' : rs.length ≤ (rs.map TLVRecord.encodedSize).sum := by
+        simpa using ih
+      simp only [List.map_cons, List.sum_cons, List.length_cons]
+      have h1 : 1 ≤ (Wire.encode r.type).size := by
+        rcases encode_size_cases r.type with h1 | h1 | h1 | h1 <;> omega
+      have h2 : 1 ≤ (Wire.encode r.value.size).size := by
+        rcases encode_size_cases r.value.size with h2 | h2 | h2 | h2 <;> omega
+      have hr : 2 ≤ TLVRecord.encodedSize r := by
+        unfold TLVRecord.encodedSize
+        omega
+      omega
 
 /-- **Canonical TLV round trip.**  Encoding a canonical stream and running
 the reference parser returns the original stream.  The parser itself does
 not enforce canonicality (see `decodeTLV_accepts_duplicate_types`), so the
-hypothesis is essential. -/
+hypothesis is essential for the uniqueness guarantee; the round trip uses its
+`InDomain` component. -/
 theorem decodeTLV_encodeTLV (s : TLVStream) (h : s.Canonical) :
     decodeTLV (encodeTLV s) = some s := by
-  -- OBLIGATION: LN-WIRE-001 canonical TLV streams round-trip through encodeTLV/decodeTLV
-  sorry
+  have hdom : ∀ r ∈ s.records, r.InDomain := h.2.2
+  have hsz : s.records.length ≤ (encodeTLV s).size := by
+    simpa using records_length_le_encodeTLV_size s.records
+  have hfuel : s.records.length ≤ (encodeTLV s).size + 1 := by
+    omega
+  unfold decodeTLV
+  rw [decodeTLVGo_encodeTLV_records s.records hdom ((encodeTLV s).size + 1) hfuel]
 
 /-! ## Message framing -/
 
