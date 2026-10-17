@@ -659,4 +659,32 @@ theorem committed_update_preserves_ledger_counterexample :
   · simp [c', c, fee, amount, spendLocalBalance, htlcInFlightValue,
       Balance.total_val]
 
+/-- Exact truncated-subtraction accounting for the committed update.  Even
+when the added HTLC exceeds the settled local balance, the settled plus
+in-flight ledger exceeds `fundingValue` by exactly the unfunded remainder
+`amount.val - min amount.val localBalance.val`.  This is the general form
+behind `committed_update_preserves_ledger_of_le`, which is the special case
+where the remainder is zero. -/
+theorem committed_update_preserves_ledger_deficit (c c' : Channel) (fee : Msat)
+    (amount : Msat)
+    (h_old : c.balance.total.val + htlcInFlightValue c + fee.val =
+      c.fundingValue.val)
+    (h_step : c' = { c with
+      balance := spendLocalBalance c.balance amount.val
+      htlcs := c.htlcs ++
+        [{ direction := Direction.local
+           amount := amount
+           paymentHash := ⟨ByteArray.empty⟩
+           cltvExpiry := 0
+           state := HTLCState.offered }] }) :
+    c'.balance.total.val + htlcInFlightValue c' + fee.val =
+      c'.fundingValue.val +
+        (amount.val - Nat.min amount.val c.balance.localBalance.val) := by
+  subst c'
+  unfold htlcInFlightValue at h_old ⊢
+  rw [inFlightSum_append_offered]
+  simp only [Balance.total_val, spendLocalBalance] at h_old ⊢
+  simp only [Nat.min_def]
+  split <;> omega
+
 end LnLean.Proofs.Channel
