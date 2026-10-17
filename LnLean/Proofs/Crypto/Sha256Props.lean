@@ -67,7 +67,7 @@ in `LnLean.Crypto.Model` is injectivity on *all* `ByteArray`, while
 `sha256_size` forces every image to be 32 bytes.  A function from the (vast)
 space of byte arrays into the finite set of 32-byte strings cannot be
 injective, so the global field is not simultaneously satisfiable with
-`sha256_size`.  This module makes that gap explicit as obligation
+`sha256_size`.  This module makes that gap explicit as the proved theorem
 `LN-CR-007` (`no_injective_hash_into_32_bytes`) and uses the field only in
 explicitly conditional theorems.  The consistent hypothesis for Lightning's
 32-byte payment preimages is `CollisionResistant`, already used by
@@ -179,7 +179,7 @@ preimage-resistance assumption, two preimages (not necessarily 32 bytes) with
 the same payment hash are equal.  This is the formal content of "the payment
 hash commits to the preimage"; no computational hardness is proved.  See the
 module note: this hypothesis is stronger than the model can consistently
-supply together with `sha256_size` (obligation `LN-CR-007`). -/
+supply together with `sha256_size` (theorem `LN-CR-007`). -/
 theorem paymentHash_commitment_of_preimageResistant (M : PrimitiveModel)
     (h : PreimageResistant M.sha256) {p q : Preimage}
     (hph : M.paymentHashOf p = M.paymentHashOf q) : p = q := by
@@ -318,19 +318,185 @@ theorem taggedHash_collision_witness (M : PrimitiveModel) {t₁ t₂ msg : ByteA
       exact tagPrefix_separates_hashed_tags M hsha (append_right_cancel hxy)
     · simpa [taggedHashSha256] using heq
 
-/-! ## 8. Recorded interface obligation -/
+/-! ## 8. Interface defect: no injective hash into 32 bytes -/
+
+/-! ### Counting helpers for `LN-CR-007`
+
+A 32-byte digest has at most `257 ^ 32` possible values, while `ByteArray` has
+infinitely many elements.  The helpers below make that finite bound usable
+with Lean core arithmetic only:
+
+* `encodeList` is a base-257 encoding of a byte list in which every digit is
+  shifted by one.  No digit is zero, which removes the trailing-zero ambiguity
+  of positional notation and makes the encoding injective on *all* byte lists;
+* `unaryBytes i` is the `i`-byte string `0 ⋯ 0`, a family of pairwise distinct
+  preimages indexed by `Nat`;
+* `natPigeonhole` is the finite pigeonhole principle: an injective map from
+  `{0, …, d-1}` into `{0, …, hi-1}` forces `d ≤ hi`.  It is proved by
+  induction on `d`; the step removes the value `f d` from the codomain with
+  the `skip` map `x ↦ if x < f d then x else x - 1`, which is injective off
+  `f d`.
+-/
+
+/-- Base-257 encoding of a byte list with all digits shifted by one, so every
+digit lies in `[1, 256]` and positional notation is unambiguous. -/
+private def encodeList : List UInt8 → Nat
+  | [] => 0
+  | x :: xs => (x.toNat + 1) + 257 * encodeList xs
+
+/-- The `i`-byte all-zero string.  Distinct indices give arrays of different
+sizes, hence distinct `ByteArray`s. -/
+private def unaryBytes (i : Nat) : ByteArray :=
+  ByteArray.mk (Array.mk (List.replicate i (0 : UInt8)))
+
+/-- Value-skipping map used by the pigeonhole induction step. -/
+private def skip (v x : Nat) : Nat := if x < v then x else x - 1
+
+private theorem encodeList_lt (l : List UInt8) : encodeList l < 257 ^ l.length := by
+  induction l with
+  | nil => simp [encodeList]
+  | cons x xs IH =>
+    have hx : x.toNat + 1 ≤ 256 := by have := UInt8.toNat_lt x; omega
+    simp only [encodeList, List.length_cons, Nat.pow_succ']
+    omega
+
+private theorem encodeList_pos (x : UInt8) (xs : List UInt8) :
+    0 < encodeList (x :: xs) := by
+  simp only [encodeList]
+  omega
+
+/-- The base-257 encoding is injective: the low digit is recovered by `% 257`
+and the rest by `/ 257`. -/
+private theorem encodeList_inj : ∀ (l₁ l₂ : List UInt8),
+    encodeList l₁ = encodeList l₂ → l₁ = l₂ := by
+  intro l₁
+  induction l₁ with
+  | nil =>
+    intro l₂ h
+    cases l₂ with
+    | nil => rfl
+    | cons y ys =>
+      have hp := encodeList_pos y ys
+      simp only [encodeList] at h
+      omega
+  | cons x xs IH =>
+    intro l₂ h
+    cases l₂ with
+    | nil =>
+      have hp := encodeList_pos x xs
+      simp only [encodeList] at h
+      omega
+    | cons y ys =>
+      simp only [encodeList] at h
+      have hxlt : x.toNat + 1 < 257 := by have := UInt8.toNat_lt x; omega
+      have hylt : y.toNat + 1 < 257 := by have := UInt8.toNat_lt y; omega
+      have hmod : (x.toNat + 1) % 257 = (y.toNat + 1) % 257 := by
+        have hc := congrArg (fun n => n % 257) h
+        simpa only [Nat.add_mul_mod_self_left] using hc
+      rw [Nat.mod_eq_of_lt hxlt, Nat.mod_eq_of_lt hylt] at hmod
+      have hxy : x = y := by
+        apply UInt8.toNat_inj.mp
+        omega
+      have hdiv : encodeList xs = encodeList ys := by
+        have h1 : ((x.toNat + 1) + 257 * encodeList xs) / 257 = encodeList xs := by
+          rw [Nat.add_mul_div_left _ _ (by omega : 0 < 257), Nat.div_eq_of_lt hxlt]
+          omega
+        have h2 : ((y.toNat + 1) + 257 * encodeList ys) / 257 = encodeList ys := by
+          rw [Nat.add_mul_div_left _ _ (by omega : 0 < 257), Nat.div_eq_of_lt hylt]
+          omega
+        have hc := congrArg (fun n => n / 257) h
+        rw [h1, h2] at hc
+        exact hc
+      subst hxy
+      rw [IH ys hdiv]
+
+private theorem unaryBytes_size (i : Nat) : (unaryBytes i).size = i := by
+  simp [unaryBytes, ByteArray.size, Array.size]
+
+private theorem unaryBytes_inj {i j : Nat} (h : unaryBytes i = unaryBytes j) : i = j := by
+  have := congrArg ByteArray.size h
+  simpa [unaryBytes_size] using this
+
+private theorem encode_size (a : ByteArray) : (a.data.toList).length = a.size := by
+  rw [Array.length_toList, ByteArray.size_data]
+
+/-- The list encoding is injective on `ByteArray`s. -/
+private theorem encode_inj {a b : ByteArray}
+    (h : encodeList a.data.toList = encodeList b.data.toList) : a = b := by
+  apply ByteArray.ext
+  exact Array.toList_inj.mp (encodeList_inj _ _ h)
+
+private theorem skip_lt {v x hi : Nat} (hv : v < hi) (hx : x < hi) (hne : x ≠ v) :
+    skip v x < hi - 1 := by
+  unfold skip
+  by_cases h : x < v
+  · rw [ite_eq_left h]; omega
+  · rw [ite_eq_right h]; omega
+
+private theorem skip_inj {v x y : Nat} (hx : x ≠ v) (hy : y ≠ v)
+    (h : skip v x = skip v y) : x = y := by
+  unfold skip at h
+  by_cases h1 : x < v <;> by_cases h2 : y < v
+  · rw [ite_eq_left h1, ite_eq_left h2] at h; exact h
+  · rw [ite_eq_left h1, ite_eq_right h2] at h; omega
+  · rw [ite_eq_right h1, ite_eq_left h2] at h; omega
+  · rw [ite_eq_right h1, ite_eq_right h2] at h; omega
+
+/-- Finite pigeonhole principle over initial `Nat` segments. -/
+private theorem natPigeonhole (d hi : Nat) (f : Nat → Nat)
+    (hrange : ∀ i, i < d → f i < hi)
+    (hinj : ∀ i j, i < d → j < d → f i = f j → i = j) : d ≤ hi := by
+  induction d generalizing hi f with
+  | zero => omega
+  | succ d IH =>
+    have hhi : 0 < hi := by have := hrange d (by omega); omega
+    have hne : ∀ i, i < d → f i ≠ f d := by
+      intro i hi' heq
+      have := hinj i d (by omega) (by omega) heq
+      omega
+    have hrange' : ∀ i, i < d → skip (f d) (f i) < hi - 1 := fun i hi' =>
+      skip_lt (hrange d (by omega)) (hrange i (by omega)) (hne i hi')
+    have hinj' : ∀ i j, i < d → j < d →
+        skip (f d) (f i) = skip (f d) (f j) → i = j := by
+      intro i j hi' hj' heq
+      exact hinj i j (by omega) (by omega) (skip_inj (hne i hi') (hne j hj') heq)
+    have hle : d ≤ hi - 1 := IH (hi - 1) (fun i => skip (f d) (f i)) hrange' hinj'
+    omega
 
 /-- **No global injective hash into 32 bytes.**  A function from `ByteArray`
 to the 32-byte strings cannot be injective: the domain has more elements than
 the `2^256` possible 32-byte outputs.  Consequently the `PreimageResistant`
 field of `PrimitiveModel` is not satisfiable together with `sha256_size`, and
 the consistent hypothesis for payment preimages is `CollisionResistant` on
-32-byte inputs.  The counting proof is left as a scaffold obligation. -/
+32-byte inputs.
+
+The proof indexes `257 ^ 32 + 1` distinct preimages `unaryBytes i` and encodes
+each 32-byte image as a natural number below `257 ^ 32`; injectivity of `H`
+would make these encodings injective, contradicting `natPigeonhole`. -/
 theorem no_injective_hash_into_32_bytes (H : ByteArray → ByteArray)
     (hsize : ∀ b : ByteArray, (H b).size = 32) :
     ¬ PreimageResistant H := by
-  -- OBLIGATION: LN-CR-007 `ByteArray` has more elements than the 2^256 possible 32-byte outputs, so no `H` with `(H b).size = 32` for all `b` is injective; the global `PreimageResistant` field of `PrimitiveModel` is therefore incompatible with `sha256_size`, and the consistent hypothesis is injectivity on 32-byte preimages.
-  sorry
+  -- LN-CR-007 (closed by the counting argument below): `ByteArray` has more
+  -- elements than the 2^256 possible 32-byte outputs, so no `H` with
+  -- `(H b).size = 32` for all `b` is injective; the global `PreimageResistant`
+  -- field of `PrimitiveModel` is therefore incompatible with `sha256_size`,
+  -- and the consistent hypothesis is injectivity on 32-byte preimages.
+  intro hinj
+  let f : Nat → Nat := fun i => encodeList (H (unaryBytes i)).data.toList
+  have hrange : ∀ i, i < 257 ^ 32 + 1 → f i < 257 ^ 32 := by
+    intro i _
+    have hlt := encodeList_lt (H (unaryBytes i)).data.toList
+    have hlen : (H (unaryBytes i)).data.toList.length = 32 := by
+      rw [encode_size, hsize]
+    dsimp only [f]
+    rw [hlen] at hlt
+    exact hlt
+  have hinj' : ∀ i j, i < 257 ^ 32 + 1 → j < 257 ^ 32 + 1 → f i = f j → i = j := by
+    intro i j _ _ heq
+    dsimp only [f] at heq
+    exact unaryBytes_inj (hinj _ _ (encode_inj heq))
+  have hle := natPigeonhole _ _ f hrange hinj'
+  omega
 
 /-- The interface defect as a statement about every `PrimitiveModel`. -/
 theorem preimageResistant_vacuous (M : PrimitiveModel) :
