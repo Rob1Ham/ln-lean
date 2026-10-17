@@ -464,8 +464,10 @@ theorem accepts_intersection_of_accepts
     (known : KnownFeatures) (f g : FeatureVector)
     (hf : Accepts known f) (hg : Accepts known g) :
     Accepts known (intersection f g) := by
-  -- OBLIGATION: LN-FEAT-012 Bitwise AND cannot introduce an unknown required bit.
-  sorry
+  rw [accepts_iff_no_unknown_required] at hf hg ⊢
+  intro n hn
+  rw [intersection_requires, hf n hn, hg n hn]
+  rfl
 
 /-! ## Abstract wire codec -/
 
