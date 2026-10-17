@@ -432,16 +432,47 @@ theorem traces_reveal_same_preimage (k : Keysend) (os₁ os₂ : List PaymentSta
   rw [applyOutcomes_reveal_is_sender_preimage k os₁ h₁,
     applyOutcomes_reveal_is_sender_preimage k os₂ h₂]
 
+/-- Failing a session that has not succeeded keeps it away from `succeeded`:
+a pending session becomes `failed`, and a terminal session is absorbing. -/
+private theorem settle_failed_not_succeeded (k : Keysend)
+    (h : k.session.state ≠ .succeeded) :
+    (k.settle .failed).session.state ≠ .succeeded := by
+  unfold settle PaymentSession.settle
+  by_cases hp : k.session.state = .pending
+  · simp [hp]
+  · simp [hp]
+    exact h
+
+/-- A trace consisting only of failures never reaches a successful state when
+it starts from a non-successful one, hence never reveals the preimage.  This
+is the inductive workhorse for `all_failed_outcomes_never_reveal`; the
+`≠ .succeeded` hypothesis is what survives the first failure, when the session
+is no longer pending. -/
+private theorem applyOutcomes_failed_not_revealed (k : Keysend)
+    (os : List PaymentState) (hall : ∀ o ∈ os, o = .failed)
+    (h : k.session.state ≠ .succeeded) :
+    (k.applyOutcomes os).revealedPreimage = none := by
+  induction os generalizing k with
+  | nil =>
+    show k.revealedPreimage = none
+    unfold revealedPreimage
+    simp [h]
+  | cons o os ih =>
+    obtain rfl : o = .failed := hall o (by simp)
+    have htail : ∀ x ∈ os, x = .failed := fun x hx =>
+      hall x (List.mem_cons_of_mem _ hx)
+    show ((k.settle .failed).applyOutcomes os).revealedPreimage = none
+    exact ih (k.settle .failed) htail (settle_failed_not_succeeded k h)
+
 /-- An all-failure trace from a pending keysend never reveals the preimage.
 This is the trace-level form of "a failed keysend does not consume the
-preimage": the record keeps it, and no observer learns it.  The remaining
-step is the induction using `settle_terminal_state`: after the first failure
-the session is terminal, so every later settlement is a no-op. -/
+preimage": the record keeps it, and no observer learns it.  The induction
+uses `settle_terminal_state`: after the first failure the session is terminal,
+so every later settlement is a no-op. -/
 theorem all_failed_outcomes_never_reveal (k : Keysend) (os : List PaymentState)
     (hk : k.session.state = .pending) (hall : ∀ o ∈ os, o = .failed) :
     (k.applyOutcomes os).revealedPreimage = none := by
-  -- OBLIGATION: LN-KS-001 A keysend whose every settlement outcome is a failure never reveals its preimage.
-  sorry
+  exact applyOutcomes_failed_not_revealed k os hall (by rw [hk]; simp)
 
 end Keysend
 
