@@ -291,12 +291,28 @@ theorem fundingValue_independent_of_push (p : FundingParams) (q : Msat) :
       = p.fundingSatoshis := rfl
 
 /-- Capacity is bounded by 21M BTC expressed in millisatoshis (`Msat.MAX`)
-for well-formed parameters.  Recorded as an obligation: this is arithmetic
-over the `Int` capacity representation and is not needed by the seam proofs. -/
+for well-formed parameters.  This is arithmetic over the `Int` capacity
+representation: `WellFormed` gives `fundingSatoshis ≤ MAX_MONEY = 21e6 * 1e8`,
+and multiplying by `MSAT_PER_SAT = 1000` gives at most `21e6 * 1e8 * 1000`,
+which is exactly `Msat.MAX`. -/
 theorem channelCapacityMsat_le_MSAT_MAX (p : FundingParams) (h : p.WellFormed) :
     channelCapacityMsat p ≤ (Msat.MAX.val : Int) := by
-  -- OBLIGATION: LN-FUND-002 capacity is bounded by 21M BTC expressed in msat (`Msat.MAX`).
-  sorry
+  rcases h with ⟨-, hmax, -, -, -, -⟩
+  have hmax' : p.fundingSatoshis ≤ (2100000000000000 : Int) := by
+    unfold Bitcoin.Data.MAX_MONEY Bitcoin.Data.COIN at hmax
+    exact hmax
+  have hMAX : (Msat.MAX.val : Int) =
+      (2100000000000000 : Int) * (Msat.MSAT_PER_SAT : Int) := by
+    unfold Msat.MAX Msat.SAT_PER_BTC Msat.MSAT_PER_SAT
+    decide
+  have hmul : p.fundingSatoshis * (Msat.MSAT_PER_SAT : Int) ≤
+      (2100000000000000 : Int) * (Msat.MSAT_PER_SAT : Int) :=
+    Int.mul_le_mul_of_nonneg_right hmax' (by
+      unfold Msat.MSAT_PER_SAT
+      decide)
+  unfold channelCapacityMsat
+  rw [hMAX]
+  exact hmul
 
 /-! ## Temporary to final channel id -/
 
@@ -417,7 +433,23 @@ theorem fundingSpend_reveals_witnessScript
 `ScriptInstr` has no `OP_CHECKMULTISIG` constructor
 (`vendor/btc-lean-core/Bitcoin/Data/Script.lean:31-41`, `decodeOp` `:53-71`);
 consequently the concrete interpreter bridge cannot yet be stated or proved.
-Recorded as an obligation. -/
+
+**This statement is false as written, because it has no well-formedness
+hypothesis.**  `FundingParams` allows arbitrary key byte arrays, and
+`pushData` stores only `size.toUInt8` as the length byte.  If the first key is
+empty and the second is the 79-byte array
+`0x04 0xaa 0xaa 0xaa 0xaa 0x4b <73 bytes of 0xaa>`, the script is
+`0x52 0x00 0x4f 0x04 0xaa 0xaa 0xaa 0xaa 0x4b ... 0x52 0xae` (84 bytes):
+`0x00` is a zero-length push, the *length byte* `0x4f` of the second key
+decodes as `OP_1NEGATE`, and the parser then decodes the key *contents* as
+opcodes.  The `0x4b` at index 8 pushes 75 bytes, which swallows the trailing
+`0x52 0xae` and makes the next parse index exactly `bytes.size` (= 84), so
+`parse` returns `some [...]`, not `none`.  The intended claim — and the one
+relevant to BOLT 3 — needs `p.WellFormed` (33-byte compressed keys), where the
+byte string is the concrete 71-byte `0x52 0x21 <key1> 0x21 <key2> 0x52 0xae`
+and the final `0xae` is decoded as an opcode.  See `agents/reports/C02.md` for
+the evaluated counterexample; the statement is kept verbatim and remains an
+obligation. -/
 theorem witnessScript_parse_eq_none (p : FundingParams) :
     p.witnessScript.parse = none := by
   -- OBLIGATION: LN-FUND-001 the wave-A script parser rejects `OP_CHECKMULTISIG`.
