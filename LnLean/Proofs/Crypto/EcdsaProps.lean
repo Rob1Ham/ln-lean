@@ -542,22 +542,73 @@ def derFullOK (b : ByteArray) : Bool :=
 /-- The 71-byte test vector also passes the full structural parser. -/
 theorem derFullOK_accepts_derSig71 : derFullOK derSig71 = true := by decide
 
-/-- **Obligation.**  A string accepted by the full DER parser, and inside the
-BOLT 3 witness-size window, is accepted by the envelope-based wire predicate.
-This is the soundness direction of the parser refinement; it is true by the
-shape of `derFullOK` and the pending work is the byte-offset arithmetic. -/
+/-- `derFullOK` acceptance exposes the three bytes that `derEnvelope` checks:
+the `SEQUENCE` tag, the declared content length, and the leading `INTEGER`
+tag.  This is the shared prefix of the two parsers. -/
+private theorem derFullOK_header {b : ByteArray} (h : derFullOK b = true) :
+    byteAt b 0 = some 0x30 ∧
+      byteAt b 1 = some (UInt8.ofNat (b.size - 3)) ∧
+      byteAt b 2 = some 0x02 := by
+  unfold derFullOK at h
+  rw [Bool.and_eq_true] at h
+  obtain ⟨h012, _⟩ := h
+  rw [Bool.and_eq_true] at h012
+  obtain ⟨h01, h2⟩ := h012
+  rw [Bool.and_eq_true] at h01
+  obtain ⟨h0, h1⟩ := h01
+  exact ⟨(beq_iff_eq).mp h0, (beq_iff_eq).mp h1, (beq_iff_eq).mp h2⟩
+
+/-- The envelope predicate only inspects the three header bytes and the
+71--73 size window, so the header bytes extracted from `derFullOK` establish
+it. -/
+private theorem derEnvelope_of_header {b : ByteArray}
+    (h0 : byteAt b 0 = some 0x30)
+    (h1 : byteAt b 1 = some (UInt8.ofNat (b.size - 3)))
+    (h2 : byteAt b 2 = some 0x02)
+    (hlo : 71 ≤ b.size) (hhi : b.size ≤ 73) : derEnvelope b = true := by
+  unfold derEnvelope
+  simp [h0, h1, h2, hlo, hhi]
+
+/-- A string accepted by the full DER parser, and inside the BOLT 3
+witness-size window, is accepted by the envelope-based wire predicate.
+This is the soundness direction of the parser refinement: `derFullOK` checks
+strictly more than `derEnvelope`, so its acceptance implies the envelope
+wherever the only remaining requirement is the size window. -/
 theorem derFullOK_imp_wireSigOK (b : ByteArray) (h : derFullOK b = true)
     (hlo : 71 ≤ b.size) (hhi : b.size ≤ 73) : wireSigOK b = true := by
-  -- OBLIGATION: LN-ECDSA-001 full DER body acceptance implies the envelope predicate within 71--73 bytes
-  sorry
+  obtain ⟨h0, h1, h2⟩ := derFullOK_header h
+  have hd : derEnvelope b = true := derEnvelope_of_header h0 h1 h2 hlo hhi
+  have hne : b.size ≠ 64 := by omega
+  unfold wireSigOK
+  rw [show (b.size == 64) = false by simp [hne]]
+  simp [hd]
 
-/-- **Obligation.**  A full DER parse determines the two INTEGER lengths, and
-they partition the byte string: `size = 7 + rLen + sLen` (two INTEGER tags,
-both lengths, the `SEQUENCE` header, and one sighash byte). -/
+/-- A full DER parse determines the two INTEGER lengths, and they partition
+the byte string: `size = 7 + rLen + sLen` (two INTEGER tags, both lengths,
+the `SEQUENCE` header, and one sighash byte).  The lengths are exactly the
+bytes at offsets 3 and `5 + rLen`, which `derFullOK` requires to be present
+and to sum with the seven fixed bytes to the total size. -/
 theorem derFullOK_length_exact (b : ByteArray) (h : derFullOK b = true) :
     ∃ rLen sLen : Nat, b.size = 7 + rLen + sLen := by
-  -- OBLIGATION: LN-ECDSA-002 a full DER parse fixes the two INTEGER lengths and their sum plus the sighash byte
-  sorry
+  unfold derFullOK at h
+  rw [Bool.and_eq_true] at h
+  obtain ⟨_, h⟩ := h
+  generalize hr : byteAt b 3 = o at h
+  cases o with
+  | none => simp at h
+  | some r =>
+      simp only [] at h
+      rw [Bool.and_eq_true] at h
+      obtain ⟨_, h⟩ := h
+      generalize hs : byteAt b (5 + r.toNat) = o₂ at h
+      cases o₂ with
+      | none => simp at h
+      | some s =>
+          simp only [] at h
+          rw [Bool.and_eq_true] at h
+          obtain ⟨_, hsz⟩ := h
+          rw [decide_eq_true_eq] at hsz
+          exact ⟨r.toNat, s.toNat, by omega⟩
 
 /-- The `SEQUENCE` length byte of the 71-byte test vector is `0x44 = 68`,
 i.e. `size - 3`: one byte is the sighash type, which is outside the DER body. -/
