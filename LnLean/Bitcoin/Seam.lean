@@ -163,8 +163,9 @@ theorem htlcBranch_nonempty (ph : PaymentHash) (cltv : Height) (pk : PubKey) :
 
 /-! ## Commitment weight constants (BOLT 3) -/
 
-/-- Base commitment transaction weight, before HTLCs (`BOLT 3`:
-`commitment_base_weight = 724` for the anchor variant). -/
+/-- Base commitment transaction weight before HTLCs for the non-anchor
+variant (`BOLT 3`: 724; the anchor variant is 1124).  `Channel.Commitment`
+carries the boolean variant explicitly. -/
 def commitmentBaseWeight : Weight := ⟨724⟩
 
 /-- Weight added per offered HTLC (`172`). -/
