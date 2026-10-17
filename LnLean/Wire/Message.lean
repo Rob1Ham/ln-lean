@@ -100,7 +100,7 @@ def frame (m : WireMessage) : ByteArray :=
 
 /-- The frame has four bytes of type/length overhead plus the payload. -/
 theorem frame_size (m : WireMessage) : (frame m).size = 4 + m.payload.size := by
-  simp [frame, u16BE, beBytes_size, ByteArray.size_append, Nat.add_assoc]
+  simp [frame, u16BE, beBytes_size, ByteArray.size_append]
 
 /-- Frame size in terms of `messageSize`. -/
 theorem frame_size_eq (m : WireMessage) : (frame m).size = m.messageSize + 2 := by

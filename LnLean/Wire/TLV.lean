@@ -187,7 +187,7 @@ def parseRecord (l : List UInt8) : Option (TLVRecord × List UInt8) :=
       | none => none
       | some (len, n2) =>
           let l2 := l1.drop n2
-          if h : l2.length < len then none
+          if l2.length < len then none
           else
             some (⟨ty, (l2.take len).toByteArray⟩, l2.drop len)
 

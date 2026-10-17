@@ -277,10 +277,10 @@ theorem decodePayload_fd (n : Nat) (h1 : 0xfd ≤ n) (h2 : n ≤ 0xffff) :
   unfold decodePayload
   have hlen : (beBytesAux 2 n []).length = 2 := by
     simpa using beBytesAux_length 2 n []
-  rw [if_neg (by omega)]
+  rw [ite_eq_right (by omega)]
   rw [List.take_of_length_le (by omega)]
   rw [decodeBEList_beBytesAux]
-  simp only [List.length_nil, Nat.mul_zero, Nat.add_zero]
+  simp only [List.length_nil]
   have hlt : n < 256 ^ 2 := by
     have hp : 256 ^ 2 = 65536 := by decide
     omega
@@ -293,10 +293,10 @@ theorem decodePayload_fe (n : Nat) (h1 : 0x10000 ≤ n) (h2 : n ≤ 0xffffffff) 
   unfold decodePayload
   have hlen : (beBytesAux 4 n []).length = 4 := by
     simpa using beBytesAux_length 4 n []
-  rw [if_neg (by omega)]
+  rw [ite_eq_right (by omega)]
   rw [List.take_of_length_le (by omega)]
   rw [decodeBEList_beBytesAux]
-  simp only [List.length_nil, Nat.mul_zero, Nat.add_zero]
+  simp only [List.length_nil]
   have hlt : n < 256 ^ 4 := by
     have hp : 256 ^ 4 = 4294967296 := by decide
     omega
@@ -310,10 +310,10 @@ theorem decodePayload_ff (n : Nat) (h : 0x100000000 ≤ n)
   unfold decodePayload
   have hlen : (beBytesAux 8 n []).length = 8 := by
     simpa using beBytesAux_length 8 n []
-  rw [if_neg (by omega)]
+  rw [ite_eq_right (by omega)]
   rw [List.take_of_length_le (by omega)]
   rw [decodeBEList_beBytesAux]
-  simp only [List.length_nil, Nat.mul_zero, Nat.add_zero]
+  simp only [List.length_nil]
   have hlt : n < 256 ^ 8 := by
     have hp : 256 ^ 8 = 18446744073709551616 := by decide
     omega
@@ -325,7 +325,7 @@ theorem decode_encode_le_ffff (n : Nat) (h1 : 0xfd ≤ n) (h2 : n ≤ 0xffff) :
     decode (encode n) = some (n, 3) := by
   have hlt : ¬ n < 0xfd := by omega
   unfold decode encode
-  rw [if_neg hlt, if_pos h2]
+  rw [ite_eq_right hlt, ite_eq_left h2]
   rw [bytesToList_append, bytesToList_oneByte, bytesToList_beBytes]
   simp [decodePayload_fd, h1, h2]
 
@@ -335,7 +335,7 @@ theorem decode_encode_le_ffffffff (n : Nat) (h1 : 0x10000 ≤ n)
   have hlt : ¬ n < 0xfd := by omega
   have hgt : ¬ n ≤ 0xffff := by omega
   unfold decode encode
-  rw [if_neg hlt, if_neg hgt, if_pos h2]
+  rw [ite_eq_right hlt, ite_eq_right hgt, ite_eq_left h2]
   rw [bytesToList_append, bytesToList_oneByte, bytesToList_beBytes]
   simp [decodePayload_fe, h1, h2]
 
@@ -347,7 +347,7 @@ theorem decode_encode_gt_0xffffffff (n : Nat) (h : 0xffffffff < n)
   have hgt2 : ¬ n ≤ 0xffffffff := by omega
   have hlow : 0x100000000 ≤ n := by omega
   unfold decode encode
-  rw [if_neg hlt, if_neg hgt, if_neg hgt2]
+  rw [ite_eq_right hlt, ite_eq_right hgt, ite_eq_right hgt2]
   rw [bytesToList_append, bytesToList_oneByte, bytesToList_beBytes]
   simp [decodePayload_ff, hlow, hmax]
 
