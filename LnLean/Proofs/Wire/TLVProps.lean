@@ -279,7 +279,240 @@ theorem encodeTLV_size_le_of_sum_le (s : TLVStream)
   rw [encodeTLV_size_eq s]
   exact h
 
-/-! ## TLV: parser round trip (obligation) -/
+/-! ## TLV: parser round trip -/
+
+/-- `decodePayload` with a `0xfd` tag ignores a suffix after the two-byte
+payload. -/
+private theorem decodePayload_fd_append (n : Nat) (h1 : 0xfd ≤ n) (h2 : n ≤ 0xffff)
+    (rest : List UInt8) :
+    decodePayload 0xfd 2 (beBytesAux 2 n [] ++ rest) = some (n, 3) := by
+  unfold decodePayload
+  have hlen : (beBytesAux 2 n [] ++ rest).length = 2 + rest.length := by
+    simp [List.length_append, beBytesAux_length]
+  rw [ite_eq_right (by omega)]
+  have htake : List.take 2 (beBytesAux 2 n [] ++ rest) = beBytesAux 2 n [] := by
+    rw [show 2 = (beBytesAux 2 n []).length by simp [beBytesAux_length]]
+    exact List.take_left
+  rw [htake]
+  rw [decodeBEList_beBytesAux]
+  simp only [List.length_nil]
+  have hlt : n < 256 ^ 2 := by
+    have hp : 256 ^ 2 = 65536 := by decide
+    omega
+  rw [Nat.mod_eq_of_lt hlt]
+  simp [decodeBEList, h1, h2]
+
+/-- `decodePayload` with a `0xfe` tag ignores a suffix after the four-byte
+payload. -/
+private theorem decodePayload_fe_append (n : Nat) (h1 : 0x10000 ≤ n) (h2 : n ≤ 0xffffffff)
+    (rest : List UInt8) :
+    decodePayload 0xfe 4 (beBytesAux 4 n [] ++ rest) = some (n, 5) := by
+  unfold decodePayload
+  have hlen : (beBytesAux 4 n [] ++ rest).length = 4 + rest.length := by
+    simp [List.length_append, beBytesAux_length]
+  rw [ite_eq_right (by omega)]
+  have htake : List.take 4 (beBytesAux 4 n [] ++ rest) = beBytesAux 4 n [] := by
+    rw [show 4 = (beBytesAux 4 n []).length by simp [beBytesAux_length]]
+    exact List.take_left
+  rw [htake]
+  rw [decodeBEList_beBytesAux]
+  simp only [List.length_nil]
+  have hlt : n < 256 ^ 4 := by
+    have hp : 256 ^ 4 = 4294967296 := by decide
+    omega
+  rw [Nat.mod_eq_of_lt hlt]
+  simp [decodeBEList, h1, h2]
+
+/-- `decodePayload` with a `0xff` tag ignores a suffix after the eight-byte
+payload. -/
+private theorem decodePayload_ff_append (n : Nat) (h : 0x100000000 ≤ n)
+    (hmax : n < 18446744073709551616) (rest : List UInt8) :
+    decodePayload 0xff 8 (beBytesAux 8 n [] ++ rest) = some (n, 9) := by
+  unfold decodePayload
+  have hlen : (beBytesAux 8 n [] ++ rest).length = 8 + rest.length := by
+    simp [List.length_append, beBytesAux_length]
+  rw [ite_eq_right (by omega)]
+  have htake : List.take 8 (beBytesAux 8 n [] ++ rest) = beBytesAux 8 n [] := by
+    rw [show 8 = (beBytesAux 8 n []).length by simp [beBytesAux_length]]
+    exact List.take_left
+  rw [htake]
+  rw [decodeBEList_beBytesAux]
+  simp only [List.length_nil]
+  have hlt : n < 256 ^ 8 := by
+    have hp : 256 ^ 8 = 18446744073709551616 := by decide
+    omega
+  rw [Nat.mod_eq_of_lt hlt]
+  simp [decodeBEList, h]
+
+/-- `decode` on a byte list, used to reason about a `BigSize` followed by a
+suffix without repeatedly unfolding the `ByteArray` conversion. -/
+private def decodeL (l : List UInt8) : Option (Nat × Nat) :=
+  match l with
+  | [] => none
+  | x :: rest =>
+      if x.toNat < 0xfd then some (x.toNat, 1)
+      else if x = 0xfd then decodePayload x 2 rest
+      else if x = 0xfe then decodePayload x 4 rest
+      else decodePayload x 8 rest
+
+private theorem decode_toByteArray_eq_decodeL (l : List UInt8) :
+    decode l.toByteArray = decodeL l := by
+  unfold decode decodeL
+  rw [bytesToList_toByteArray]
+  rfl
+
+/-- Decoding a canonical BigSize at the head of a byte list is independent of
+the suffix. -/
+private theorem decodeL_encode_append (n : Nat) (hn : BigSizeDomain n)
+    (rest : List UInt8) :
+    decodeL (bytesToList (encode n) ++ rest) = some (n, (encode n).size) := by
+  by_cases h1 : n < 0xfd
+  · have h256 : n < 256 := by omega
+    have henc : encode n = oneByte n.toUInt8 := by simp [encode, h1]
+    rw [henc, bytesToList_oneByte]
+    simp [decodeL, toUInt8_toNat_of_lt h256, h1, oneByte_size]
+  · have h1' : 0xfd ≤ n := by omega
+    by_cases h2 : n ≤ 0xffff
+    · have henc : encode n = oneByte 0xfd ++ beBytes n 2 := by simp [encode, h1, h2]
+      rw [henc, bytesToList_append, bytesToList_oneByte, bytesToList_beBytes]
+      simp [decodeL, decodePayload_fd_append n h1' h2 rest, oneByte_size, beBytes_size,
+        ByteArray.size_append]
+    · have h2' : 0x10000 ≤ n := by omega
+      by_cases h3 : n ≤ 0xffffffff
+      · have henc : encode n = oneByte 0xfe ++ beBytes n 4 := by
+          simp [encode, h1, h2, h3]
+        rw [henc, bytesToList_append, bytesToList_oneByte, bytesToList_beBytes]
+        simp [decodeL, decodePayload_fe_append n h2' h3 rest, oneByte_size, beBytes_size,
+          ByteArray.size_append]
+      · have h3' : 0xffffffff < n := by omega
+        have hlow : 0x100000000 ≤ n := by omega
+        have henc : encode n = oneByte 0xff ++ beBytes n 8 := by
+          simp [encode, h1, h2, h3]
+        rw [henc, bytesToList_append, bytesToList_oneByte, bytesToList_beBytes]
+        simp [decodeL, decodePayload_ff_append n hlow hn rest, oneByte_size, beBytes_size,
+          ByteArray.size_append]
+
+/-- Byte-array form of `decodeL_encode_append`. -/
+private theorem decode_encode_append (n : Nat) (hn : BigSizeDomain n)
+    (rest : List UInt8) :
+    decode ((bytesToList (encode n) ++ rest).toByteArray) =
+      some (n, (encode n).size) := by
+  unfold decode
+  rw [bytesToList_toByteArray]
+  exact decodeL_encode_append n hn rest
+
+/-- A record value survives a round trip through its byte list. -/
+private theorem value_toByteArray (r : TLVRecord) :
+    (bytesToList r.value).toByteArray = r.value := by
+  apply ByteArray.ext
+  rw [List.data_toByteArray]
+  exact Array.toArray_toList
+
+/-- Parsing a record encoding followed by arbitrary bytes returns exactly that
+record, provided both BigSize fields are in the `uint64` domain. -/
+private theorem parseRecord_encode_append (r : TLVRecord) (hr : r.InDomain)
+    (rest : List UInt8) :
+    parseRecord (bytesToList (TLVRecord.encode r) ++ rest) = some (r, rest) := by
+  have hb : bytesToList (TLVRecord.encode r) =
+      bytesToList (encode r.type) ++ bytesToList (encode r.value.size) ++
+        bytesToList r.value := by
+    simp [TLVRecord.encode, bytesToList_append]
+  rw [hb]
+  unfold parseRecord
+  simp only [List.append_assoc]
+  rw [decode_encode_append r.type hr.1
+    (bytesToList (encode r.value.size) ++ (bytesToList r.value ++ rest))]
+  simp only
+  rw [← bytesToList_length (encode r.type), List.drop_left]
+  rw [decode_encode_append r.value.size hr.2 (bytesToList r.value ++ rest)]
+  simp only
+  rw [← bytesToList_length (encode r.value.size), List.drop_left]
+  have hlen : ¬ (bytesToList r.value ++ rest).length < r.value.size := by
+    rw [List.length_append, bytesToList_length]
+    omega
+  rw [ite_eq_right hlen]
+  rw [← bytesToList_length r.value, List.take_left, List.drop_left, value_toByteArray r]
+
+/-- `bytesToList` of a folded stream encoding is the concatenation of the
+record byte lists. -/
+private theorem bytesToList_foldl_encode (rs : List TLVRecord) (acc : ByteArray) :
+    bytesToList (rs.foldl (fun acc r => acc ++ TLVRecord.encode r) acc) =
+      bytesToList acc ++ rs.flatMap (fun r => bytesToList (TLVRecord.encode r)) := by
+  induction rs generalizing acc with
+  | nil => simp
+  | cons r rs ih =>
+      simp only [List.foldl]
+      rw [ih (acc ++ TLVRecord.encode r)]
+      rw [bytesToList_append]
+      simp [List.flatMap_cons, List.append_assoc]
+
+/-- The byte list of an encoded TLV stream is the concatenation of all record
+encodings. -/
+private theorem bytesToList_encodeTLV (s : TLVStream) :
+    bytesToList (encodeTLV s) =
+      s.records.flatMap (fun r => bytesToList (TLVRecord.encode r)) := by
+  unfold encodeTLV TLVStream.encode
+  rw [bytesToList_foldl_encode]
+  simp [bytesToList]
+
+/-- Every record encoding is at least one byte long. -/
+private theorem one_le_encodedSize (r : TLVRecord) : 1 ≤ r.encodedSize := by
+  rcases encode_size_cases r.type with h1 | h1 | h1 | h1 <;>
+    rcases encode_size_cases r.value.size with h2 | h2 | h2 | h2 <;>
+    unfold TLVRecord.encodedSize <;> omega
+
+/-- The number of records is at most the sum of their encoded sizes. -/
+private theorem length_le_sum_encodedSize (rs : List TLVRecord) :
+    rs.length ≤ (rs.map TLVRecord.encodedSize).sum := by
+  induction rs with
+  | nil => simp
+  | cons r rs ih =>
+      simp only [List.length_cons, List.map_cons, List.sum_cons]
+      have h := one_le_encodedSize r
+      omega
+
+/-- One unfolding step of the fuel-bounded parser on a nonempty input. -/
+private theorem decodeTLVGo_succ_cons (fuel : Nat) (x : UInt8) (xs : List UInt8) :
+    decodeTLVGo (fuel + 1) (x :: xs) =
+      (match parseRecord (x :: xs) with
+       | none => none
+       | some (r, rest) =>
+           match decodeTLVGo fuel rest with
+           | none => none
+           | some rs => some (r :: rs)) := rfl
+
+/-- The fuel-bounded parser consumes a list of encoded records, provided every
+record is in the `uint64` domain and there is at least one unit of fuel per
+record. -/
+private theorem decodeTLVGo_encode (rs : List TLVRecord)
+    (hdom : ∀ r ∈ rs, r.InDomain) (fuel : Nat) (hfuel : rs.length ≤ fuel) :
+    decodeTLVGo fuel
+      (rs.flatMap (fun r => bytesToList (TLVRecord.encode r))) = some rs := by
+  induction rs generalizing fuel with
+  | nil =>
+      cases fuel <;> simp [decodeTLVGo]
+  | cons r rs ih =>
+      cases fuel with
+      | zero => simp at hfuel
+      | succ f =>
+          have hlen : rs.length ≤ f := by simp at hfuel; omega
+          rw [List.flatMap_cons]
+          cases hb : bytesToList (TLVRecord.encode r) with
+          | nil =>
+              have hzero : (bytesToList (TLVRecord.encode r)).length = 0 := by
+                rw [hb]; rfl
+              rw [bytesToList_length] at hzero
+              have hpos : 0 < (TLVRecord.encode r).size := by
+                rw [TLVRecord.encode_size]
+                exact Nat.lt_of_lt_of_le (by decide) (one_le_encodedSize r)
+              omega
+          | cons x xs =>
+              simp only [List.cons_append]
+              rw [decodeTLVGo_succ_cons]
+              rw [← List.cons_append, ← hb]
+              rw [parseRecord_encode_append r (hdom r (by simp)) _]
+              simp only
+              rw [ih (fun x hx => hdom x (by simp [hx])) f hlen]
 
 /-- **Canonical TLV round trip.**  Encoding a canonical stream and running
 the reference parser returns the original stream.  The parser itself does
@@ -287,8 +520,14 @@ not enforce canonicality (see `decodeTLV_accepts_duplicate_types`), so the
 hypothesis is essential. -/
 theorem decodeTLV_encodeTLV (s : TLVStream) (h : s.Canonical) :
     decodeTLV (encodeTLV s) = some s := by
-  -- OBLIGATION: LN-WIRE-001 canonical TLV streams round-trip through encodeTLV/decodeTLV
-  sorry
+  unfold decodeTLV
+  rw [bytesToList_encodeTLV]
+  have hdom : ∀ r ∈ s.records, r.InDomain := h.2.2
+  have hfuel : s.records.length ≤ (encodeTLV s).size + 1 := by
+    rw [encodeTLV_size_eq]
+    have := length_le_sum_encodedSize s.records
+    omega
+  rw [decodeTLVGo_encode s.records hdom ((encodeTLV s).size + 1) hfuel]
 
 /-! ## Message framing -/
 
