@@ -8,8 +8,10 @@ definitions are anchored to BOLTs and `rust-lightning`, and every unproved
 claim is a named obligation.  Wave A (8 agents) built the 35 executable model
 modules; wave B (32 agents) added the proof statements under
 `LnLean/Proofs/`; wave C (16 agents) closed 20 of the 25 remaining proof
-obligations.  Five obligations remain, each documented as either false for
-the current model or requiring a missing model invariant.  See
+obligations.  An independent `phase-c` lane also finished at 20/25; the final
+branch uses its stronger whole-file versions for the three files that remain
+open.  Five obligations remain, each documented as either false for the
+current model or requiring a missing model invariant.  See
 `docs/WAVE-STATUS.md` and `agents/reports/WAVE-C-INTEGRATOR.md`.
 
 ## Layout

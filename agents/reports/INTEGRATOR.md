@@ -1,7 +1,7 @@
 # Integrator report
 
 - repository: `/home/ubuntu/ln-lean`
-- HEAD: `6d71ce3e2ca2ae21de161939d230ad03c86fc90c` ([C02] close proof obligations in FundingProps)
+- HEAD: `dfaa998f9c9f170f0807e04458a72d403d9b86fb` ([LN-WAVE-C] integrate 20/25 proof closures, lane comparison, and final report)
 - wave A: **8/8** agents exited, gate: `A-GREEN 2026-10-17T22:35:33Z
 modules=35
 vendor=ok
@@ -15,7 +15,7 @@ check=ok`
 
 - Lean files: **69** (36 model, 33 proof)
 - model declarations: **1075**
-- proof declarations: **1547**
+- proof declarations: **1563**
 - wave-A catalog rows: **48** (13 proved, 35 statement-only)
 - wave-B `-- OBLIGATION:` markers: **32**
 - `sorry` sites under `Proofs/`: **5**
@@ -24,18 +24,18 @@ check=ok`
 
 | File | Line |
 |---|---:|
-| `LnLean/Proofs/Bitcoin/FundingProps.lean` | 456 |
-| `LnLean/Proofs/Channel/ReserveProps.lean` | 586 |
-| `LnLean/Proofs/Routing/GossipProps.lean` | 878 |
-| `LnLean/Proofs/Routing/GossipProps.lean` | 887 |
-| `LnLean/Proofs/Routing/GossipProps.lean` | 897 |
+| `LnLean/Proofs/Bitcoin/FundingProps.lean` | 679 |
+| `LnLean/Proofs/Channel/ReserveProps.lean` | 604 |
+| `LnLean/Proofs/Routing/GossipProps.lean` | 958 |
+| `LnLean/Proofs/Routing/GossipProps.lean` | 1016 |
+| `LnLean/Proofs/Routing/GossipProps.lean` | 1050 |
 
 ## Wave-B files
 
 | File | Declarations | Obligation markers |
 |---|---:|---:|
 | `LnLean/Proofs/Bitcoin/AnchorProps.lean` | 48 | 0 |
-| `LnLean/Proofs/Bitcoin/FundingProps.lean` | 37 | 1 |
+| `LnLean/Proofs/Bitcoin/FundingProps.lean` | 40 | 1 |
 | `LnLean/Proofs/Bitcoin/ScriptProps.lean` | 63 | 3 |
 | `LnLean/Proofs/Bitcoin/WeightProps.lean` | 47 | 0 |
 | `LnLean/Proofs/Channel/BreachProps.lean` | 28 | 19 |
@@ -43,7 +43,7 @@ check=ok`
 | `LnLean/Proofs/Channel/FeeProps.lean` | 32 | 0 |
 | `LnLean/Proofs/Channel/HTLCProps.lean` | 44 | 0 |
 | `LnLean/Proofs/Channel/PenaltyProps.lean` | 28 | 0 |
-| `LnLean/Proofs/Channel/ReserveProps.lean` | 55 | 1 |
+| `LnLean/Proofs/Channel/ReserveProps.lean` | 58 | 1 |
 | `LnLean/Proofs/Channel/RevocationProps.lean` | 27 | 0 |
 | `LnLean/Proofs/Channel/StateMachineProps.lean` | 28 | 0 |
 | `LnLean/Proofs/Conservation.lean` | 53 | 0 |
@@ -59,7 +59,7 @@ check=ok`
 | `LnLean/Proofs/Protocol/ErrorProps.lean` | 39 | 0 |
 | `LnLean/Proofs/Protocol/FeaturesProps.lean` | 75 | 0 |
 | `LnLean/Proofs/Protocol/HandshakeProps.lean` | 40 | 0 |
-| `LnLean/Proofs/Routing/GossipProps.lean` | 74 | 3 |
+| `LnLean/Proofs/Routing/GossipProps.lean` | 83 | 3 |
 | `LnLean/Proofs/Routing/GraphProps.lean` | 37 | 1 |
 | `LnLean/Proofs/Routing/OnionProps.lean` | 40 | 0 |
 | `LnLean/Proofs/Routing/RouteBlindingProps.lean` | 66 | 0 |

@@ -9,32 +9,47 @@
 - Policy gate: `check.sh` **OK** (`files=69 obligations=32 sorry_in_proofs=5`)
 - Vendor integrity: **OK**
 - Remaining `sorry` sites: **5** (down from 25)
+- Proof declarations after integration: **1563**
 
 Wave C was one agent per proof file.  Every agent's own file builds, and the
 full root build passes on the resulting branch.  No model module and no
 existing theorem/lemma statement was changed; `check-wave-c.py` compares
 against `b891a59` and enforces both rules.
 
+## Integration note
+
+The other box's `phase-c` lane finished after the first comparison.  Its
+final head is `cb3a125` (`PC02` closed the second `FundingProps` site), so
+both lanes finished at **20/25** closed and **5** open.  The final branch is
+a whole-file selection:
+
+- the 13 files closed by Wave C keep their `wave-c/235` versions;
+- the three files that remain open (`FundingProps`, `ReserveProps`,
+  `GossipProps`) use the `phase-c` versions, because they add proved
+  conditional forms and mechanized counterexamples while leaving the same
+  five statements open;
+- no theorem body from one lane was merged into the other lane's file.
+
 ## Per-file result
 
-| Unit | File | Baseline | Final | Result |
+| Unit | File | Baseline | Final | Source |
 |---|---|---:|---:|---|
-| C01 | `LnLean/Proofs/Bitcoin/AnchorProps.lean` | 2 | 0 | closed |
-| C02 | `LnLean/Proofs/Bitcoin/FundingProps.lean` | 2 | 1 | 1 open |
-| C03 | `LnLean/Proofs/Bitcoin/ScriptProps.lean` | 3 | 0 | closed |
-| C04 | `LnLean/Proofs/Channel/HTLCProps.lean` | 2 | 0 | closed |
-| C05 | `LnLean/Proofs/Channel/ReserveProps.lean` | 1 | 1 | 1 open |
-| C06 | `LnLean/Proofs/Channel/StateMachineProps.lean` | 1 | 0 | closed |
-| C07 | `LnLean/Proofs/Conservation.lean` | 1 | 0 | closed |
-| C08 | `LnLean/Proofs/Crypto/EcdsaProps.lean` | 2 | 0 | closed |
-| C09 | `LnLean/Proofs/Crypto/Sha256Props.lean` | 1 | 0 | closed |
-| C10 | `LnLean/Proofs/Payment/KeysendProps.lean` | 1 | 0 | closed |
-| C11 | `LnLean/Proofs/Payment/MPPProps.lean` | 1 | 0 | closed |
-| C12 | `LnLean/Proofs/Protocol/ChannelReestablishProps.lean` | 2 | 0 | closed |
-| C13 | `LnLean/Proofs/Protocol/FeaturesProps.lean` | 1 | 0 | closed |
-| C14 | `LnLean/Proofs/Routing/GossipProps.lean` | 3 | 3 | 3 open |
-| C15 | `LnLean/Proofs/Routing/GraphProps.lean` | 1 | 0 | closed |
-| C16 | `LnLean/Proofs/Wire/TLVProps.lean` | 1 | 0 | closed |
+| C01 | `LnLean/Proofs/Bitcoin/AnchorProps.lean` | 2 | 0 | wave-c |
+| C02 | `LnLean/Proofs/Bitcoin/FundingProps.lean` | 2 | 1 | phase-c |
+| C03 | `LnLean/Proofs/Bitcoin/ScriptProps.lean` | 3 | 0 | wave-c |
+| C04 | `LnLean/Proofs/Channel/HTLCProps.lean` | 2 | 0 | wave-c |
+| C05 | `LnLean/Proofs/Channel/ReserveProps.lean` | 1 | 1 | phase-c |
+| C06 | `LnLean/Proofs/Channel/StateMachineProps.lean` | 1 | 0 | wave-c |
+| C07 | `LnLean/Proofs/Conservation.lean` | 1 | 0 | wave-c |
+| C08 | `LnLean/Proofs/Crypto/EcdsaProps.lean` | 2 | 0 | wave-c |
+| C09 | `LnLean/Proofs/Crypto/Sha256Props.lean` | 1 | 0 | wave-c |
+| C10 | `LnLean/Proofs/Payment/KeysendProps.lean` | 1 | 0 | wave-c |
+| C11 | `LnLean/Proofs/Payment/MPPProps.lean` | 1 | 0 | wave-c |
+| C12 | `LnLean/Proofs/Protocol/ChannelReestablishProps.lean` | 2 | 0 | wave-c |
+| C13 | `LnLean/Proofs/Protocol/FeaturesProps.lean` | 1 | 0 | wave-c |
+| C14 | `LnLean/Proofs/Routing/GossipProps.lean` | 3 | 3 | phase-c |
+| C15 | `LnLean/Proofs/Routing/GraphProps.lean` | 1 | 0 | wave-c |
+| C16 | `LnLean/Proofs/Wire/TLVProps.lean` | 1 | 0 | wave-c |
 | **Total** | | **25** | **5** | **20 closed** |
 
 `ScriptProps` and `GraphProps` retain their original `-- OBLIGATION:`
@@ -45,11 +60,11 @@ without a `sorry` is a proved-or-retained target, not an open proof.
 
 | Obligation | Site | Why it remains open |
 |---|---|---|
-| `LN-FUND-001` | `FundingProps.lean:456` | The literal statement `witnessScript.parse = none` is **false** for the current parser; C02 mechanised the `some [...]` counterexample. The fix is a well-formedness/range hypothesis, not a proof of the current statement. |
-| `LN-CH-101` | `ReserveProps.lean:586` | The unguarded ledger statement is **false** under truncated subtraction. C05 added and proved the guarded companion `committed_update_preserves_ledger_of_guard`; the original statement and marker are retained. |
-| `LN-GOSSIP-001` | `GossipProps.lean:878` | The signing key is not linked to an announced node key. C14 mechanised the negation as `LN_GOSSIP_001_counterexample`. |
-| `LN-GOSSIP-002` | `GossipProps.lean:887` | `ChannelAnnellation.capacitySat` is unconstrained. C14 mechanised the negation as `LN_GOSSIP_002_counterexample`. |
-| `LN-GOSSIP-003` | `GossipProps.lean:897` | `SigVerifier` does not require `GossipSignature.Valid`. C14 mechanised the negation as `LN_GOSSIP_003_counterexample`. |
+| `LN-FUND-001` | `FundingProps.lean:679` | The literal statement `witnessScript.parse = none` is **false** for the current parser; `PC02` mechanised the `some [...]` counterexample and proved `witnessScript_parse_eq_none_of_wellFormed`. The fix is a well-formedness/range hypothesis, not a proof of the current statement. |
+| `LN-CH-101` | `ReserveProps.lean:604` | The unguarded ledger statement is **false** under truncated subtraction. `PC09` mechanised the counterexample and proved `committed_update_preserves_ledger_of_le` under the BOLT 2 affordability guard; the original statement and marker are retained. |
+| `LN-GOSSIP-001` | `GossipProps.lean:958` | The signing key is not linked to an announced node key. `PC14` proved a conditional admission form and mechanised the counterexample. |
+| `LN-GOSSIP-002` | `GossipProps.lean:1016` | `ChannelAnnellation.capacitySat` is unconstrained. `PC14` proved a conditional positive-capacity form and mechanised the counterexample. |
+| `LN-GOSSIP-003` | `GossipProps.lean:1050` | `SigVerifier` does not require `GossipSignature.Valid`. `PC14` proved a conditional length-respecting form and mechanised the counterexample. |
 
 These are model gaps, not unfinished tactic scripts.  Closing them honestly
 requires adding the missing invariants/guards to the model or proving a
@@ -57,22 +72,25 @@ corrected statement, whichever the project chooses.
 
 ## Cross-lane comparison
 
-The other box independently ran 16 `phase-c` agents on the same files.  Its
-`phase-c` head at comparison time was `2ccfca1`; it closed **19/25** sites and
-left **6** open (`FundingProps` 2, `ReserveProps` 1, `GossipProps` 3).
+The other box independently ran 16 `phase-c` agents on the same files.  At
+its final head `cb3a125`, it also closed **20/25** sites and left the same
+**5** open (`FundingProps` 1, `ReserveProps` 1, `GossipProps` 3).
 
-Decision: **use the `wave-c/235` version for all 16 files.**
+The tie was resolved per file:
 
-- `FundingProps`: `wave-c/235` has 1 open, `phase-c` has 2.  Wave C is strictly better.
-- `ReserveProps`: both have the same single open obligation; the Wave-C version
-  also contains the proved guarded companion, so it is retained.
-- `GossipProps`: both have the same three false statements; the Wave-C version
-  contains the private, `sorry`-free counterexamples and is retained.
-- The other 13 files are closed in both lanes and all build here.  Keeping one
-  coherent lane avoids mixing two different proof bodies in one file.
+- For the three open files, the `phase-c` versions add proved conditional
+  theorems (`witnessScript_parse_eq_none_of_wellFormed`,
+  `committed_update_preserves_ledger_of_le`, and the three
+  `*_of_*` gossip admission lemmas) plus mechanized counterexamples, so they
+  are retained.
+- For the 13 closed files, the Wave-C versions are retained; each exact
+  module builds, and `check-wave-c.py` confirms no statement was removed.
+- Whole files were selected; no two competing proof bodies were merged into
+  one theorem.
 
-No file from `/home/ubuntu/ln-lean-phasec` was copied or merged, and no history
-on `phase-c` or `main` was rewritten.
+No file from `/home/ubuntu/ln-lean-phasec` was edited, and no history on
+`phase-c` or `main` was rewritten.  The selected files were read from
+`phase-c` under the isolation rules in `agents/WAVE-C-PLAN.md`.
 
 ## Gate commands
 
@@ -93,7 +111,9 @@ check-wave-c: OK
 check: OK
 ```
 
-## Agent commits
+## Commits
+
+The 16 Wave-C agent commits are on `wave-c/235`:
 
 ```text
 69ea346 [C13] close proof obligations in FeaturesProps
@@ -113,3 +133,6 @@ aac4fd2 [C12] close proof obligations in ChannelReestablishProps
 cfb0907 [C09] close proof obligations in Sha256Props
 6d71ce3 [C02] close proof obligations in FundingProps
 ```
+
+The initial integration commit is `dfaa998`; the hybrid whole-file update is
+the current tip of `wave-c/235`.  The other lane's final head is `cb3a125`.

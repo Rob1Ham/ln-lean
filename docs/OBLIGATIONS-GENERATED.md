@@ -7,7 +7,7 @@ a proof: a listed obligation may still be `sorry`.
 - proof files: **33**
 - wave-B obligation markers: **32**
 - wave-A catalog obligations: **48** (13 proved, 35 statement-only)
-- declarations: **1547**
+- declarations: **1563**
 - `sorry` sites: **5**
 - duplicate marker ids: **0**
 
@@ -23,7 +23,7 @@ a proof: a listed obligation may still be `sorry`.
 
 | Id | Domain | File:line | Claim |
 |---|---|---|---|
-| `LN-FUND-001` | Bitcoin | `LnLean/Proofs/Bitcoin/FundingProps.lean:455` | the wave-A script parser rejects `OP_CHECKMULTISIG`. |
+| `LN-FUND-001` | Bitcoin | `LnLean/Proofs/Bitcoin/FundingProps.lean:675` | the stated claim is missing `p.WellFormed` |
 | `LN-SCRIPT-001` | Bitcoin | `LnLean/Proofs/Bitcoin/ScriptProps.lean:713` | The fixed-width four-byte little-endian push is injective on values below 2^32. |
 | `LN-SCRIPT-002` | Bitcoin | `LnLean/Proofs/Bitcoin/ScriptProps.lean:746` | Distinct CLTV expiries yield distinct received-HTLC witness scripts, so the script commits to the expiry. |
 | `LN-SCRIPT-003` | Bitcoin | `LnLean/Proofs/Bitcoin/ScriptProps.lean:766` | Distinct 20-byte payment-hash digests yield distinct offered-HTLC witness scripts, so the script commits to the payment hash. |
@@ -50,10 +50,10 @@ a proof: a listed obligation may still be `sorry`.
 | `LN-COMMIT-006` | Channel | `LnLean/Proofs/Channel/CommitmentTxProps.lean:456` | BOLT 3 §6 requires BIP 69+CLTV sorting of the final outputs; the model fixes the group order instead, so sorted-order equivalence is open. |
 | `LN-COMMIT-004` | Channel | `LnLean/Proofs/Channel/CommitmentTxProps.lean:463` | BOLT 3's single-anchor exception (no HTLCs and one output below dust) is not modelled: `commitmentOutputs` always emits both anchors when `anchorOutputs = true`. |
 | `LN-COMMIT-003` | Channel | `LnLean/Proofs/Channel/CommitmentTxProps.lean:524` | The refinement `LnLean.Channel.Step` → `CommitmentCounterStep` (and the identification of `Commitment.commitmentNumber` with the channel counter) is not proved: importing `State.lean` is outside the B09 import set. |
-| `LN-CH-101` | Channel | `LnLean/Proofs/Channel/ReserveProps.lean:585` | a committed update preserves settled-plus-in-flight value |
-| `LN-GOSSIP-001` | Routing | `LnLean/Proofs/Routing/GossipProps.lean:872` | an accepted channel_update is signed by one of the two announced node ids of its channel |
-| `LN-GOSSIP-002` | Routing | `LnLean/Proofs/Routing/GossipProps.lean:883` | an accepted channel announcement has a positive capacity |
-| `LN-GOSSIP-003` | Routing | `LnLean/Proofs/Routing/GossipProps.lean:892` | an accepted channel_update has a 64-byte signature |
+| `LN-CH-101` | Channel | `LnLean/Proofs/Channel/ReserveProps.lean:601` | missing bridge: no `Step`/`update_add_htlc` |
+| `LN-GOSSIP-001` | Routing | `LnLean/Proofs/Routing/GossipProps.lean:952` | an accepted channel_update is signed by one of the two announced node ids of its channel (missing admission: the store never checks u.signingKey against the announcement for u.shortChannelId) |
+| `LN-GOSSIP-002` | Routing | `LnLean/Proofs/Routing/GossipProps.lean:1012` | an accepted channel announcement has a positive capacity (missing admission: no check 0 < a.capacitySat before bindChannel returns some) |
+| `LN-GOSSIP-003` | Routing | `LnLean/Proofs/Routing/GossipProps.lean:1045` | an accepted channel_update has a 64-byte signature (missing admission: SigVerifier may accept a signature whose bytes.size ≠ 64) |
 | `LN-GRAPH-001` | Routing | `LnLean/Proofs/Routing/GraphProps.lean:512` | every path returned by simplePaths is a walk of enabled edges (either orientation) |
 
 ## Wave-A catalog
@@ -184,20 +184,23 @@ a proof: a listed obligation may still be `sorry`.
 | theorem | `capacity_eq_funder_plus_push` | `LnLean/Proofs/Bitcoin/FundingProps.lean:277` |
 | theorem | `capacity_independent_of_push` | `LnLean/Proofs/Bitcoin/FundingProps.lean:285` |
 | theorem | `fundingValue_independent_of_push` | `LnLean/Proofs/Bitcoin/FundingProps.lean:289` |
-| theorem | `channelCapacityMsat_le_MSAT_MAX` | `LnLean/Proofs/Bitcoin/FundingProps.lean:298` |
-| def | `confirmFunding` | `LnLean/Proofs/Bitcoin/FundingProps.lean:321` |
-| theorem | `confirm_finalChannelId` | `LnLean/Proofs/Bitcoin/FundingProps.lean:330` |
-| theorem | `confirm_finalChannelId_txid` | `LnLean/Proofs/Bitcoin/FundingProps.lean:337` |
-| theorem | `confirm_stable` | `LnLean/Proofs/Bitcoin/FundingProps.lean:346` |
-| theorem | `confirm_preserves_funding` | `LnLean/Proofs/Bitcoin/FundingProps.lean:353` |
-| theorem | `confirm_finalChannelId_deterministic` | `LnLean/Proofs/Bitcoin/FundingProps.lean:362` |
-| abbrev | `SigCheck` | `LnLean/Proofs/Bitcoin/FundingProps.lean:372` |
-| def | `TwoOfTwoWitness` | `LnLean/Proofs/Bitcoin/FundingProps.lean:378` |
-| def | `FundingSpendBridge` | `LnLean/Proofs/Bitcoin/FundingProps.lean:390` |
-| def | `SpendOnly2of2` | `LnLean/Proofs/Bitcoin/FundingProps.lean:398` |
-| theorem | `fundingSpend_conditional_2of2_only` | `LnLean/Proofs/Bitcoin/FundingProps.lean:406` |
-| theorem | `fundingSpend_reveals_witnessScript` | `LnLean/Proofs/Bitcoin/FundingProps.lean:420` |
-| theorem | `witnessScript_parse_eq_none` | `LnLean/Proofs/Bitcoin/FundingProps.lean:453` |
+| theorem | `channelCapacityMsat_le_MSAT_MAX` | `LnLean/Proofs/Bitcoin/FundingProps.lean:297` |
+| def | `confirmFunding` | `LnLean/Proofs/Bitcoin/FundingProps.lean:310` |
+| theorem | `confirm_finalChannelId` | `LnLean/Proofs/Bitcoin/FundingProps.lean:319` |
+| theorem | `confirm_finalChannelId_txid` | `LnLean/Proofs/Bitcoin/FundingProps.lean:326` |
+| theorem | `confirm_stable` | `LnLean/Proofs/Bitcoin/FundingProps.lean:335` |
+| theorem | `confirm_preserves_funding` | `LnLean/Proofs/Bitcoin/FundingProps.lean:342` |
+| theorem | `confirm_finalChannelId_deterministic` | `LnLean/Proofs/Bitcoin/FundingProps.lean:351` |
+| abbrev | `SigCheck` | `LnLean/Proofs/Bitcoin/FundingProps.lean:361` |
+| def | `TwoOfTwoWitness` | `LnLean/Proofs/Bitcoin/FundingProps.lean:367` |
+| def | `FundingSpendBridge` | `LnLean/Proofs/Bitcoin/FundingProps.lean:379` |
+| def | `SpendOnly2of2` | `LnLean/Proofs/Bitcoin/FundingProps.lean:387` |
+| theorem | `fundingSpend_conditional_2of2_only` | `LnLean/Proofs/Bitcoin/FundingProps.lean:395` |
+| theorem | `fundingSpend_reveals_witnessScript` | `LnLean/Proofs/Bitcoin/FundingProps.lean:409` |
+| theorem | `witnessScript_parse_eq_none` | `LnLean/Proofs/Bitcoin/FundingProps.lean:673` |
+| theorem | `witnessScript_parse_eq_none_of_wellFormed` | `LnLean/Proofs/Bitcoin/FundingProps.lean:685` |
+| theorem | `orderedFundingKeys_self` | `LnLean/Proofs/Bitcoin/FundingProps.lean:733` |
+| theorem | `witnessScript_parse_ne_none_counterexample` | `LnLean/Proofs/Bitcoin/FundingProps.lean:764` |
 | def | `BytesContain` | `LnLean/Proofs/Bitcoin/ScriptProps.lean:98` |
 | def | `ScriptContains` | `LnLean/Proofs/Bitcoin/ScriptProps.lean:102` |
 | def | `ScriptContainsKey` | `LnLean/Proofs/Bitcoin/ScriptProps.lean:106` |
@@ -490,61 +493,65 @@ a proof: a listed obligation may still be `sorry`.
 | theorem | `penaltyValidBindsSecret_secret_eq` | `LnLean/Proofs/Channel/PenaltyProps.lean:314` |
 | theorem | `breach_number_le_max` | `LnLean/Proofs/Channel/PenaltyProps.lean:329` |
 | theorem | `revocationSecret_breach_injective` | `LnLean/Proofs/Channel/PenaltyProps.lean:338` |
-| def | `localReserveSat` | `LnLean/Proofs/Channel/ReserveProps.lean:97` |
-| def | `remoteReserveSat` | `LnLean/Proofs/Channel/ReserveProps.lean:102` |
-| def | `ReserveWithinCapacity` | `LnLean/Proofs/Channel/ReserveProps.lean:109` |
-| def | `ReserveInvariant` | `LnLean/Proofs/Channel/ReserveProps.lean:114` |
-| def | `HtlcBoundsHold` | `LnLean/Proofs/Channel/ReserveProps.lean:121` |
-| def | `ChannelHtlcBounds` | `LnLean/Proofs/Channel/ReserveProps.lean:127` |
-| theorem | `reserve_nonneg` | `LnLean/Proofs/Channel/ReserveProps.lean:132` |
-| theorem | `reserve_nonneg_and_within_capacity` | `LnLean/Proofs/Channel/ReserveProps.lean:137` |
-| theorem | `remoteReserve_within_capacity` | `LnLean/Proofs/Channel/ReserveProps.lean:143` |
-| theorem | `reserve_not_always_within_capacity` | `LnLean/Proofs/Channel/ReserveProps.lean:151` |
-| theorem | `step_preserves_reserveWithinCapacity` | `LnLean/Proofs/Channel/ReserveProps.lean:165` |
-| theorem | `step_preserves_reserveInvariant` | `LnLean/Proofs/Channel/ReserveProps.lean:176` |
-| def | `spendLocalBalance` | `LnLean/Proofs/Channel/ReserveProps.lean:191` |
-| def | `spendRemoteBalance` | `LnLean/Proofs/Channel/ReserveProps.lean:195` |
-| theorem | `spendLocal_preserves_reserve` | `LnLean/Proofs/Channel/ReserveProps.lean:200` |
-| theorem | `spendRemote_preserves_remoteReserve` | `LnLean/Proofs/Channel/ReserveProps.lean:210` |
-| theorem | `balanceDrop_preserves_reserveInvariant` | `LnLean/Proofs/Channel/ReserveProps.lean:222` |
-| theorem | `htlcMinimum_le_maxHtlc` | `LnLean/Proofs/Channel/ReserveProps.lean:242` |
-| theorem | `maxHtlc_le_capacity` | `LnLean/Proofs/Channel/ReserveProps.lean:248` |
-| theorem | `local_htlc_bounds` | `LnLean/Proofs/Channel/ReserveProps.lean:254` |
-| theorem | `remote_htlc_bounds` | `LnLean/Proofs/Channel/ReserveProps.lean:261` |
-| theorem | `step_preserves_channelHtlcBounds` | `LnLean/Proofs/Channel/ReserveProps.lean:268` |
-| theorem | `maxHtlc_le_funding_of_ldk_bound` | `LnLean/Proofs/Channel/ReserveProps.lean:278` |
-| def | `candidateOutputs` | `LnLean/Proofs/Channel/ReserveProps.lean:295` |
-| def | `trimOutput` | `LnLean/Proofs/Channel/ReserveProps.lean:301` |
-| def | `dropOutput` | `LnLean/Proofs/Channel/ReserveProps.lean:305` |
-| def | `dustTrimmedOutputs` | `LnLean/Proofs/Channel/ReserveProps.lean:309` |
-| def | `dustDroppedOutputs` | `LnLean/Proofs/Channel/ReserveProps.lean:314` |
-| def | `outputSum` | `LnLean/Proofs/Channel/ReserveProps.lean:318` |
-| def | `anchorValueOf` | `LnLean/Proofs/Channel/ReserveProps.lean:323` |
-| theorem | `mem_dustTrimmedOutputs` | `LnLean/Proofs/Channel/ReserveProps.lean:328` |
-| theorem | `mem_dustDroppedOutputs` | `LnLean/Proofs/Channel/ReserveProps.lean:348` |
-| theorem | `dustTrimmedOutputs_not_dust` | `LnLean/Proofs/Channel/ReserveProps.lean:367` |
-| theorem | `dustDroppedOutputs_are_dust` | `LnLean/Proofs/Channel/ReserveProps.lean:374` |
-| theorem | `candidateOutputs_kept_or_dropped` | `LnLean/Proofs/Channel/ReserveProps.lean:381` |
-| theorem | `anchorOutput_not_dust` | `LnLean/Proofs/Channel/ReserveProps.lean:395` |
-| theorem | `toLocal_kept_of_reserve` | `LnLean/Proofs/Channel/ReserveProps.lean:403` |
-| theorem | `outputSum_filterMap_trim_drop` | `LnLean/Proofs/Channel/ReserveProps.lean:414` |
-| theorem | `dust_trim_conservation` | `LnLean/Proofs/Channel/ReserveProps.lean:431` |
-| theorem | `commitment_conservation_with_dust` | `LnLean/Proofs/Channel/ReserveProps.lean:440` |
-| theorem | `gross_dust_rule_insufficient` | `LnLean/Proofs/Channel/ReserveProps.lean:453` |
-| def | `commitmentReserveSat` | `LnLean/Proofs/Channel/ReserveProps.lean:467` |
-| def | `CommitmentReserveOk` | `LnLean/Proofs/Channel/ReserveProps.lean:473` |
-| def | `CommitmentValid` | `LnLean/Proofs/Channel/ReserveProps.lean:479` |
-| theorem | `commitmentValid_reserve` | `LnLean/Proofs/Channel/ReserveProps.lean:485` |
-| theorem | `commitmentValid_no_dust_output` | `LnLean/Proofs/Channel/ReserveProps.lean:490` |
-| theorem | `reserve_violation_invalidates_commitment` | `LnLean/Proofs/Channel/ReserveProps.lean:498` |
-| theorem | `commitmentValid_local_toLocal_ge` | `LnLean/Proofs/Channel/ReserveProps.lean:505` |
-| theorem | `commitmentValid_remote_toLocal_ge` | `LnLean/Proofs/Channel/ReserveProps.lean:513` |
-| def | `ValueConserved` | `LnLean/Proofs/Channel/ReserveProps.lean:523` |
-| theorem | `valueConserved_iff` | `LnLean/Proofs/Channel/ReserveProps.lean:527` |
-| theorem | `step_preserves_valueConservation` | `LnLean/Proofs/Channel/ReserveProps.lean:534` |
-| def | `htlcInFlightValue` | `LnLean/Proofs/Channel/ReserveProps.lean:542` |
-| theorem | `committed_update_preserves_ledger` | `LnLean/Proofs/Channel/ReserveProps.lean:571` |
-| theorem | `committed_update_preserves_ledger_of_guard` | `LnLean/Proofs/Channel/ReserveProps.lean:592` |
+| def | `localReserveSat` | `LnLean/Proofs/Channel/ReserveProps.lean:102` |
+| def | `remoteReserveSat` | `LnLean/Proofs/Channel/ReserveProps.lean:107` |
+| def | `ReserveWithinCapacity` | `LnLean/Proofs/Channel/ReserveProps.lean:114` |
+| def | `ReserveInvariant` | `LnLean/Proofs/Channel/ReserveProps.lean:119` |
+| def | `HtlcBoundsHold` | `LnLean/Proofs/Channel/ReserveProps.lean:126` |
+| def | `ChannelHtlcBounds` | `LnLean/Proofs/Channel/ReserveProps.lean:132` |
+| theorem | `reserve_nonneg` | `LnLean/Proofs/Channel/ReserveProps.lean:137` |
+| theorem | `reserve_nonneg_and_within_capacity` | `LnLean/Proofs/Channel/ReserveProps.lean:142` |
+| theorem | `remoteReserve_within_capacity` | `LnLean/Proofs/Channel/ReserveProps.lean:148` |
+| theorem | `reserve_not_always_within_capacity` | `LnLean/Proofs/Channel/ReserveProps.lean:156` |
+| theorem | `step_preserves_reserveWithinCapacity` | `LnLean/Proofs/Channel/ReserveProps.lean:170` |
+| theorem | `step_preserves_reserveInvariant` | `LnLean/Proofs/Channel/ReserveProps.lean:181` |
+| def | `spendLocalBalance` | `LnLean/Proofs/Channel/ReserveProps.lean:196` |
+| def | `spendRemoteBalance` | `LnLean/Proofs/Channel/ReserveProps.lean:200` |
+| theorem | `spendLocal_preserves_reserve` | `LnLean/Proofs/Channel/ReserveProps.lean:205` |
+| theorem | `spendRemote_preserves_remoteReserve` | `LnLean/Proofs/Channel/ReserveProps.lean:215` |
+| theorem | `balanceDrop_preserves_reserveInvariant` | `LnLean/Proofs/Channel/ReserveProps.lean:227` |
+| theorem | `htlcMinimum_le_maxHtlc` | `LnLean/Proofs/Channel/ReserveProps.lean:247` |
+| theorem | `maxHtlc_le_capacity` | `LnLean/Proofs/Channel/ReserveProps.lean:253` |
+| theorem | `local_htlc_bounds` | `LnLean/Proofs/Channel/ReserveProps.lean:259` |
+| theorem | `remote_htlc_bounds` | `LnLean/Proofs/Channel/ReserveProps.lean:266` |
+| theorem | `step_preserves_channelHtlcBounds` | `LnLean/Proofs/Channel/ReserveProps.lean:273` |
+| theorem | `maxHtlc_le_funding_of_ldk_bound` | `LnLean/Proofs/Channel/ReserveProps.lean:283` |
+| def | `candidateOutputs` | `LnLean/Proofs/Channel/ReserveProps.lean:300` |
+| def | `trimOutput` | `LnLean/Proofs/Channel/ReserveProps.lean:306` |
+| def | `dropOutput` | `LnLean/Proofs/Channel/ReserveProps.lean:310` |
+| def | `dustTrimmedOutputs` | `LnLean/Proofs/Channel/ReserveProps.lean:314` |
+| def | `dustDroppedOutputs` | `LnLean/Proofs/Channel/ReserveProps.lean:319` |
+| def | `outputSum` | `LnLean/Proofs/Channel/ReserveProps.lean:323` |
+| def | `anchorValueOf` | `LnLean/Proofs/Channel/ReserveProps.lean:328` |
+| theorem | `mem_dustTrimmedOutputs` | `LnLean/Proofs/Channel/ReserveProps.lean:333` |
+| theorem | `mem_dustDroppedOutputs` | `LnLean/Proofs/Channel/ReserveProps.lean:353` |
+| theorem | `dustTrimmedOutputs_not_dust` | `LnLean/Proofs/Channel/ReserveProps.lean:372` |
+| theorem | `dustDroppedOutputs_are_dust` | `LnLean/Proofs/Channel/ReserveProps.lean:379` |
+| theorem | `candidateOutputs_kept_or_dropped` | `LnLean/Proofs/Channel/ReserveProps.lean:386` |
+| theorem | `anchorOutput_not_dust` | `LnLean/Proofs/Channel/ReserveProps.lean:400` |
+| theorem | `toLocal_kept_of_reserve` | `LnLean/Proofs/Channel/ReserveProps.lean:408` |
+| theorem | `outputSum_filterMap_trim_drop` | `LnLean/Proofs/Channel/ReserveProps.lean:419` |
+| theorem | `dust_trim_conservation` | `LnLean/Proofs/Channel/ReserveProps.lean:436` |
+| theorem | `commitment_conservation_with_dust` | `LnLean/Proofs/Channel/ReserveProps.lean:445` |
+| theorem | `gross_dust_rule_insufficient` | `LnLean/Proofs/Channel/ReserveProps.lean:458` |
+| def | `commitmentReserveSat` | `LnLean/Proofs/Channel/ReserveProps.lean:472` |
+| def | `CommitmentReserveOk` | `LnLean/Proofs/Channel/ReserveProps.lean:478` |
+| def | `CommitmentValid` | `LnLean/Proofs/Channel/ReserveProps.lean:484` |
+| theorem | `commitmentValid_reserve` | `LnLean/Proofs/Channel/ReserveProps.lean:490` |
+| theorem | `commitmentValid_no_dust_output` | `LnLean/Proofs/Channel/ReserveProps.lean:495` |
+| theorem | `reserve_violation_invalidates_commitment` | `LnLean/Proofs/Channel/ReserveProps.lean:503` |
+| theorem | `commitmentValid_local_toLocal_ge` | `LnLean/Proofs/Channel/ReserveProps.lean:510` |
+| theorem | `commitmentValid_remote_toLocal_ge` | `LnLean/Proofs/Channel/ReserveProps.lean:518` |
+| def | `ValueConserved` | `LnLean/Proofs/Channel/ReserveProps.lean:528` |
+| theorem | `valueConserved_iff` | `LnLean/Proofs/Channel/ReserveProps.lean:532` |
+| theorem | `step_preserves_valueConservation` | `LnLean/Proofs/Channel/ReserveProps.lean:539` |
+| def | `htlcInFlightValue` | `LnLean/Proofs/Channel/ReserveProps.lean:547` |
+| theorem | `inFlightSum_append_offered` | `LnLean/Proofs/Channel/ReserveProps.lean:554` |
+| theorem | `spendLocalBalance_total_val` | `LnLean/Proofs/Channel/ReserveProps.lean:571` |
+| theorem | `committed_update_preserves_ledger` | `LnLean/Proofs/Channel/ReserveProps.lean:585` |
+| theorem | `committed_update_preserves_ledger_of_le` | `LnLean/Proofs/Channel/ReserveProps.lean:612` |
+| theorem | `carries` | `LnLean/Proofs/Channel/ReserveProps.lean:637` |
+| theorem | `committed_update_preserves_ledger_counterexample` | `LnLean/Proofs/Channel/ReserveProps.lean:638` |
 | theorem | `secret_bytes_eq_32` | `LnLean/Proofs/Channel/RevocationProps.lean:75` |
 | theorem | `point_bytes_eq_33` | `LnLean/Proofs/Channel/RevocationProps.lean:83` |
 | theorem | `seed_bytes_eq_32` | `LnLean/Proofs/Channel/RevocationProps.lean:89` |
@@ -1349,9 +1356,18 @@ a proof: a listed obligation may still be `sorry`.
 | theorem | `applyMessage_gossip` | `LnLean/Proofs/Routing/GossipProps.lean:825` |
 | theorem | `applyMessage_views_wf` | `LnLean/Proofs/Routing/GossipProps.lean:832` |
 | theorem | `applyMessage_preserves_graphWellFormed` | `LnLean/Proofs/Routing/GossipProps.lean:856` |
-| theorem | `accepted_update_signing_key_announced` | `LnLean/Proofs/Routing/GossipProps.lean:873` |
-| theorem | `bindChannel_capacity_positive` | `LnLean/Proofs/Routing/GossipProps.lean:884` |
-| theorem | `accepted_update_signature_length` | `LnLean/Proofs/Routing/GossipProps.lean:893` |
+| def | `updateKeyAnnounced` | `LnLean/Proofs/Routing/GossipProps.lean:938` |
+| theorem | `accepted_update_signing_key_announced` | `LnLean/Proofs/Routing/GossipProps.lean:953` |
+| theorem | `accepted_update_signing_key_announced_counterexample` | `LnLean/Proofs/Routing/GossipProps.lean:964` |
+| theorem | `accepted_update_signing_key_announced_of_key_admission` | `LnLean/Proofs/Routing/GossipProps.lean:975` |
+| theorem | `updateKeyAnnounced_acceptChannelUpdate` | `LnLean/Proofs/Routing/GossipProps.lean:984` |
+| theorem | `bindChannel_capacitySat` | `LnLean/Proofs/Routing/GossipProps.lean:996` |
+| theorem | `bindChannel_capacity_positive` | `LnLean/Proofs/Routing/GossipProps.lean:1013` |
+| theorem | `bindChannel_capacity_positive_counterexample` | `LnLean/Proofs/Routing/GossipProps.lean:1020` |
+| theorem | `bindChannel_capacity_positive_of_announced` | `LnLean/Proofs/Routing/GossipProps.lean:1032` |
+| theorem | `accepted_update_signature_length` | `LnLean/Proofs/Routing/GossipProps.lean:1046` |
+| theorem | `accepted_update_signature_length_counterexample` | `LnLean/Proofs/Routing/GossipProps.lean:1054` |
+| theorem | `accepted_update_signature_length_of_verifier_length` | `LnLean/Proofs/Routing/GossipProps.lean:1062` |
 | def | `Graph.ReverseClosed` | `LnLean/Proofs/Routing/GraphProps.lean:96` |
 | def | `Graph.WellFormed` | `LnLean/Proofs/Routing/GraphProps.lean:105` |
 | theorem | `mem_neighbors_iff` | `LnLean/Proofs/Routing/GraphProps.lean:113` |

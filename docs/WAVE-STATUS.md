@@ -34,13 +34,20 @@ markers, and **25** `sorry` sites under `LnLean/Proofs/`.  The full root
 build was **77 jobs, RC 0** at integration commit `78c2f3f`.
 
 Wave C: **16/16** proof-closure agents exited with RC 0 on branch
-`wave-c/235`; every assigned module builds.  Wave C closed **20 of the 25**
-remaining `sorry` sites.  The final tree has **69** Lean files (36 model,
-33 proof), **1547** proof declarations, **32** retained obligation markers,
-and **5** `sorry` sites.  The full root build is **77 jobs, RC 0**.  The
-other box's independent `phase-c` lane closed 19 of 25; this branch is
-stronger on `FundingProps` and equal on the other files, so no `phase-c`
-file was merged.  See `agents/reports/WAVE-C-INTEGRATOR.md`.
+`wave-c/235`; every assigned module builds.  The integrated branch closes
+**20 of the 25** remaining `sorry` sites.  The final tree has **69** Lean
+files (36 model, 33 proof), **1563** proof declarations, **32** retained
+obligation markers, and **5** `sorry` sites.  The full root build is
+**77 jobs, RC 0**.
+
+The other box's independent `phase-c` lane finished at the same **20/25**
+after its final `PC02` commit (`cb3a125`).  Integration picks one whole file
+per path: the 13 closed files use the `wave-c/235` versions; the three files
+that remain open (`FundingProps`, `ReserveProps`, `GossipProps`) use the
+`phase-c` versions, which add proved conditional forms and mechanized
+counterexamples without closing the false unconditional statements.  No
+competing proof bodies were merged into one theorem.  See
+`agents/reports/WAVE-C-INTEGRATOR.md`.
 
 Five obligations remain open, deliberately:
 

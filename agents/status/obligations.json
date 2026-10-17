@@ -2,7 +2,7 @@
   "files": 33,
   "obligations": 32,
   "catalog_obligations": 48,
-  "declarations": 1547,
+  "declarations": 1563,
   "sorries": 5,
   "by_domain": {
     "Bitcoin": 4,
@@ -11,20 +11,20 @@
   },
   "by_kind": {
     "abbrev": 3,
-    "def": 347,
+    "def": 348,
     "inductive": 17,
     "structure": 41,
-    "theorem": 1139
+    "theorem": 1154
   },
   "duplicate_ids": [],
   "catalog_duplicate_ids": [],
   "rows": [
     {
       "id": "LN-FUND-001",
-      "claim": "the wave-A script parser rejects `OP_CHECKMULTISIG`.",
+      "claim": "the stated claim is missing `p.WellFormed`",
       "domain": "Bitcoin",
       "file": "LnLean/Proofs/Bitcoin/FundingProps.lean",
-      "line": 455
+      "line": 675
     },
     {
       "id": "LN-SCRIPT-001",
@@ -210,31 +210,31 @@
     },
     {
       "id": "LN-CH-101",
-      "claim": "a committed update preserves settled-plus-in-flight value",
+      "claim": "missing bridge: no `Step`/`update_add_htlc`",
       "domain": "Channel",
       "file": "LnLean/Proofs/Channel/ReserveProps.lean",
-      "line": 585
+      "line": 601
     },
     {
       "id": "LN-GOSSIP-001",
-      "claim": "an accepted channel_update is signed by one of the two announced node ids of its channel",
+      "claim": "an accepted channel_update is signed by one of the two announced node ids of its channel (missing admission: the store never checks u.signingKey against the announcement for u.shortChannelId)",
       "domain": "Routing",
       "file": "LnLean/Proofs/Routing/GossipProps.lean",
-      "line": 872
+      "line": 952
     },
     {
       "id": "LN-GOSSIP-002",
-      "claim": "an accepted channel announcement has a positive capacity",
+      "claim": "an accepted channel announcement has a positive capacity (missing admission: no check 0 < a.capacitySat before bindChannel returns some)",
       "domain": "Routing",
       "file": "LnLean/Proofs/Routing/GossipProps.lean",
-      "line": 883
+      "line": 1012
     },
     {
       "id": "LN-GOSSIP-003",
-      "claim": "an accepted channel_update has a 64-byte signature",
+      "claim": "an accepted channel_update has a 64-byte signature (missing admission: SigVerifier may accept a signature whose bytes.size \u2260 64)",
       "domain": "Routing",
       "file": "LnLean/Proofs/Routing/GossipProps.lean",
-      "line": 892
+      "line": 1045
     },
     {
       "id": "LN-GRAPH-001",
