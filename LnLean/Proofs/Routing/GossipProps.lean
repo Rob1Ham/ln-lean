@@ -74,14 +74,16 @@ What is explicitly **not** modelled:
   opaque `ByteArray`s and verifiers are abstract `SigVerifier`s.
 * BOLT 7 chain-hash filtering, UTXO lookup, the six-confirmation rule, and
   the "capacity equals funding output value" check.  `capacitySat` is an
-  unconstrained `Nat` in wave A; its positivity is an obligation below.
+  unconstrained `Nat` in wave A; the unconditional positivity claim is
+  refuted by a counterexample below and retained only in conditional form.
 * Per-`(short_channel_id, direction)` update clocks.  Wave A keeps one
   global clock and this module's `ChannelView` keys only by
   `short_channel_id`; the `direction` bit of `channel_flags` is not decoded.
 * The link between a graph `NodeId` and the BOLT 7 `node_id` public key:
   `ChannelAnnellation` carries both (`node1 : NodeId`, `nodeKey1 : PubKey`),
   but nothing in wave A proves that `nodeKey1` is the key controlled by
-  `node1`.  Signature attribution is therefore an obligation below.
+  `node1`.  Signature attribution is therefore a model/admission gap recorded
+  below by a counterexample and a conditional form.
 * Gossip rate limits, `gossip_queries`, peer dissemination, and any
   cryptographic unforgeability claim.
 -/
@@ -863,14 +865,14 @@ theorem applyMessage_preserves_graphWellFormed (verify : SigVerifier)
 
 end GossipNetwork
 
-/-! ## Open obligations
+/-! ## Refuted obligations and their counterexamples
 
-Each obligation below is a *model/admission* gap, not a missing arithmetic
-lemma.  The unconditional statement is false in the wave-A model (counter-
-examples are proved in this section), so the original statement keeps an
-`-- OBLIGATION:` marker and the strongest true conditional form is stated
-next to it.  Closing an obligation therefore requires extending the
-wave-A model, not merely a larger proof script. -/
+Each item below is a *model/admission* gap, not a missing arithmetic lemma.
+The unconditional statements are false in the wave-A model; the counterexamples
+proved in this section witness the gap, so the refuted unconditional theorems
+have been removed and the strongest true conditional forms are kept next to
+them.  Closing a gap therefore requires extending the wave-A model, not merely
+a larger proof script. -/
 
 /-! ### Concrete witnesses for the counterexamples -/
 
@@ -939,23 +941,18 @@ def updateKeyAnnounced (s : GossipState) (u : ChannelUpdate) : Prop :=
   ∃ a ∈ s.announcements, a.shortChannelId = u.shortChannelId ∧
     (a.nodeKey1 = u.signingKey ∨ a.nodeKey2 = u.signingKey)
 
-/-- **`LN-GOSSIP-001`, still open.**  BOLT 7 takes the `node_id` used to
-verify a `channel_update` from the matching `channel_announcement`
-(`refs/bolts/07-routing-gossip.md:544`).  Wave A's
+/- **`LN-GOSSIP-001` is refuted in the wave-A model.**  BOLT 7 takes the
+`node_id` used to verify a `channel_update` from the matching
+`channel_announcement` (`refs/bolts/07-routing-gossip.md:544`).  Wave A's
 `ChannelUpdate.signingKey` is an independent field and `SigVerifier` is an
 arbitrary function, so an accepted update may name a key that was never
 announced: `accepted_update_signing_key_announced_counterexample` below
-exhibits one.  The missing bridge is an admission check tying
-`u.signingKey` to the announcement for `u.shortChannelId` (or, at the type
-level, making `ChannelUpdate` carry no key and looking the key up in the
-store). -/
--- OBLIGATION: LN-GOSSIP-001 an accepted channel_update is signed by one of the two announced node ids of its channel (missing admission: the store never checks u.signingKey against the announcement for u.shortChannelId)
-theorem accepted_update_signing_key_announced (verify : SigVerifier)
-    (s : GossipState) (u : ChannelUpdate)
-    (h : acceptChannelUpdate verify s u ≠ s) :
-    ∃ a ∈ s.announcements, a.shortChannelId = u.shortChannelId ∧
-      (a.nodeKey1 = u.signingKey ∨ a.nodeKey2 = u.signingKey) := by
-  sorry
+exhibits one.  The unconditional claim was therefore removed; the missing
+bridge is an admission check tying `u.signingKey` to the announcement for
+`u.shortChannelId` (or, at the type level, making `ChannelUpdate` carry no
+key and looking the key up in the store), and
+`accepted_update_signing_key_announced_of_key_admission` is the strongest
+true conditional form kept here. -/
 
 /-- **Counterexample to `LN-GOSSIP-001`.**  With an always-accepting
 verifier, an empty store, and an update carrying an empty key, acceptance
@@ -1002,18 +999,16 @@ theorem bindChannel_capacitySat {verify : SigVerifier}
     rfl
   · simp at h
 
-/-- **`LN-GOSSIP-002`, still open.**  BOLT 7 defines `capacity` as the
-funding output value, which is positive on L1.  Wave A stores
-`capacitySat : Nat` without a positivity invariant and `bindChannel` copies
-it unchanged, so a zero-capacity announcement binds successfully
-(`bindChannel_capacity_positive_counterexample`).  The missing bridge is the
-admission check `0 < a.capacitySat` (BOLT 7's "capacity equals the funding
-output value"), or a subtype `{n : Nat // 0 < n}` in `ChannelAnnellation`. -/
--- OBLIGATION: LN-GOSSIP-002 an accepted channel announcement has a positive capacity (missing admission: no check 0 < a.capacitySat before bindChannel returns some)
-theorem bindChannel_capacity_positive {verify : SigVerifier}
-    {a : ChannelAnnellation} {b : ChannelBinding}
-    (h : bindChannel verify a = some b) : 0 < b.capacitySat := by
-  sorry
+/- **`LN-GOSSIP-002` is refuted in the wave-A model.**  BOLT 7 defines
+`capacity` as the funding output value, which is positive on L1.  Wave A
+stores `capacitySat : Nat` without a positivity invariant and `bindChannel`
+copies it unchanged, so a zero-capacity announcement binds successfully
+(`bindChannel_capacity_positive_counterexample`).  The unconditional claim was
+therefore removed; the missing bridge is the admission check
+`0 < a.capacitySat` (BOLT 7's "capacity equals the funding output value"), or
+a subtype `{n : Nat // 0 < n}` in `ChannelAnnellation`, and
+`bindChannel_capacity_positive_of_announced` is the strongest true conditional
+form kept here. -/
 
 /-- **Counterexample to `LN-GOSSIP-002`.**  An always-accepting verifier
 binds an announcement whose `capacitySat` is zero. -/
@@ -1036,18 +1031,16 @@ theorem bindChannel_capacity_positive_of_announced
   rw [bindChannel_capacitySat h]
   exact hcap
 
-/-- **`LN-GOSSIP-003`, still open.**  BOLT 7 gossip signatures are 64 bytes.
-`GossipSignature.Valid` records this, but the abstract `SigVerifier`
-interface does not require it: it may return `true` for a zero-byte
-signature, as `accepted_update_signature_length_counterexample` shows.  The
-missing bridge is either a length check in the admission path or the
-hypothesis `∀ key digest sig, verify key digest sig = true → sig.Valid`. -/
--- OBLIGATION: LN-GOSSIP-003 an accepted channel_update has a 64-byte signature (missing admission: SigVerifier may accept a signature whose bytes.size ≠ 64)
-theorem accepted_update_signature_length (verify : SigVerifier)
-    (s : GossipState) (u : ChannelUpdate)
-    (h : acceptChannelUpdate verify s u ≠ s) :
-    u.signature.Valid := by
-  sorry
+/- **`LN-GOSSIP-003` is refuted in the wave-A model.**  BOLT 7 gossip
+signatures are 64 bytes.  `GossipSignature.Valid` records this, but the
+abstract `SigVerifier` interface does not require it: it may return `true` for
+a zero-byte signature, as
+`accepted_update_signature_length_counterexample` shows.  The unconditional
+claim was therefore removed; the missing bridge is either a length check in
+the admission path or the hypothesis
+`∀ key digest sig, verify key digest sig = true → sig.Valid`, and
+`accepted_update_signature_length_of_verifier_length` is the strongest true
+conditional form kept here. -/
 
 /-- **Counterexample to `LN-GOSSIP-003`.**  The always-accepting verifier
 accepts an update whose signature is empty. -/
