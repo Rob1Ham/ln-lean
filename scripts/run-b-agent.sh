@@ -12,15 +12,8 @@ mkdir -p agents/logs agents/status
 status="agents/status/B.status"
 
 if [ "${LN_SKIP_GATE:-0}" != "1" ]; then
-  deadline=$((SECONDS + ${LN_GATE_TIMEOUT:-3600}))
-  while :; do
-    if grep -q 'DONE wave=A' agents/status/A.status 2>/dev/null; then
-      break
-    fi
-    exits=$(grep -c 'exit=' agents/status/A.status 2>/dev/null || true)
-    if [ "${exits:-0}" -ge 8 ]; then
-      break
-    fi
+  deadline=$((SECONDS + ${LN_GATE_TIMEOUT:-5400}))
+  while [ ! -f agents/status/A-GREEN ]; do
     if [ "$SECONDS" -ge "$deadline" ]; then
       echo "${name} gate_timeout $(date -u +%FT%TZ)" >> "$status"
       exit 3
