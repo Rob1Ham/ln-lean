@@ -76,7 +76,7 @@ def main() -> int:
                 bad_imports.append((m, line.strip()))
             if line.startswith("import Mathlib"):
                 bad_imports.append((m, line.strip()))
-        if stats[m][0] > 0 and stats[m][1] == 0:
+        if stats[m][2] > 0 and stats[m][1] == 0:
             no_marker.append(m)
         lines = t.splitlines()
         for i, line in enumerate(lines):
