@@ -438,14 +438,38 @@ theorem conservation_separates_fee (a : AnchorAccounting) :
 
 /-! ## Open byte-level obligations -/
 
-/-- Two equal anchor witness scripts commit to equal funding keys.  The proof
-needs ByteArray append-cancellation/prefix lemmas that the L1 snapshot does
-not expose at this level. -/
+/-- `pushData` is injective: both sides have a one-byte length prefix, so
+left-cancelling the payload is enough.  The payload length need not be known
+in advance; the prefix has the same size (`1`) on both sides. -/
+private theorem pushData_injective {a b : ByteArray} (h : pushData a = pushData b) :
+    a = b := by
+  unfold pushData at h
+  have hs : (ByteArray.empty.push a.size.toUInt8).size =
+      (ByteArray.empty.push b.size.toUInt8).size := by simp
+  exact (ByteArray.append_eq_append_iff_of_size_eq_left hs).mp h |>.2
+
+/-- Two equal anchor witness scripts commit to equal funding keys.  The anchor
+template is the key push followed by a fixed opcode suffix, so equality
+cancels the suffix (`ByteArray.append_left_inj`) and then the push prefix
+(`pushData_injective`). -/
 theorem anchorWitnessScript_key_injective
     (k₁ k₂ : PubKey) (h₁ : k₁.Valid) (h₂ : k₂.Valid)
     (h : anchorWitnessScript k₁ = anchorWitnessScript k₂) : k₁ = k₂ := by
-  -- OBLIGATION: LN-ANCHOR-007 equal anchor witness scripts imply equal funding keys
-  sorry
+  have hb : (anchorWitnessScript k₁).bytes = (anchorWitnessScript k₂).bytes :=
+    congrArg Script.bytes h
+  have hp : pushData k₁.bytes = pushData k₂.bytes := by
+    apply (ByteArray.append_left_inj
+      ((ByteArray.empty.push OP_CHECKSIG) ++
+       (ByteArray.empty.push OP_IFDUP) ++
+       (ByteArray.empty.push OP_NOTIF) ++
+       (ByteArray.empty.push OP_16) ++
+       (ByteArray.empty.push OP_CSV) ++
+       (ByteArray.empty.push OP_ENDIF))).mp
+    simpa [anchorWitnessScript, ByteArray.append_assoc] using hb
+  have hbytes : k₁.bytes = k₂.bytes := pushData_injective hp
+  cases k₁
+  cases k₂
+  simpa using hbytes
 
 /-- Under SHA256 collision resistance, distinct funding keys give distinct
 anchor P2WSH programs.  This composes `LN-ANCHOR-007` with the assumed hash
@@ -458,7 +482,18 @@ theorem localAnchor_hash_ne_remoteAnchor_hash
     (hk₁ : p.localFundingKey.Valid) (hk₂ : p.remoteFundingKey.Valid)
     (hkeys : p.localFundingKey ≠ p.remoteFundingKey) :
     p.localAnchorWitnessScriptHash ≠ p.remoteAnchorWitnessScriptHash := by
-  -- OBLIGATION: LN-ANCHOR-008 collision-resistant P2WSH programs separate the two anchors
-  sorry
+  intro heq
+  have hlocal : p.localAnchorWitnessScriptHash =
+      sha256 (anchorWitnessScript p.localFundingKey) := h.2.2.1
+  have hremote : p.remoteAnchorWitnessScriptHash =
+      sha256 (anchorWitnessScript p.remoteFundingKey) := h.2.2.2
+  have hsh : sha256 (anchorWitnessScript p.localFundingKey) =
+      sha256 (anchorWitnessScript p.remoteFundingKey) := by
+    rw [← hlocal, ← hremote]
+    exact heq
+  have hscripts : anchorWitnessScript p.localFundingKey =
+      anchorWitnessScript p.remoteFundingKey := hcr _ _ hsh
+  exact hkeys (anchorWitnessScript_key_injective
+    p.localFundingKey p.remoteFundingKey hk₁ hk₂ hscripts)
 
 end LnLean.Bitcoin
