@@ -29,8 +29,8 @@ English claim of this module:
 * `findEdge` is deterministic: for a fixed graph and endpoint pair the
   optional result is unique.
 * `Graph.Walk` is the adjacency walk relation (an enabled edge in either
-  orientation).  That `simplePaths` returns walks is stated as
-  obligation `LN-GRAPH-001` and is not proved here.
+  orientation).  `simplePaths_walk` proves that every path returned by
+  `simplePaths` is a walk, closing obligation `LN-GRAPH-001`.
 
 BOLT sections:
 
@@ -464,17 +464,59 @@ theorem adjacent_of_mem_neighbors {g : Graph} {a b : NodeId}
 
 /-- `g.Walk p` holds when every consecutive pair in `p` is adjacent in `g`
 (over an enabled edge, in either orientation).  This is the connectivity
-property that `simplePaths` *should* satisfy; it is stated here and left as
-obligation `LN-GRAPH-001`. -/
+property satisfied by `simplePaths`; see `simplePaths_walk`. -/
 def Graph.Walk (g : Graph) : List NodeId → Prop
   | [] => True
   | [_] => True
   | a :: b :: rest => Graph.Adjacent g a b ∧ Graph.Walk g (b :: rest)
 
--- OBLIGATION: LN-GRAPH-001 every path returned by simplePaths is a walk of enabled edges (either orientation)
+/-- **Enumerator soundness for walks.**  Every path produced by
+`simplePathsAux` from `current` is a `Graph.Walk`.  The proof is an induction on
+the fuel.  In the recursive branch, `List.mem_flatMap` exposes the chosen
+neighbour `next ∈ g.neighbors current`, which `adjacent_of_mem_neighbors`
+turns into the first adjacency step; `simplePathsAux_head` identifies the head
+of the child path with `next`, so the inductive hypothesis supplies the rest. -/
+private theorem simplePathsAux_walk {g : Graph} {dst : NodeId} :
+    ∀ (fuel : Nat) (visited : List NodeId) (current : NodeId) (p : List NodeId),
+      p ∈ Graph.simplePathsAux g dst fuel visited current → g.Walk p := by
+  intro fuel
+  induction fuel with
+  | zero =>
+    intro visited current p h
+    simp [Graph.simplePathsAux] at h
+  | succ fuel ih =>
+    intro visited current p h
+    simp only [Graph.simplePathsAux] at h
+    split at h
+    · rename_i hcurdst
+      simp only [List.mem_singleton] at h
+      subst h
+      simp [Graph.Walk]
+    · rcases List.mem_flatMap.mp h with ⟨next, hnext, hp⟩
+      by_cases hcontains : visited.contains next = true
+      · rw [ite_eq_left hcontains] at hp
+        simp at hp
+      · rw [ite_eq_right hcontains] at hp
+        rcases List.mem_map.mp hp with ⟨q, hq, rfl⟩
+        have hqwalk : g.Walk q := ih (next :: visited) next q hq
+        have hqhead : q.head? = some next := Graph.simplePathsAux_head hq
+        have hadj : g.Adjacent current next := adjacent_of_mem_neighbors hnext
+        cases q with
+        | nil => simp [Graph.Walk]
+        | cons b rest =>
+          have hb : b = next := by simpa using hqhead
+          subst hb
+          exact ⟨hadj, hqwalk⟩
+
+/-- **`simplePaths` returns walks.**  Every path returned by
+`Graph.simplePaths g src dst maxHops` is a `Walk` of enabled edges (in either
+orientation).  This closes obligation `LN-GRAPH-001`. -/
 theorem simplePaths_walk {g : Graph} {src dst : NodeId} {maxHops : Nat}
     {p : List NodeId} (h : p ∈ Graph.simplePaths g src dst maxHops) :
     g.Walk p := by
-  sorry
+  unfold Graph.simplePaths at h
+  split at h
+  · simp at h
+  · exact simplePathsAux_walk maxHops [src] src p h
 
 end LnLean.Routing
