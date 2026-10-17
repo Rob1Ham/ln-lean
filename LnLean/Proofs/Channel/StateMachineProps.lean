@@ -388,6 +388,37 @@ theorem channelReady_reachable_without_fundingSigned :
     trace_channelReady_without_fundingSigned, ?_⟩
   simp
 
+/-- A step whose source is not yet `normal` and whose target is `normal` must
+be `fundingLocked`: it is the only constructor of `Step` that enters the
+`normal` phase from below.  (Without the source premise the statement is
+false, since every `normal`-phase event keeps the phase at `normal`.) -/
+private theorem step_target_normal_eq_fundingLocked {a b : Channel}
+    {e : ProtocolEvent} (h : Step a e b) (hb : b.phase = .normal)
+    (ha : a.phase ≠ .normal) :
+    e = ProtocolEvent.fundingLocked := by
+  cases h <;> simp_all
+
+/-- Auxiliary form of the `channel_ready` ordering claim: a trace that starts
+below `normal` and ends in `normal` contains `fundingLocked`.  The induction
+splits on the phase of the intermediate channel: if the first step already
+enters `normal` it must be `fundingLocked`; otherwise the tail is a shorter
+trace from a non-`normal` source and the induction hypothesis applies. -/
+private theorem fundingLocked_mem_of_trace_to_normal {a b : Channel}
+    {es : List ProtocolEvent} (ht : Trace a es b)
+    (hb : b.phase = .normal) (ha : a.phase ≠ .normal) :
+    ProtocolEvent.fundingLocked ∈ es := by
+  induction ht with
+  | nil c =>
+      exact absurd hb ha
+  | cons hs htr ih =>
+      rename_i aa bb cc ee ess
+      by_cases hmid : bb.phase = .normal
+      · have he : ee = ProtocolEvent.fundingLocked :=
+          step_target_normal_eq_fundingLocked hs hmid ha
+        simp [he]
+      · have hmem : ProtocolEvent.fundingLocked ∈ ess := ih hb hmid
+        exact List.mem_cons_of_mem ee hmem
+
 /-- If a trace starts in `negotiating` and ends in `normal`, then it must
 contain `fundingLocked`: that is the only constructor of `Step` whose target
 phase is `normal` from a lower phase, and the phase rank never decreases.
@@ -396,7 +427,6 @@ theorem trace_to_normal_contains_fundingLocked {c d : Channel}
     {es : List ProtocolEvent} (ht : Trace c es d)
     (hc : c.phase = .negotiating) (hd : d.phase = .normal) :
     ProtocolEvent.fundingLocked ∈ es := by
-  -- OBLIGATION: LN-CH-010 a trace from negotiating to normal contains fundingLocked
-  sorry
+  exact fundingLocked_mem_of_trace_to_normal ht hd (by rw [hc]; decide)
 
 end LnLean.Channel
