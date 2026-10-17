@@ -1,0 +1,8 @@
+.lake/
+*.olean
+*.ilean
+*.trace
+.DS_Store
+agents/logs/
+refs/rust-lightning/
+refs/bolts/
