@@ -544,11 +544,30 @@ def htlcInFlightValue (c : Channel) : Nat :=
       h.state = HTLCState.offered ∨ h.state = HTLCState.received)).map
     (fun h => h.amount.val)).sum
 
+/-- Adding one pending HTLC to the in-flight bucket adds exactly its amount. -/
+private theorem htlcInFlightValue_append_pending (c : Channel) (b : Balance)
+    (h : HTLC)
+    (hp : h.state = HTLCState.offered ∨ h.state = HTLCState.received) :
+    htlcInFlightValue { c with balance := b, htlcs := c.htlcs ++ [h] } =
+      htlcInFlightValue c + h.amount.val := by
+  unfold htlcInFlightValue
+  simp [List.filter_append, List.map_append, List.sum_append, hp]
+
 /-- Next model extension: add BOLT 2 `update_add_htlc` (a local balance drop
 plus a new pending HTLC) to `Channel.Step` and prove that the
 settled-plus-in-flight ledger is preserved.  The current `Step` relation
 changes neither balances nor HTLCs, so this cannot be derived from the wave-A
-transition relation yet. -/
+transition relation yet.
+
+The statement as written is false for the current model: `spendLocalBalance`
+uses truncated `Nat` subtraction, and no hypothesis bounds `amount.val` by
+the local balance.  The missing BOLT 2 precondition is
+`amount.val ≤ c.balance.localBalance.val`, the `update_add_htlc` affordability
+check.  Counterexample: local balance `1000`, remote `0`, funding `1000`, no
+HTLCs, fee `0`, and `amount = 1001` satisfy `h_old` and `h_step`, but the
+conclusion reads `1001 = 1000`.  The guarded companion
+`committed_update_preserves_ledger_of_guard` below proves the intended
+arithmetic once that precondition is supplied. -/
 theorem committed_update_preserves_ledger (c c' : Channel) (fee : Msat)
     (amount : Msat)
     (h_old : c.balance.total.val + htlcInFlightValue c + fee.val =
@@ -565,5 +584,54 @@ theorem committed_update_preserves_ledger (c c' : Channel) (fee : Msat)
       c'.fundingValue.val := by
   -- OBLIGATION: LN-CH-101 a committed update preserves settled-plus-in-flight value
   sorry
+
+/-- Guarded form of `committed_update_preserves_ledger`: with BOLT 2's
+`update_add_htlc` affordability precondition `amount.val ≤ localBalance`, the
+settled-plus-in-flight ledger is preserved.  This is the arithmetic the model
+needs once the balance-changing update constructor is added to `Step`. -/
+theorem committed_update_preserves_ledger_of_guard (c c' : Channel) (fee : Msat)
+    (amount : Msat)
+    (h_old : c.balance.total.val + htlcInFlightValue c + fee.val =
+      c.fundingValue.val)
+    (h_guard : amount.val ≤ c.balance.localBalance.val)
+    (h_step : c' = { c with
+      balance := spendLocalBalance c.balance amount.val
+      htlcs := c.htlcs ++
+        [{ direction := Direction.local
+           amount := amount
+           paymentHash := ⟨ByteArray.empty⟩
+           cltvExpiry := 0
+           state := HTLCState.offered }] }) :
+    c'.balance.total.val + htlcInFlightValue c' + fee.val =
+      c'.fundingValue.val := by
+  subst c'
+  let h : HTLC := { direction := Direction.local
+                    amount := amount
+                    paymentHash := ⟨ByteArray.empty⟩
+                    cltvExpiry := 0
+                    state := HTLCState.offered }
+  have hp : h.state = HTLCState.offered ∨ h.state = HTLCState.received :=
+    Or.inl rfl
+  have hin : htlcInFlightValue
+      { c with
+        balance := spendLocalBalance c.balance amount.val
+        htlcs := c.htlcs ++ [h] } =
+      htlcInFlightValue c + amount.val :=
+    htlcInFlightValue_append_pending c (spendLocalBalance c.balance amount.val) h hp
+  change (spendLocalBalance c.balance amount.val).total.val +
+      htlcInFlightValue
+        { c with
+          balance := spendLocalBalance c.balance amount.val
+          htlcs := c.htlcs ++ [h] } + fee.val = c.fundingValue.val
+  rw [hin]
+  have htotal : (spendLocalBalance c.balance amount.val).total.val =
+      c.balance.total.val - amount.val := by
+    simp [spendLocalBalance, Balance.total_val]
+    omega
+  rw [htotal]
+  have hlocal_le_total : amount.val ≤ c.balance.total.val := by
+    simp [Balance.total_val]
+    omega
+  omega
 
 end LnLean.Proofs.Channel
