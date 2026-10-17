@@ -19,10 +19,17 @@ DECL = re.compile(r"^\s*(theorem|lemma|def|structure|inductive|abbrev)\s+([A-Za-
 SORRY = re.compile(r"\bsorry\b")
 
 
+def strip_comments(text: str) -> str:
+    """Crude comment stripper for reporting counts, not for policy checks."""
+    text = re.sub(r"/-.*?-/", "", text, flags=re.S)
+    text = re.sub(r"--[^\n]*", "", text)
+    return text
+
+
 def count_decls(paths):
     n = 0
     for p in paths:
-        n += len(DECL.findall(p.read_text(encoding="utf-8")))
+        n += len(DECL.findall(strip_comments(p.read_text(encoding="utf-8"))))
     return n
 
 
@@ -49,8 +56,9 @@ def main():
     b_files = [p for p in proofs if p.name != "Obligations.lean"]
     sorries = []
     for p in all_lean:
-        for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
-            if SORRY.search(line) and "-- OBLIGATION" not in line and not line.strip().startswith("--"):
+        code = strip_comments(p.read_text(encoding="utf-8"))
+        for i, line in enumerate(code.splitlines(), 1):
+            if SORRY.search(line):
                 sorries.append((p.relative_to(ROOT), i))
     markers = 0
     for p in proofs:
@@ -89,10 +97,11 @@ def main():
         "|---|---:|---:|",
     ]
     for p in b_files:
-        t = p.read_text(encoding="utf-8")
+        raw = p.read_text(encoding="utf-8")
+        code = strip_comments(raw)
         lines.append(
-            f"| `{p.relative_to(ROOT)}` | {len(DECL.findall(t))} | "
-            f"{len(re.findall(r'--\\s*OBLIGATION:\\s*LN-', t))} |"
+            f"| `{p.relative_to(ROOT)}` | {len(DECL.findall(code))} | "
+            f"{len(re.findall(r'--\\s*OBLIGATION:\\s*LN-', raw))} |"
         )
     lines += [
         "",
