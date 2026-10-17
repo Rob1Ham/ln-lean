@@ -422,14 +422,25 @@ theorem totalHtlcValue_addToSet (h : HTLCRecord) (hs : List HTLCRecord) :
 live set, and a settled HTLCRecord is never live. -/
 theorem htlcSet_removeFromSet_comm (id : Nat) (hs : List HTLCRecord) :
     htlcSet (removeFromSet id hs) = removeFromSet id (htlcSet hs) := by
-  -- OBLIGATION: LN-HTLCRecord-010 Removing an HTLCRecord id commutes with filtering to the live HTLCRecord set.
-  sorry
+  unfold htlcSet removeFromSet
+  rw [List.filter_filter, List.filter_filter]
+  apply List.filter_congr
+  intro x _
+  exact Bool.and_comm _ _
 
 /-- A pointwise amount bound yields a bound on the total in-flight value. -/
 theorem totalHtlcValue_le_length_mul (hs : List HTLCRecord) (m : Nat)
     (hbound : ∀ h ∈ hs, h.amountMsat.val ≤ m) :
     totalHtlcValue hs ≤ hs.length * m := by
-  -- OBLIGATION: LN-HTLCRecord-011 The in-flight value of a finite HTLCRecord set is at most its size times any pointwise amount bound.
-  sorry
+  induction hs with
+  | nil => simp [totalHtlcValue]
+  | cons h t ih =>
+    have hh : h.amountMsat.val ≤ m := hbound h (List.mem_cons_self ..)
+    have ht : ∀ x ∈ t, x.amountMsat.val ≤ m :=
+      fun x hx => hbound x (List.mem_cons_of_mem h hx)
+    have ih' := ih ht
+    rw [List.length_cons, Nat.add_mul, Nat.one_mul]
+    change h.amountMsat.val + totalHtlcValue t ≤ t.length * m + m
+    omega
 
 end LnLean.Proofs.Channel.HTLCProps
