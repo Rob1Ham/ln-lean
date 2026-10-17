@@ -15,6 +15,18 @@ Wave B is gated on `agents/status/A-GREEN`.  The gate means every wave-A
 module builds and `scripts/check.sh` passes, so a proof agent never starts
 from missing or broken imports.
 
+## Current status
+
+Wave A is complete: all **8/8** agents exited with RC 0, all **35** expected
+modules build, all four wave-A docs exist, and the vendor checksum, policy
+checks, and pinned-anchor checker pass.  The A-green gate was written at
+`2026-10-17T22:35:33Z`; the 32 wave-B agents started immediately after it.
+
+The wave-A catalog has **48** obligations: 13 are marked `proved` against the
+small security models, 35 are `statementOnly`.  That distinction is the
+honest status: a statement-only row is a tracked future theorem, not a
+result.
+
 ## Reproduce
 
 ```sh
