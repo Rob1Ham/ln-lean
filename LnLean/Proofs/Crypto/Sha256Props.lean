@@ -67,9 +67,9 @@ in `LnLean.Crypto.Model` is injectivity on *all* `ByteArray`, while
 `sha256_size` forces every image to be 32 bytes.  A function from the (vast)
 space of byte arrays into the finite set of 32-byte strings cannot be
 injective, so the global field is not simultaneously satisfiable with
-`sha256_size`.  This module makes that gap explicit as obligation
-`LN-CR-007` (`no_injective_hash_into_32_bytes`) and uses the field only in
-explicitly conditional theorems.  The consistent hypothesis for Lightning's
+`sha256_size`.  This module proves that gap as `LN-CR-007`
+(`no_injective_hash_into_32_bytes`, by finite pigeonhole) and uses the field
+only in explicitly conditional theorems.  The consistent hypothesis for Lightning's
 32-byte payment preimages is `CollisionResistant`, already used by
 `LnLean.Crypto.Hash.preimage_unique` and `paymentHash_commits`.  We do **not**
 derive `False` from the defect and we do not weaken any stated theorem to hide
@@ -318,19 +318,134 @@ theorem taggedHash_collision_witness (M : PrimitiveModel) {t₁ t₂ msg : ByteA
       exact tagPrefix_separates_hashed_tags M hsha (append_right_cancel hxy)
     · simpa [taggedHashSha256] using heq
 
-/-! ## 8. Recorded interface obligation -/
+/-! ## 8. No global injective hash into 32 bytes
+
+The counting argument is formalised without `Fintype` or mathlib.  The first
+helper enumerates all byte vectors of a given length by structural recursion;
+the second identifies a `ByteArray` with its list of byte values.  Pigeonhole
+is then `List.Nodup.length_le_of_subset` against `List.finRange`. -/
+
+/-- All byte vectors of length `n`, represented as lists of `Fin 256` values.
+The enumeration is complete (`mem_sha256PropsAllByteVectors`) but deliberately
+not proved duplicate-free: completeness is all the counting argument needs. -/
+private def sha256PropsAllByteVectors : Nat → List (List (Fin 256))
+  | 0 => [[]]
+  | n + 1 =>
+      (sha256PropsAllByteVectors n).flatMap fun v =>
+        (List.finRange 256).map fun b => b :: v
+
+/-- Every list of `Fin 256` values of length `n` occurs in the enumeration. -/
+private theorem mem_sha256PropsAllByteVectors :
+    ∀ (l : List (Fin 256)) (n : Nat),
+      l.length = n → l ∈ sha256PropsAllByteVectors n := by
+  intro l n
+  induction n generalizing l with
+  | zero =>
+      intro h
+      cases l with
+      | nil => simp [sha256PropsAllByteVectors]
+      | cons a t => simp at h
+  | succ n ih =>
+      intro h
+      cases l with
+      | nil => simp at h
+      | cons a t =>
+          have ht : t.length = n := by simpa using h
+          have htmem : t ∈ sha256PropsAllByteVectors n := ih t ht
+          have hamem : a ∈ List.finRange 256 := by simp
+          have hmap : a :: t ∈
+              (List.finRange 256).map (fun b => b :: t) :=
+            List.mem_map.mpr ⟨a, hamem, rfl⟩
+          exact List.mem_flatMap.mpr ⟨t, htmem, hmap⟩
+
+/-- The byte list of a `ByteArray`, with each byte viewed as `Fin 256`. -/
+private def sha256PropsToListFin (b : ByteArray) : List (Fin 256) :=
+  b.data.toList.map UInt8.toFin
+
+/-- `sha256PropsToListFin` does not identify distinct byte arrays. -/
+private theorem sha256PropsToListFin_inj :
+    Function.Injective sha256PropsToListFin := by
+  intro a b h
+  unfold sha256PropsToListFin at h
+  have h' : a.data = b.data := by
+    rw [← Array.toList_inj]
+    exact (List.map_inj_right
+      (fun x y hxy => UInt8.toFin_inj.mp hxy)).mp h
+  exact ByteArray.ext h'
+
+/-- The all-zero byte array of length `n`. -/
+private def sha256PropsZeros (n : Nat) : ByteArray :=
+  (List.replicate n (0 : UInt8)).toByteArray
+
+/-- The all-zero arrays have distinct lengths, hence are distinct inputs. -/
+private theorem sha256PropsZeros_inj :
+    Function.Injective sha256PropsZeros := by
+  intro m n h
+  have hsize : (sha256PropsZeros m).size = (sha256PropsZeros n).size :=
+    congrArg ByteArray.size h
+  simpa [sha256PropsZeros, List.size_toByteArray] using hsize
+
+/-- Pigeonhole in the form needed here: there is no injection from
+`Fin (n + 1)` into `Fin n`. -/
+private theorem sha256PropsNotInjectiveFinSucc {n : Nat}
+    (f : Fin (n + 1) → Fin n) : ¬ Function.Injective f := by
+  intro hf
+  let l := (List.finRange (n + 1)).map f
+  have hnodup : l.Nodup := by
+    dsimp [l]
+    rw [List.nodup_iff_pairwise_ne]
+    exact List.Pairwise.map f (fun a b hab heq => hab (hf heq))
+      (List.nodup_iff_pairwise_ne.mp (List.nodup_finRange (n + 1)))
+  have hsub : l ⊆ List.finRange n := by
+    intro x hx
+    simp only [l, List.mem_map] at hx
+    obtain ⟨i, -, rfl⟩ := hx
+    simp
+  have hle := List.Nodup.length_le_of_subset hnodup hsub
+  simp [l] at hle
+  omega
 
 /-- **No global injective hash into 32 bytes.**  A function from `ByteArray`
 to the 32-byte strings cannot be injective: the domain has more elements than
 the `2^256` possible 32-byte outputs.  Consequently the `PreimageResistant`
 field of `PrimitiveModel` is not satisfiable together with `sha256_size`, and
 the consistent hypothesis for payment preimages is `CollisionResistant` on
-32-byte inputs.  The counting proof is left as a scaffold obligation. -/
+32-byte inputs.
+
+The proof enumerates the finite set of 32-byte words and restricts `H` to the
+`N + 1` distinct all-zero inputs, where `N` is the length of the enumeration.
+Injectivity would give `N + 1` distinct outputs inside a list of length `N`,
+contradicting `List.Nodup.length_le_of_subset`. -/
 theorem no_injective_hash_into_32_bytes (H : ByteArray → ByteArray)
     (hsize : ∀ b : ByteArray, (H b).size = 32) :
     ¬ PreimageResistant H := by
-  -- OBLIGATION: LN-CR-007 `ByteArray` has more elements than the 2^256 possible 32-byte outputs, so no `H` with `(H b).size = 32` for all `b` is injective; the global `PreimageResistant` field of `PrimitiveModel` is therefore incompatible with `sha256_size`, and the consistent hypothesis is injectivity on 32-byte preimages.
-  sorry
+  intro hpre
+  let N := (sha256PropsAllByteVectors 32).length
+  let f : Fin (N + 1) → List (Fin 256) :=
+    fun i => sha256PropsToListFin (H (sha256PropsZeros i.val))
+  have hf_inj : Function.Injective f := by
+    intro i j hij
+    have hH : H (sha256PropsZeros i.val) =
+        H (sha256PropsZeros j.val) :=
+      sha256PropsToListFin_inj hij
+    have hz : sha256PropsZeros i.val = sha256PropsZeros j.val :=
+      hpre _ _ hH
+    exact Fin.ext (sha256PropsZeros_inj hz)
+  have hnodup : ((List.finRange (N + 1)).map f).Nodup := by
+    rw [List.nodup_iff_pairwise_ne]
+    exact List.Pairwise.map f (fun a b hab heq => hab (hf_inj heq))
+      (List.nodup_iff_pairwise_ne.mp (List.nodup_finRange (N + 1)))
+  have hlen : ∀ i : Fin (N + 1), (f i).length = 32 := by
+    intro i
+    simp [f, sha256PropsToListFin, hsize (sha256PropsZeros i.val)]
+  have hsub : (List.finRange (N + 1)).map f ⊆
+      sha256PropsAllByteVectors 32 := by
+    intro x hx
+    obtain ⟨i, -, rfl⟩ := List.mem_map.mp hx
+    exact mem_sha256PropsAllByteVectors (f i) 32 (hlen i)
+  have hle := List.Nodup.length_le_of_subset hnodup hsub
+  simp [N] at hle
+  omega
 
 /-- The interface defect as a statement about every `PrimitiveModel`. -/
 theorem preimageResistant_vacuous (M : PrimitiveModel) :
