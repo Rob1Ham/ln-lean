@@ -5,6 +5,9 @@ read-only. `LnLean.lean`, `lakefile.lean`, `lean-toolchain`, `vendor/`,
 `refs/`, and the four normative docs (`CHARTER`, `ARCHITECTURE`,
 `ASSUMPTIONS`, `AGENT-PROTOCOL`) are integrator-owned.
 
+The L1 snapshot in `vendor/btc-lean-core` is **read-only**. It is a copy of
+the Bitcoin model, not a place to add Lightning definitions.
+
 ## Wave A — 8 scaffolding agents
 
 | Agent | Owns | Mission |
@@ -20,37 +23,41 @@ read-only. `LnLean.lean`, `lakefile.lean`, `lean-toolchain`, `vendor/`,
 
 ## Wave B — 32 proof-scaffold agents
 
-| Agent | Owns |
-|---|---|
-| B01 | `LnLean/Bitcoin/FundingProps.lean` |
-| B02 | `LnLean/Bitcoin/ScriptProps.lean` |
-| B03 | `LnLean/Bitcoin/Anchor.lean` |
-| B04 | `LnLean/Bitcoin/Weight.lean` |
-| B05 | `LnLean/Crypto/Sha256Props.lean` |
-| B06 | `LnLean/Crypto/EcdsaProps.lean` |
-| B07 | `LnLean/Crypto/SchnorrProps.lean` |
-| B08 | `LnLean/Wire/TLVProps.lean` |
-| B09 | `LnLean/Channel/CommitmentTx.lean` |
-| B10 | `LnLean/Channel/StateMachine.lean` |
-| B11 | `LnLean/Channel/FeeProps.lean` |
-| B12 | `LnLean/Channel/Reserve.lean` |
-| B13 | `LnLean/Channel/HTLCProps.lean` |
-| B14 | `LnLean/Channel/RevocationProps.lean` |
-| B15 | `LnLean/Channel/PenaltyProps.lean` |
-| B16 | `LnLean/Channel/Breach.lean` |
-| B17 | `LnLean/Protocol/HandshakeProps.lean` |
-| B18 | `LnLean/Protocol/ChannelReestablish.lean` |
-| B19 | `LnLean/Protocol/Features.lean` |
-| B20 | `LnLean/Protocol/ErrorProps.lean` |
-| B21 | `LnLean/Routing/GraphProps.lean` |
-| B22 | `LnLean/Routing/GossipProps.lean` |
-| B23 | `LnLean/Routing/OnionProps.lean` |
-| B24 | `LnLean/Routing/RouteBlinding.lean` |
-| B25 | `LnLean/Payment/InvoiceProps.lean` |
-| B26 | `LnLean/Payment/MPPProps.lean` |
-| B27 | `LnLean/Payment/Keysend.lean` |
-| B28 | `LnLean/Payment/Liquidity.lean` |
-| B29 | `LnLean/Security/ThreatModel.lean` |
-| B30 | `LnLean/Proofs/Conservation.lean` |
-| B31 | `LnLean/Proofs/Liveness.lean` |
-| B32 | `LnLean/Proofs/Traceability.lean` |
+All Wave B files live under `LnLean/Proofs/`. This keeps the invariant that
+`sorry` is legal only in `LnLean/Proofs/**`, where every use carries an
+`-- OBLIGATION: LN-...` marker.
+
+| Agent | Owns | Proof target |
+|---|---|---|
+| B01 | `LnLean/Proofs/Bitcoin/FundingProps.lean` | funding output, 2-of-2, confirmation seam |
+| B02 | `LnLean/Proofs/Bitcoin/ScriptProps.lean` | commitment script templates |
+| B03 | `LnLean/Proofs/Bitcoin/AnchorProps.lean` | anchor outputs and fee ownership |
+| B04 | `LnLean/Proofs/Bitcoin/WeightProps.lean` | commitment/HTLC weight formulas |
+| B05 | `LnLean/Proofs/Crypto/Sha256Props.lean` | hash model laws |
+| B06 | `LnLean/Proofs/Crypto/EcdsaProps.lean` | ECDSA verification seam |
+| B07 | `LnLean/Proofs/Crypto/SchnorrProps.lean` | BIP 340 verification seam |
+| B08 | `LnLean/Proofs/Wire/TLVProps.lean` | BigSize/TLV round-trip and canonical form |
+| B09 | `LnLean/Proofs/Channel/CommitmentTxProps.lean` | commitment transaction construction |
+| B10 | `LnLean/Proofs/Channel/StateMachineProps.lean` | legal transitions, reachability |
+| B11 | `LnLean/Proofs/Channel/FeeProps.lean` | fee computation and monotonicity |
+| B12 | `LnLean/Proofs/Channel/ReserveProps.lean` | reserve and dust limits |
+| B13 | `LnLean/Proofs/Channel/HTLCProps.lean` | HTLC add/fulfil/fail/timeout |
+| B14 | `LnLean/Proofs/Channel/RevocationProps.lean` | per-commitment secrets |
+| B15 | `LnLean/Proofs/Channel/PenaltyProps.lean` | penalty transaction |
+| B16 | `LnLean/Proofs/Channel/BreachProps.lean` | old-state breach and punishment |
+| B17 | `LnLean/Proofs/Protocol/HandshakeProps.lean` | open/accept/funding_signed flow |
+| B18 | `LnLean/Proofs/Protocol/ChannelReestablishProps.lean` | reestablish and retransmission |
+| B19 | `LnLean/Proofs/Protocol/FeaturesProps.lean` | feature-bit negotiation |
+| B20 | `LnLean/Proofs/Protocol/ErrorProps.lean` | error/warning handling |
+| B21 | `LnLean/Proofs/Routing/GraphProps.lean` | gossip graph invariants |
+| B22 | `LnLean/Proofs/Routing/GossipProps.lean` | channel_update application |
+| B23 | `LnLean/Proofs/Routing/OnionProps.lean` | onion layer/peel laws |
+| B24 | `LnLean/Proofs/Routing/RouteBlindingProps.lean` | route blinding and CLTV |
+| B25 | `LnLean/Proofs/Payment/InvoiceProps.lean` | BOLT 11 invoice parsing |
+| B26 | `LnLean/Proofs/Payment/MPPProps.lean` | multipart payment sum |
+| B27 | `LnLean/Proofs/Payment/KeysendProps.lean` | keysend/preimage handling |
+| B28 | `LnLean/Proofs/Payment/LiquidityProps.lean` | balance/liquidity bounds |
+| B29 | `LnLean/Proofs/Security/ThreatModelProps.lean` | adversary capabilities |
+| B30 | `LnLean/Proofs/Conservation.lean` | global value conservation |
+| B31 | `LnLean/Proofs/Liveness.lean` | liveness under fair scheduling |
+| B32 | `LnLean/Proofs/Traceability.lean` | obligation → anchor index |
