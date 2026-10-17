@@ -5,7 +5,9 @@ on the existing `btc-lean` Bitcoin L1 formalization.
 
 **This is scaffolding, not a completed proof.** The tree compiles, the
 definitions are anchored to BOLTs and `rust-lightning`, and every unproved
-claim is a named obligation.
+claim is a named obligation.  Wave A (8 agents) built the 35 executable model
+modules; wave B (32 agents) adds the proof statements under
+`LnLean/Proofs/`.  See `docs/WAVE-STATUS.md`.
 
 ## Layout
 
@@ -39,8 +41,12 @@ flock -w 900 /tmp/ln-build.lock lake build LnLean.Channel.Commitment
 ## Checks
 
 ```sh
-./scripts/check.sh          # forbidden constructs, unmarked sorry, obligation count
-./scripts/regen-root.sh     # regenerate LnLean.lean from the module tree
+./scripts/verify-vendor.sh          # L1 snapshot checksums and read-only modes
+python3 scripts/check-wave-a.py --build
+python3 scripts/check-wave-b.py --build
+python3 scripts/verify-anchors.py   # BOLT/LDK path:line anchors
+./scripts/check.sh                  # forbidden constructs, unmarked sorry, duplicate ids
+./scripts/regen-root.sh             # regenerate LnLean.lean from the module tree
 ```
 
 ## References
@@ -58,3 +64,6 @@ flock -w 900 /tmp/ln-build.lock lake build LnLean.Channel.Commitment
 * `docs/THEOREM-INDEX.md` — every theorem and its status.
 * `docs/TRACEABILITY.md` — obligation → BOLT → rust-lightning anchors.
 * `docs/ROADMAP.md` — how to close the scaffold into a proof.
+* `docs/WAVE-STATUS.md` — agent waves, gate, and reproduce commands.
+* `docs/OBLIGATIONS-GENERATED.md` — generated obligation/marker index.
+* `docs/ANCHORS-GENERATED.md` — generated BOLT/LDK anchor index.
