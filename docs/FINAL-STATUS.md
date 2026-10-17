@@ -1,5 +1,11 @@
 # Final status — two-wave LN scaffold
 
+> **Phase C addendum (2026-10-17):** the first closure wave reduced the
+> proof-side `sorry` count from 25 to 5 and kept the build green; see
+> `docs/PHASE-C-STATUS.md`. The five remaining sites are refuted
+> unconditional statements, each with a counterexample and a conditional
+> theorem. The counts in the table below are the wave-B scaffold baseline.
+
 **Host:** `sensitive-isolated-box-2` (172.31.96.235, 48 vCPU, 185 GiB)
 **Repo:** `/home/ubuntu/ln-lean`
 **Toolchain:** `leanprover/lean4:v4.35.0`
