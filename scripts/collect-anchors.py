@@ -17,6 +17,14 @@ LDK = re.compile(r"((?:rust-lightning/)?lightning/src/[A-Za-z0-9_./-]+\.rs)(?::(
 # Also accept the shorter `ln/...` form used by some LDK paths.
 LDK_SHORT = re.compile(r"\b(ln/[A-Za-z0-9_./-]+\.rs)(?::(\d+))?")
 
+def normalize(anchor: str) -> str:
+    """Use one canonical LDK path spelling."""
+    if anchor.startswith("rust-lightning/"):
+        anchor = anchor[len("rust-lightning/"):]
+    if anchor.startswith("ln/"):
+        anchor = "lightning/src/" + anchor
+    return anchor
+
 rows = defaultdict(set)
 files = sorted((ROOT / "LnLean").rglob("*.lean"))
 for path in files:
@@ -29,12 +37,12 @@ for path in files:
             anchor = m.group(1)
             if m.group(2):
                 anchor += ":" + m.group(2)
-            rows[rel].add(("LDK", anchor))
+            rows[rel].add(("LDK", normalize(anchor)))
         for m in LDK_SHORT.finditer(line):
             anchor = "lightning/src/" + m.group(1)
             if m.group(2):
                 anchor += ":" + m.group(2)
-            rows[rel].add(("LDK", anchor))
+            rows[rel].add(("LDK", normalize(anchor)))
 
 lines = [
     "# Generated anchor index",
