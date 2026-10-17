@@ -896,4 +896,114 @@ theorem accepted_update_signature_length (verify : SigVerifier)
     u.signature.Valid := by
   sorry
 
+/-! ## Checked counterexamples to the remaining obligations
+
+The three obligations above are **not** theorems of the current wave-A model:
+the store does not relate `ChannelUpdate.signingKey` to a stored
+`ChannelAnnellation` key, `ChannelAnnellation.capacitySat` is an unconstrained
+`Nat`, and `SigVerifier` does not require `GossipSignature.Valid`.  The
+`private` theorems below are complete, `sorry`-free proofs that each
+universally quantified obligation is false.  They are private so they do not
+extend the public API; the original `sorry` sites and their
+`-- OBLIGATION:` markers are retained deliberately, because closing them
+would require a model change (an admission guard or a new invariant), not a
+proof of the current definitions. -/
+
+/-- The all-accepting verifier: every signature verifies under every key. -/
+private def acceptingVerifier : SigVerifier := fun _ _ _ => true
+
+/-- The empty gossip store. -/
+private def emptyGossipState : GossipState := ⟨[], [], []⟩
+
+/-- An update with timestamp `1` and an empty (0-byte) signature, so it is
+strictly newer than the empty store's clock but is not a 64-byte signature. -/
+private def unannouncedUpdate : ChannelUpdate :=
+  { shortChannelId := ⟨0, 0, 0⟩
+    timestamp := 1
+    messageFlags := 0
+    channelFlags := 0
+    cltvDelta := 1
+    htlcMinimumMsat := Msat.zero
+    feeBaseMsat := Msat.zero
+    feeProportionalMillionths := 0
+    htlcMaximumMsat := Msat.zero
+    signingKey := ⟨ByteArray.empty⟩
+    digest := ByteArray.empty
+    signature := ⟨ByteArray.empty⟩ }
+
+/-- The all-accepting verifier and the 0-byte-signature update really do
+change the empty store, so the hypotheses of the three obligations are
+satisfiable. -/
+private theorem acceptingVerifier_changes_empty :
+    acceptChannelUpdate acceptingVerifier emptyGossipState unannouncedUpdate ≠
+      emptyGossipState := by
+  intro h
+  have hupd : (acceptChannelUpdate acceptingVerifier emptyGossipState
+      unannouncedUpdate).updates = [unannouncedUpdate] := by
+    simp [acceptChannelUpdate, acceptingVerifier,
+      ChannelUpdate.signatureValid, signatureValid, emptyGossipState,
+      GossipState.applyUpdate, GossipState.latestUpdateTimestamp,
+      latestTimestamp, unannouncedUpdate]
+  rw [h] at hupd
+  simp [emptyGossipState] at hupd
+
+/-- **LN-GOSSIP-001 is false.**  The update is accepted (its timestamp is
+newer and the verifier accepts it) but the store contains no announcement at
+all, so no announced node key can be attributed to it. -/
+private theorem LN_GOSSIP_001_counterexample :
+    ¬ (∀ (verify : SigVerifier) (s : GossipState) (u : ChannelUpdate),
+        acceptChannelUpdate verify s u ≠ s →
+          ∃ a ∈ s.announcements, a.shortChannelId = u.shortChannelId ∧
+            (a.nodeKey1 = u.signingKey ∨ a.nodeKey2 = u.signingKey)) := by
+  intro h
+  have hex := h acceptingVerifier emptyGossipState unannouncedUpdate
+    acceptingVerifier_changes_empty
+  rcases hex with ⟨a, ha, _⟩
+  simp [emptyGossipState] at ha
+
+/-- **LN-GOSSIP-002 is false.**  A signature-valid announcement with
+`capacitySat = 0` yields a binding whose capacity is zero. -/
+private theorem LN_GOSSIP_002_counterexample :
+    ¬ (∀ {verify : SigVerifier} {a : ChannelAnnellation}
+        {b : ChannelBinding},
+        bindChannel verify a = some b → 0 < b.capacitySat) := by
+  intro h
+  let a : ChannelAnnellation :=
+    { shortChannelId := ⟨0, 0, 0⟩
+      node1 := ⟨0⟩
+      node2 := ⟨1⟩
+      nodeKey1 := ⟨ByteArray.empty⟩
+      nodeKey2 := ⟨ByteArray.empty⟩
+      bitcoinKey1 := ⟨ByteArray.empty⟩
+      bitcoinKey2 := ⟨ByteArray.empty⟩
+      capacitySat := 0
+      digest := ByteArray.empty
+      nodeSignature1 := ⟨ByteArray.empty⟩
+      nodeSignature2 := ⟨ByteArray.empty⟩
+      bitcoinSignature1 := ⟨ByteArray.empty⟩
+      bitcoinSignature2 := ⟨ByteArray.empty⟩ }
+  let b : ChannelBinding :=
+    { scid := ⟨0, 0, 0⟩
+      node1 := ⟨0⟩
+      node2 := ⟨1⟩
+      nodeKey1 := ⟨ByteArray.empty⟩
+      nodeKey2 := ⟨ByteArray.empty⟩
+      capacitySat := 0 }
+  have hbind : bindChannel acceptingVerifier a = some b := by
+    simp [bindChannel, ChannelAnnellation.signaturesValid, signatureValid,
+      acceptingVerifier, a, b]
+  have hpos : 0 < b.capacitySat := h hbind
+  simp [b] at hpos
+
+/-- **LN-GOSSIP-003 is false.**  The 0-byte signature is accepted by the
+abstract verifier, so acceptance gives no length bound. -/
+private theorem LN_GOSSIP_003_counterexample :
+    ¬ (∀ (verify : SigVerifier) (s : GossipState) (u : ChannelUpdate),
+        acceptChannelUpdate verify s u ≠ s → u.signature.Valid) := by
+  intro h
+  have hvalid : unannouncedUpdate.signature.Valid :=
+    h acceptingVerifier emptyGossipState unannouncedUpdate
+      acceptingVerifier_changes_empty
+  simp [unannouncedUpdate, GossipSignature.Valid] at hvalid
+
 end LnLean.Routing.GossipProps
