@@ -432,6 +432,27 @@ theorem traces_reveal_same_preimage (k : Keysend) (os₁ os₂ : List PaymentSta
   rw [applyOutcomes_reveal_is_sender_preimage k os₁ h₁,
     applyOutcomes_reveal_is_sender_preimage k os₂ h₂]
 
+/-- Along a trace in which every outcome is a failure, a session that starts
+out not successful never becomes successful: `settle .failed` takes `pending`
+to `failed`, and `failed` is absorbing. -/
+theorem all_failed_outcomes_not_succeeded (k : Keysend) (os : List PaymentState)
+    (h : k.session.state ≠ .succeeded) (hall : ∀ o ∈ os, o = .failed) :
+    (k.applyOutcomes os).session.state ≠ .succeeded := by
+  induction os generalizing k with
+  | nil => exact h
+  | cons o os ih =>
+    have ho : o = .failed := hall o (List.mem_cons_self ..)
+    subst ho
+    change ((k.settle .failed).applyOutcomes os).session.state ≠ .succeeded
+    apply ih (k.settle .failed)
+    · unfold settle PaymentSession.settle
+      by_cases hp : k.session.state = .pending
+      · simp [hp]
+      · simp [hp]
+        exact h
+    · intro x hx
+      exact hall x (List.mem_cons_of_mem _ hx)
+
 /-- An all-failure trace from a pending keysend never reveals the preimage.
 This is the trace-level form of "a failed keysend does not consume the
 preimage": the record keeps it, and no observer learns it.  The remaining
@@ -440,8 +461,13 @@ the session is terminal, so every later settlement is a no-op. -/
 theorem all_failed_outcomes_never_reveal (k : Keysend) (os : List PaymentState)
     (hk : k.session.state = .pending) (hall : ∀ o ∈ os, o = .failed) :
     (k.applyOutcomes os).revealedPreimage = none := by
-  -- OBLIGATION: LN-KS-001 A keysend whose every settlement outcome is a failure never reveals its preimage.
-  sorry
+  have hne : k.session.state ≠ .succeeded := by
+    rw [hk]
+    intro hs
+    cases hs
+  have hstate := all_failed_outcomes_not_succeeded k os hne hall
+  unfold revealedPreimage
+  simp [hstate]
 
 end Keysend
 
