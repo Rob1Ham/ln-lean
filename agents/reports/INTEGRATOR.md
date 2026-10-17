@@ -1,7 +1,7 @@
 # Integrator report
 
 - repository: `/home/ubuntu/ln-lean`
-- HEAD: `dfaa998f9c9f170f0807e04458a72d403d9b86fb` ([LN-WAVE-C] integrate 20/25 proof closures, lane comparison, and final report)
+- HEAD: `14d88f8664e5b2b998a7866055f1dbad39bad4c4` ([LN-WAVE-C] use phase-c whole-file versions for the three open proof files)
 - wave A: **8/8** agents exited, gate: `A-GREEN 2026-10-17T22:35:33Z
 modules=35
 vendor=ok
