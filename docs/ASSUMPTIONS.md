@@ -19,7 +19,7 @@ supplied by the L1 model or by an extracted implementation.
 | C5 | ECDH on secp256k1 | computational Diffie-Hellman | onion shared secrets, Noise |
 | C6 | HKDF-SHA256 | pseudorandomness | key derivation |
 | C7 | ChaCha20-Poly1305 | IND-CCA + integrity | onion layers |
-| C8 | HMAC-SHA256 | PRF / unforgeability | onion integrity, gossip auth |
+| C8 | HMAC-SHA256 | finite-execution tag binding on the messages of one onion peel: equal tags under the same `mu` imply equal messages (not global injectivity; computational PRF security is outside the model) | onion integrity |
 
 Formal shape (see `LnLean/Crypto/Model.lean`):
 
@@ -43,7 +43,6 @@ structure PrimitiveModel where
   ecdsa_eufCma : EufCma ecdsaVerify
   schnorr_eufCma : EufCma schnorrVerify
   aead_indCca : AeadIndCca aeadSeal aeadOpen
-  hmac_prf : HmacPrf hmacSha256
 ```
 
 C1 in Lean is exactly `sha256_collisionResistant : CollisionResistant sha256`,
@@ -63,6 +62,24 @@ into the finite set of 32-byte strings, which
 explicit interface assumption, stronger than the usual computational hardness
 statement (it is exact algebraic injectivity on the 32-byte domain); no
 computational proof or reduction is claimed.
+
+C8 in Lean is the finite-execution predicate
+
+```lean
+HmacBindsOn hmac mu msgs :=
+  ∀ m₁ ∈ msgs, ∀ m₂ ∈ msgs, hmac mu m₁ = hmac mu m₂ → m₁ = m₂
+```
+
+from `LnLean.Proofs.WaveD.D07`, where `msgs` is the finite list of
+`hop_payloads || associated_data` values in one onion execution.  Global HMAC
+injectivity `HmacPrf hmac := ∀ k m₁ m₂, hmac k m₁ = hmac k m₂ → m₁ = m₂`
+is **not** a `PrimitiveModel` field: with `hmac_size` it requires an
+injection from all `ByteArray` into the finite set of 32-byte strings, which
+`LnLean.Proofs.WaveD.D07.hmacPrf_vacuous` refutes.  The finite contract is
+satisfiable whenever those messages have pairwise distinct tags
+(`hmacBindsOn_of_pairwise_tags`).  It is an exact algebraic admission, not a
+PRF or EUF-CMA game; computational HMAC security and forgery resistance are
+outside the model.  See `docs/HMAC-LIMITS.md`.
 
 A theorem may take `(M : PrimitiveModel)` and hypotheses such as
 `M.sha256_collisionResistant`. This keeps the proof conditional and makes

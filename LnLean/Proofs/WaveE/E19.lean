@@ -235,7 +235,6 @@ def rejectAllEcdsa (M : PrimitiveModel) : PrimitiveModel where
     exact absurd h₁ (by simp)
   schnorr_eufCma := M.schnorr_eufCma
   aead_indCca := M.aead_indCca
-  hmac_prf := M.hmac_prf
 
 /-- A 64-byte-zero signature passes the BOLT compact-signature parser. -/
 def compactZeroSig : EcdsaSig := ⟨zeros 64⟩

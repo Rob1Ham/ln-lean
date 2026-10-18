@@ -6,8 +6,12 @@ primitives (SHA-256, HASH160, ECDSA, BIP-340 Schnorr, ECDH, HKDF, an AEAD, and
 HMAC-SHA256).  This module declares those operations in one structure and
 states the *algebraic* properties the rest of the model is allowed to use.
 The properties are `Prop`-valued fields of the structure, never axioms: every
-theorem that needs collision resistance, unforgeability, AEAD correctness, or
-HMAC message binding must take the corresponding field as a hypothesis.
+theorem that needs collision resistance, unforgeability, or AEAD correctness
+must take the corresponding field as a hypothesis.  HMAC has only its
+structural 32-byte width field: global tag injectivity is refuted by the same
+pigeonhole argument as global SHA-256 injectivity, so C8 is instead a
+finite-execution tag-binding admission stated in
+`LnLean.Proofs.WaveD.D07`.
 
 The model idealises computational assumptions as exact algebraic laws.  For
 example, `CollisionResistant H` is injectivity of `H` on 32-byte preimages;
@@ -77,9 +81,13 @@ abbrev AeadIndCca
   (∀ (k n p : ByteArray), dec k n (enc k n p) = some p) ∧
   (∀ (k n c p : ByteArray), dec k n c = some p → enc k n p = c)
 
-/-- HMAC interface: under a fixed key the MAC binds the message (no two
-distinct messages share a tag).  This is the PRF consequence used for onion
-integrity and authentication. -/
+/-- Global HMAC injectivity: under a fixed key the MAC binds every message.
+This predicate is **not** a field of `PrimitiveModel`.  Together with
+`hmac_size` it would inject all of `ByteArray` into the finite set of 32-byte
+strings, so it is uninhabited for any 32-byte-output HMAC; see
+`LnLean.Proofs.WaveD.D07.hmacPrf_vacuous`.  The abbreviation is retained only
+for that negative result and for traceability.  The usable C8 contract is the
+finite-execution predicate `HmacBindsOn` in `LnLean.Proofs.WaveD.D07`. -/
 abbrev HmacPrf (hmac : ByteArray → ByteArray → ByteArray) : Prop :=
   ∀ (k m₁ m₂ : ByteArray), hmac k m₁ = hmac k m₂ → m₁ = m₂
 
@@ -87,7 +95,9 @@ abbrev HmacPrf (hmac : ByteArray → ByteArray → ByteArray) : Prop :=
 
 /-- All cryptographic operations used by the Lightning model.  The `_size`
 fields are structural facts about the wire formats; the remaining fields are
-the assumed properties from `docs/ASSUMPTIONS.md` C1–C8. -/
+the assumed properties from `docs/ASSUMPTIONS.md` C1–C7.  C8 (HMAC message
+binding) is a finite-execution admission at the onion boundary, not a global
+injectivity field. -/
 structure PrimitiveModel where
   sha256 : ByteArray → ByteArray
   hash160 : ByteArray → ByteArray
@@ -108,7 +118,6 @@ structure PrimitiveModel where
   ecdsa_eufCma : EufCma ecdsaVerify
   schnorr_eufCma : EufCma schnorrVerify
   aead_indCca : AeadIndCca aeadSeal aeadOpen
-  hmac_prf : HmacPrf hmacSha256
 
 namespace PrimitiveModel
 
