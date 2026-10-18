@@ -27,8 +27,9 @@ What the model already has:
 The gap this file exposes: if the real dust limit is applied to the
 candidate outputs, `Commitment.feeSat` is short by exactly the dropped
 value.  The reusable repair is the predicate `dustFeeAccounted`, and the
-main theorem is conditional on it.  The unconditional (false) form is kept
-below with one `sorry` and a mechanized counterexample.
+main theorem is conditional on it.  The unconditional form is false; it is
+mechanically refuted by `dust_trim_preserves_conservation_counterexample`
+below and removed in favour of `conservation_of_dustFeeAccounted`.
 
 BOLT anchors: `refs/bolts/03-transactions.md:305-354` (trimmed outputs and
 "the value of the output is added to the fee"), `:464-576` (fee
@@ -455,20 +456,12 @@ theorem dust_trim_preserves_conservation_counterexample :
   exact counterexample_trimmed_not_conserved
     (hall DUST_LIMIT_P2WPKH counterexampleCommitment counterexample_gross_conservation)
 
-/-- **Faithful unconditional claim (false as stated).**  BOLT 3 says the
-value of a trimmed output is added to the commitment fee, so one might expect
-that applying the dust limit to a conserving commitment preserves the
-conservation equation with the commitment's reported `feeSat`.  It does not:
-`Commitment.feeSat` is never updated by the model, and
-`dust_trim_preserves_conservation_counterexample` is the mechanized
-counterexample (two 500-sat outputs at the 546-sat limit).  The corrected
-statement is `conservation_of_dustFeeAccounted`, which adds the explicit
-credit hypothesis `dustFeeAccounted`. -/
-theorem dust_trim_preserves_conservation (dust : Nat) (c : Commitment)
-    (hgross : c.totalOutputValue + c.feeSat = c.fundingValueSat) :
-    trimmedValue dust c + c.feeSat + anchorValue c = c.fundingValueSat := by
-  -- OBLIGATION: LN-WF-F09 the model has no operation that adds the dust
-  -- value to `Commitment.feeSat`; the missing bridge is `dustFeeAccounted`.
-  sorry
+-- REPAIRED: the unconditional `dust_trim_preserves_conservation` is false and
+-- has been removed.  It is refuted by
+-- `dust_trim_preserves_conservation_counterexample` (two 500-sat outputs at the
+-- 546-sat dust limit with `feeSat = 0`).  The strongest true replacement is
+-- `conservation_of_dustFeeAccounted`, which carries the explicit
+-- `dustFeeAccounted dust baseFee c` credit hypothesis; the equivalent
+-- hypothesis-free-accounting form is `conservation_with_requiredFee`.
 
 end LnLean.Proofs.ModelHardening.F09
