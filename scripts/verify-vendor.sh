@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Verify that the read-only L1 reference snapshot has not been modified.
 set -euo pipefail
-cd /home/ubuntu/ln-lean
+cd "$(dirname "$(readlink -f "$0")")/.."
 
 manifest="vendor/VENDOR-SHA256"
 if [ ! -f "$manifest" ]; then

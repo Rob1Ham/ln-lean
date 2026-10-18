@@ -9,7 +9,7 @@ import pathlib
 import re
 from collections import defaultdict
 
-ROOT = pathlib.Path("/home/ubuntu/ln-lean")
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "ANCHORS-GENERATED.md"
 
 BOLT = re.compile(r"\bBOLT\s*#?\s*(\d+)\b", re.IGNORECASE)

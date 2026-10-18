@@ -8,7 +8,7 @@ import pathlib
 import re
 from collections import Counter, defaultdict
 
-ROOT = pathlib.Path("/home/ubuntu/ln-lean")
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 PROOFS = ROOT / "LnLean" / "Proofs"
 OUT_MD = ROOT / "docs" / "OBLIGATIONS-GENERATED.md"
 OUT_JSON = ROOT / "agents" / "status" / "obligations.json"
@@ -66,7 +66,7 @@ def strip_comments(text: str) -> str:
         i += 1
     return "".join(out)
 
-OBLIGATION = re.compile(r"--\s*OBLIGATION:\s*(LN-[A-Za-z0-9_-]+)\s+(.*)$")
+OBLIGATION = re.compile(r"--\s*OBLIGATION:\s*(LN-[A-Za-z0-9_-]+)(.*)$")
 DECL = re.compile(
     r"^\s*(theorem|lemma|def|structure|inductive|abbrev)\s+"
     r"([A-Za-z0-9_'.]+)"
@@ -113,7 +113,7 @@ for path in files:
         if m:
             rows.append({
                 "id": m.group(1),
-                "claim": m.group(2).strip(),
+                "claim": (m.group(2) or "").strip().strip("`").lstrip(":").strip(),
                 "domain": domain,
                 "file": str(rel),
                 "line": i,

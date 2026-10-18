@@ -11,74 +11,91 @@ Bitcoin L1 model.  It is not a completed proof of Lightning.
 | A | 8 | executable model modules, one per domain | `LnLean/{Bitcoin,Crypto,Wire,Channel,Protocol,Routing,Payment,Security}/` |
 | B | 32 | proof statements and obligation markers | `LnLean/Proofs/**` |
 | C | 16 | close the remaining proof obligations, one file per agent | `wave-c/235` |
+| D | 48 | independent proof attempts for 48 catalog targets | `wave-d/48` |
+| E | 48 | second independent attempt for the same 48 targets | `wave-e/48` |
+| F | 16 | model-hardening invariants and counterexamples | `wave-f/16` |
+| G | 32 | read-only pairwise and cross-cutting audits | `wave-g/audit` |
 
-Wave B is gated on `agents/status/A-GREEN`.  The gate means every wave-A
-module builds and `scripts/check.sh` passes, so a proof agent never starts
-from missing or broken imports.
+Waves A, B, C, D, E and F are complete.  Wave G is complete at **32/32**
+reports.  The final sparse tree is branch `final/integrated`, based on
+`a9f8d87`.
 
-## Current status
+## Final integrated status
 
-Waves A, B and C are complete.
+- Lean files: **132** (69 base + 33 Wave-D + 15 Wave-E + 15 ModelHardening)
+- Root imports: **132**
+- Selected D/E slots: **48/48**, exactly one whole-file version per slot
+- Selected F modules: **15** (`F10` excluded)
+- Obligation markers: **95**, 0 duplicate ids
+- Catalog rows: **48** (13 `proved`, 35 `statementOnly`)
+- Real `sorry` sites: **15**
+- Exact/final full build: **140 jobs, RC 0**
+- Vendor snapshot: **OK, 119 files**
+- Anchors: **288 checked, 0 bad**
+- `check.sh`: **OK**
+- Final selection manifest: `agents/status/FINAL-SELECTION.md`
 
-Wave A: all **8/8** agents exited with RC 0, all **35** expected modules
-build, all four wave-A docs exist, and the vendor checksum, policy checks,
-and pinned-anchor checker pass.  The A-green gate was written at
-`2026-10-17T22:35:33Z`; the 32 wave-B agents started immediately after it.
+The selection keeps D14 and excludes E14 because both declare
+`LnLean.Channel.Reserve.bounds` with incompatible statements.  It keeps E37
+(no `sorry`), E39 (guarded capacity), and E40 (one marked `sorry` plus a
+proved conditional/iff companion).  D41–D48 and E45/E48 are annex/refinement
+modules, not second closures of their catalog IDs.
 
-Wave B: all **32/32** agents wrote their expected modules.  **31** exited
-with RC 0; B02 hit the wrapper budget (`exit=130`) after writing its
-726-line `ScriptProps` module, and the integrator removed one redundant
-tactic and verified the module.  The B integration snapshot had **69** Lean
-files (36 model, 33 proof), **1541** proof declarations, **48** obligation
-markers, and **25** `sorry` sites under `LnLean/Proofs/`.  The full root
-build was **77 jobs, RC 0** at integration commit `78c2f3f`.
+## Open obligations
 
-Wave C: **16/16** proof-closure agents exited with RC 0 on branch
-`wave-c/235`; every assigned module builds.  The integrated branch closes
-**20 of the 25** remaining `sorry` sites.  The final tree has **69** Lean
-files (36 model, 33 proof), **1563** proof declarations, **32** retained
-obligation markers, and **5** `sorry` sites.  The full root build is
-**77 jobs, RC 0**.
+The final tree deliberately keeps the false or underspecified unconditional
+statements, each with an adjacent marker and a proved conditional or
+counterexample companion:
 
-The other box's independent `phase-c` lane finished at the same **20/25**
-after its final `PC02` commit (`cb3a125`).  Integration picks one whole file
-per path: the 13 closed files use the `wave-c/235` versions; the three files
-that remain open (`FundingProps`, `ReserveProps`, `GossipProps`) use the
-`phase-c` versions, which add proved conditional forms and mechanized
-counterexamples without closing the false unconditional statements.  No
-competing proof bodies were merged into one theorem.  See
-`agents/reports/WAVE-C-INTEGRATOR.md`.
+| Site | Marker | Reason |
+|---|---|---|
+| `FundingProps` | `LN-FUND-001` | false without the well-formed/range hypothesis |
+| `ReserveProps` | `LN-CH-101` | false without an affordability guard |
+| `GossipProps` | `LN-GOSSIP-001` … `003` | raw gossip admission is unconstrained |
+| `WaveE/E40` | `LN-WE-E40` | false unconditional signature-length admission |
+| `F03` | `LN-WF-F03` | commitment conservation/anchor model gap |
+| `F04` | `LN-WF-F04` | legacy anchor debit overfunds |
+| `F05` | `LN-WF-F05` | unannounced gossip update keys |
+| `F06` | `LN-WF-F06` | zero-capacity gossip admission |
+| `F07` | `LN-WF-F07` | missing length-respecting verifier contract |
+| `F09` | `LN-WF-F09` | dust trimming and fee accounting |
+| `F13` | `LN-WF-F13` | invoice preimage binding |
+| `F14` | `LN-WF-F14` | MPP running-total bound |
+| `F15` | `LN-WF-F15` | settlement preimage reveal |
 
-Five obligations remain open, deliberately:
+The catalog's 13 proved rows are against the small security models.  A
+statement-only row is a tracked future theorem, not a result.
 
-| Site | Reason |
-|---|---|
-| `FundingProps` `LN-FUND-001` | false as stated without the well-formed/range hypothesis; a counterexample is documented |
-| `ReserveProps` `LN-CH-101` | false without an affordability guard; the guarded companion is proved |
-| `GossipProps` `LN-GOSSIP-001` … `003` | false for the current model (unconstrained key/capacity/signature fields); private counterexamples are mechanized |
+## Known non-closures
 
-The wave-A catalog has **48** obligations: 13 are marked `proved` against the
-small security models, 35 are `statementOnly`.  That distinction is the
-honest status: a statement-only row is a tracked future theorem, not a
-result.  The obligation markers are additional named proof targets; they do
-not change the catalog's status.
+These targets are recorded as conditional, negative, or blocked, not closed:
+
+- `LN-L1-004`: `toLocalScript` is a flat seam fragment, not the full BOLT 3
+  two-branch witness script.
+- `LN-PR-004`: both D20/E20 are negative/conditional.
+- `LN-SEC-003`: the named catalog declaration does not exist.
+- `LN-SEC-005`: D34's at-stake field is post-fee; the uneconomical-penalty
+  counterexample is withdrawn.
+- `LN-CH-101`: there is no `Step.update_add_htlc` constructor; E37 models the
+  affordability arithmetic on successor functions.
+- `LN-GOSSIP-002`: the raw `applyGossip` path remains unguarded; E39 proves
+  the guarded store result.
+- `LN-FUND-001` and `LN-GOSSIP-001/003`: the base Wave-C `sorry` sites remain.
 
 ## Reproduce
 
 ```sh
 export PATH=/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/bin:$PATH
-cd /home/ubuntu/ln-lean
+cd /home/ubuntu/ln-lean-final
 
-./scripts/verify-vendor.sh          # L1 snapshot checksums and read-only modes
-python3 scripts/verify-anchors.py   # BOLT/LDK path:line anchors
-./scripts/check.sh                  # forbidden constructs, unmarked sorry, duplicate ids
-python3 scripts/check-wave-a.py --build
-python3 scripts/check-wave-b.py --build
-python3 scripts/check-wave-c.py --build
-./scripts/regen-root.sh             # regenerate LnLean.lean
+python3 scripts/check-final.py
+./scripts/verify-vendor.sh
+python3 scripts/verify-anchors.py
+./scripts/check.sh
+./scripts/regen-root.sh
 flock -w 1800 /tmp/ln-build.lock lake build
-./scripts/integrate-c.sh            # Wave-C full gate + generated indexes/report
-./scripts/finalize.sh               # full integration gate + generated indexes/report
+python3 scripts/collect-obligations.py
+python3 scripts/collect-anchors.py
 ```
 
 ## Integrity

@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd /home/ubuntu/ln-lean
+cd "$(dirname "$(readlink -f "$0")")/.."
 python3 scripts/check.py

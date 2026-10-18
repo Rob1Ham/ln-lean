@@ -10,7 +10,7 @@ import pathlib
 import re
 import sys
 
-ROOT = pathlib.Path("/home/ubuntu/ln-lean")
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 REFS = ROOT / "refs" / "rust-lightning"
 ANCHOR = re.compile(
     r"((?:rust-lightning/)?(?:lightning|lightning-invoice|lightning-types)/"

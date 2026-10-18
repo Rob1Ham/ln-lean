@@ -1,27 +1,30 @@
 {
-  "files": 33,
-  "obligations": 32,
+  "files": 96,
+  "obligations": 95,
   "catalog_obligations": 48,
-  "declarations": 1563,
-  "sorries": 5,
+  "declarations": 3242,
+  "sorries": 15,
   "by_domain": {
     "Bitcoin": 4,
     "Channel": 24,
-    "Routing": 4
+    "ModelHardening": 15,
+    "Routing": 4,
+    "WaveD": 33,
+    "WaveE": 15
   },
   "by_kind": {
-    "abbrev": 3,
-    "def": 348,
-    "inductive": 17,
-    "structure": 41,
-    "theorem": 1154
+    "abbrev": 16,
+    "def": 769,
+    "inductive": 22,
+    "structure": 66,
+    "theorem": 2369
   },
   "duplicate_ids": [],
   "catalog_duplicate_ids": [],
   "rows": [
     {
       "id": "LN-FUND-001",
-      "claim": "the stated claim is missing `p.WellFormed`",
+      "claim": "the stated claim is missing `p.WellFormed",
       "domain": "Bitcoin",
       "file": "LnLean/Proofs/Bitcoin/FundingProps.lean",
       "line": 675
@@ -182,7 +185,7 @@
     },
     {
       "id": "LN-COMMIT-005",
-      "claim": "`commitmentPairOfBalances` must subtract the two anchors from the funder on both commitments; the current A3 model subtracts only the fee.",
+      "claim": "commitmentPairOfBalances` must subtract the two anchors from the funder on both commitments; the current A3 model subtracts only the fee.",
       "domain": "Channel",
       "file": "LnLean/Proofs/Channel/CommitmentTxProps.lean",
       "line": 435
@@ -210,10 +213,115 @@
     },
     {
       "id": "LN-CH-101",
-      "claim": "missing bridge: no `Step`/`update_add_htlc`",
+      "claim": "missing bridge: no `Step`/`update_add_htlc",
       "domain": "Channel",
       "file": "LnLean/Proofs/Channel/ReserveProps.lean",
       "line": 601
+    },
+    {
+      "id": "LN-WF-F01",
+      "claim": "",
+      "domain": "ModelHardening",
+      "file": "LnLean/Proofs/ModelHardening/F01.lean",
+      "line": 41
+    },
+    {
+      "id": "LN-WF-F02",
+      "claim": "",
+      "domain": "ModelHardening",
+      "file": "LnLean/Proofs/ModelHardening/F02.lean",
+      "line": 19
+    },
+    {
+      "id": "LN-WF-F03",
+      "claim": "",
+      "domain": "ModelHardening",
+      "file": "LnLean/Proofs/ModelHardening/F03.lean",
+      "line": 447
+    },
+    {
+      "id": "LN-WF-F04",
+      "claim": "",
+      "domain": "ModelHardening",
+      "file": "LnLean/Proofs/ModelHardening/F04.lean",
+      "line": 136
+    },
+    {
+      "id": "LN-WF-F05",
+      "claim": "an accepted channel_update is signed by one of the two announced node ids of its channel (missing admission: the wave-A store never checks u.signingKey against the announcement for u.shortChannelId)",
+      "domain": "ModelHardening",
+      "file": "LnLean/Proofs/ModelHardening/F05.lean",
+      "line": 314
+    },
+    {
+      "id": "LN-WF-F06",
+      "claim": "",
+      "domain": "ModelHardening",
+      "file": "LnLean/Proofs/ModelHardening/F06.lean",
+      "line": 363
+    },
+    {
+      "id": "LN-WF-F07",
+      "claim": "every signature of an accepted gossip message is 64 bytes (missing admission: the abstract SigVerifier need not respect GossipSignature.Valid; see accepted_message_signatures_64_counterexample)",
+      "domain": "ModelHardening",
+      "file": "LnLean/Proofs/ModelHardening/F07.lean",
+      "line": 153
+    },
+    {
+      "id": "LN-WF-F08",
+      "claim": "",
+      "domain": "ModelHardening",
+      "file": "LnLean/Proofs/ModelHardening/F08.lean",
+      "line": 88
+    },
+    {
+      "id": "LN-WF-F09",
+      "claim": "the model has no operation that adds the dust",
+      "domain": "ModelHardening",
+      "file": "LnLean/Proofs/ModelHardening/F09.lean",
+      "line": 470
+    },
+    {
+      "id": "LN-WF-F11",
+      "claim": "",
+      "domain": "ModelHardening",
+      "file": "LnLean/Proofs/ModelHardening/F11.lean",
+      "line": 79
+    },
+    {
+      "id": "LN-WF-F12",
+      "claim": "",
+      "domain": "ModelHardening",
+      "file": "LnLean/Proofs/ModelHardening/F12.lean",
+      "line": 90
+    },
+    {
+      "id": "LN-WF-F13",
+      "claim": "",
+      "domain": "ModelHardening",
+      "file": "LnLean/Proofs/ModelHardening/F13.lean",
+      "line": 264
+    },
+    {
+      "id": "LN-WF-F14",
+      "claim": "",
+      "domain": "ModelHardening",
+      "file": "LnLean/Proofs/ModelHardening/F14.lean",
+      "line": 179
+    },
+    {
+      "id": "LN-WF-F15",
+      "claim": "settlement reveals the stored preimage without",
+      "domain": "ModelHardening",
+      "file": "LnLean/Proofs/ModelHardening/F15.lean",
+      "line": 344
+    },
+    {
+      "id": "LN-WF-F16",
+      "claim": "",
+      "domain": "ModelHardening",
+      "file": "LnLean/Proofs/ModelHardening/F16.lean",
+      "line": 308
     },
     {
       "id": "LN-GOSSIP-001",
@@ -242,6 +350,342 @@
       "domain": "Routing",
       "file": "LnLean/Proofs/Routing/GraphProps.lean",
       "line": 512
+    },
+    {
+      "id": "LN-WD-D01",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D01.lean",
+      "line": 47
+    },
+    {
+      "id": "LN-WD-D02",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D02.lean",
+      "line": 78
+    },
+    {
+      "id": "LN-WD-D03",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D03.lean",
+      "line": 288
+    },
+    {
+      "id": "LN-WD-D04",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D04.lean",
+      "line": 62
+    },
+    {
+      "id": "LN-WD-D05",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D05.lean",
+      "line": 71
+    },
+    {
+      "id": "LN-WD-D07",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D07.lean",
+      "line": 69
+    },
+    {
+      "id": "LN-WD-D08",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D08.lean",
+      "line": 63
+    },
+    {
+      "id": "LN-WD-D10",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D10.lean",
+      "line": 56
+    },
+    {
+      "id": "LN-WD-D11",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D11.lean",
+      "line": 87
+    },
+    {
+      "id": "LN-WD-D12",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D12.lean",
+      "line": 555
+    },
+    {
+      "id": "LN-WD-D13",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D13.lean",
+      "line": 529
+    },
+    {
+      "id": "LN-WD-D14",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D14.lean",
+      "line": 58
+    },
+    {
+      "id": "LN-WD-D15",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D15.lean",
+      "line": 470
+    },
+    {
+      "id": "LN-WD-D16",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D16.lean",
+      "line": 137
+    },
+    {
+      "id": "LN-WD-D17",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D17.lean",
+      "line": 84
+    },
+    {
+      "id": "LN-WD-D18",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D18.lean",
+      "line": 65
+    },
+    {
+      "id": "LN-WD-D21",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D21.lean",
+      "line": 77
+    },
+    {
+      "id": "LN-WD-D23",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D23.lean",
+      "line": 69
+    },
+    {
+      "id": "LN-WD-D25",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D25.lean",
+      "line": 66
+    },
+    {
+      "id": "LN-WD-D27",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D27.lean",
+      "line": 63
+    },
+    {
+      "id": "LN-WD-D28",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D28.lean",
+      "line": 96
+    },
+    {
+      "id": "LN-WD-D29",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D29.lean",
+      "line": 202
+    },
+    {
+      "id": "LN-WD-D30",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D30.lean",
+      "line": 66
+    },
+    {
+      "id": "LN-WD-D32",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D32.lean",
+      "line": 80
+    },
+    {
+      "id": "LN-WD-D34",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D34.lean",
+      "line": 106
+    },
+    {
+      "id": "LN-WD-D36",
+      "claim": "corrected form is `FundingParams.ParserSafe p -> p.witnessScript.parse = none`; the unconditional form is refuted below",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D36.lean",
+      "line": 142
+    },
+    {
+      "id": "LN-WD-D38",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D38.lean",
+      "line": 54
+    },
+    {
+      "id": "LN-WD-D41",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D41.lean",
+      "line": 55
+    },
+    {
+      "id": "LN-WD-D42",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D42.lean",
+      "line": 89
+    },
+    {
+      "id": "LN-WD-D43",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D43.lean",
+      "line": 44
+    },
+    {
+      "id": "LN-WD-D44",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D44.lean",
+      "line": 68
+    },
+    {
+      "id": "LN-WD-D46",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D46.lean",
+      "line": 73
+    },
+    {
+      "id": "LN-WD-D47",
+      "claim": "",
+      "domain": "WaveD",
+      "file": "LnLean/Proofs/WaveD/D47.lean",
+      "line": 59
+    },
+    {
+      "id": "LN-WE-E06",
+      "claim": "",
+      "domain": "WaveE",
+      "file": "LnLean/Proofs/WaveE/E06.lean",
+      "line": 348
+    },
+    {
+      "id": "LN-WE-E09",
+      "claim": "",
+      "domain": "WaveE",
+      "file": "LnLean/Proofs/WaveE/E09.lean",
+      "line": 42
+    },
+    {
+      "id": "LN-WE-E19",
+      "claim": "",
+      "domain": "WaveE",
+      "file": "LnLean/Proofs/WaveE/E19.lean",
+      "line": 282
+    },
+    {
+      "id": "LN-WE-E20",
+      "claim": "",
+      "domain": "WaveE",
+      "file": "LnLean/Proofs/WaveE/E20.lean",
+      "line": 85
+    },
+    {
+      "id": "LN-WE-E22",
+      "claim": "",
+      "domain": "WaveE",
+      "file": "LnLean/Proofs/WaveE/E22.lean",
+      "line": 82
+    },
+    {
+      "id": "LN-WE-E24",
+      "claim": "",
+      "domain": "WaveE",
+      "file": "LnLean/Proofs/WaveE/E24.lean",
+      "line": 46
+    },
+    {
+      "id": "LN-WE-E26",
+      "claim": "",
+      "domain": "WaveE",
+      "file": "LnLean/Proofs/WaveE/E26.lean",
+      "line": 46
+    },
+    {
+      "id": "LN-WE-E31",
+      "claim": "",
+      "domain": "WaveE",
+      "file": "LnLean/Proofs/WaveE/E31.lean",
+      "line": 62
+    },
+    {
+      "id": "LN-WE-E33",
+      "claim": "",
+      "domain": "WaveE",
+      "file": "LnLean/Proofs/WaveE/E33.lean",
+      "line": 66
+    },
+    {
+      "id": "LN-WE-E35",
+      "claim": "",
+      "domain": "WaveE",
+      "file": "LnLean/Proofs/WaveE/E35.lean",
+      "line": 197
+    },
+    {
+      "id": "LN-WE-E37",
+      "claim": "",
+      "domain": "WaveE",
+      "file": "LnLean/Proofs/WaveE/E37.lean",
+      "line": 82
+    },
+    {
+      "id": "LN-WE-E39",
+      "claim": "",
+      "domain": "WaveE",
+      "file": "LnLean/Proofs/WaveE/E39.lean",
+      "line": 58
+    },
+    {
+      "id": "LN-WE-E40",
+      "claim": "an accepted channel_update has a 64-byte signature (missing admission: SigVerifier may accept a signature whose bytes.size \u2260 64)",
+      "domain": "WaveE",
+      "file": "LnLean/Proofs/WaveE/E40.lean",
+      "line": 162
+    },
+    {
+      "id": "LN-WE-E45",
+      "claim": "",
+      "domain": "WaveE",
+      "file": "LnLean/Proofs/WaveE/E45.lean",
+      "line": 48
+    },
+    {
+      "id": "LN-WE-E48",
+      "claim": "",
+      "domain": "WaveE",
+      "file": "LnLean/Proofs/WaveE/E48.lean",
+      "line": 78
     }
   ],
   "catalog_rows": [

@@ -13,7 +13,7 @@ import pathlib
 import re
 import sys
 
-ROOT = pathlib.Path("/home/ubuntu/ln-lean")
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 FORBIDDEN = re.compile(r"\b(axiom|native_decide|unsafe|admit)\b|@\[implemented_by\]")
 SORRY = re.compile(r"\bsorry\b")
 OBLIGATION = re.compile(r"^\s*--\s*OBLIGATION:\s*(\S+)", re.M)

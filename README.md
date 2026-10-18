@@ -8,11 +8,13 @@ definitions are anchored to BOLTs and `rust-lightning`, and every unproved
 claim is a named obligation.  Wave A (8 agents) built the 35 executable model
 modules; wave B (32 agents) added the proof statements under
 `LnLean/Proofs/`; wave C (16 agents) closed 20 of the 25 remaining proof
-obligations.  An independent `phase-c` lane also finished at 20/25; the final
-branch uses its stronger whole-file versions for the three files that remain
-open.  Five obligations remain, each documented as either false for the
-current model or requiring a missing model invariant.  See
-`docs/WAVE-STATUS.md` and `agents/reports/WAVE-C-INTEGRATOR.md`.
+obligations.  Waves D and E independently attempted the same 48 catalog
+targets; wave F added 16 model-hardening modules; wave G ran 32 read-only
+audits and produced the final selection.  The integrated tree has **132 Lean
+files** (69 base + 33 D + 15 E + 15 F), **95 obligation markers**, and **15
+documented open sites**.  See `docs/WAVE-STATUS.md`,
+`agents/status/FINAL-SELECTION.md`, and
+`agents/reports/FINAL-INTEGRATOR.md`.
 
 ## Layout
 
@@ -33,7 +35,7 @@ LnLean/Proofs/              obligation modules and theorem statements
 
 ```sh
 export PATH=/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/bin:$PATH
-cd /home/ubuntu/ln-lean
+cd /home/ubuntu/ln-lean-final
 flock -w 900 /tmp/ln-build.lock lake build
 ```
 
@@ -46,9 +48,8 @@ flock -w 900 /tmp/ln-build.lock lake build LnLean.Channel.Commitment
 ## Checks
 
 ```sh
+python3 scripts/check-final.py      # sparse selection, one module per slot, 132/132 imports
 ./scripts/verify-vendor.sh          # L1 snapshot checksums and read-only modes
-python3 scripts/check-wave-a.py --build
-python3 scripts/check-wave-b.py --build
 python3 scripts/verify-anchors.py   # BOLT/LDK path:line anchors
 ./scripts/check.sh                  # forbidden constructs, unmarked sorry, duplicate ids
 ./scripts/regen-root.sh             # regenerate LnLean.lean from the module tree
@@ -70,5 +71,8 @@ python3 scripts/verify-anchors.py   # BOLT/LDK path:line anchors
 * `docs/TRACEABILITY.md` — obligation → BOLT → rust-lightning anchors.
 * `docs/ROADMAP.md` — how to close the scaffold into a proof.
 * `docs/WAVE-STATUS.md` — agent waves, gate, and reproduce commands.
+* `docs/FINAL-STATUS.md` — integrated D/E/F final gate and open sites.
+* `agents/status/FINAL-SELECTION.md` — one-file-per-slot selection manifest.
+* `docs/PROJECT-PLAN.md` — remaining integration/push plan.
 * `docs/OBLIGATIONS-GENERATED.md` — generated obligation/marker index.
 * `docs/ANCHORS-GENERATED.md` — generated BOLT/LDK anchor index.
