@@ -1,4 +1,6 @@
-# Wave 5 — bridge and completeness attack plan
+# Wave 5 — bridge and completeness attack plan (launched)
+
+**Status:** eight lanes launched from `79a92ce`; parent integration pending.
 
 **Base commit:** `74d6475` (`[STATUS] record proof-wave 4 gate HEAD`)
 **Branch:** `repair/integrated`

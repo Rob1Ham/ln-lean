@@ -1,9 +1,8 @@
 # Open Issues and Swarm Roadmap
 
-**Status:** living roadmap after proof-wave 4.
+**Status:** living roadmap after proof-wave 4; wave 5 running.
 **Branch:** `repair/integrated`.
-**Base commit:** `26ced90` (proof-wave 4 integration); wave 4 launched from
-`47189fe`; proof-wave 3 code was `0c99c92`.
+**Base commit:** `79a92ce` (wave 5 launch; proof-wave 4 code at `26ced90`).
 **Catalog gate:** 48/48 rows `proved`, 0 `statement-only`, 0 unresolved,
 61 targets.
 **Full build:** 188 jobs, RC 0.
