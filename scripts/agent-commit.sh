@@ -4,7 +4,7 @@
 set -euo pipefail
 name="${1:-LN-AGENT}"
 shift || true
-cd /home/ubuntu/ln-lean
+cd "$(dirname "$(readlink -f "$0")")/.."
 if [ "$#" -eq 0 ]; then
   echo "agent-commit: no paths given" >&2
   exit 2
