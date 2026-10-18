@@ -294,4 +294,111 @@ theorem resend_none_of_unknown (s : PeerState) (cid : ChannelId) (kind : MsgKind
     (h : findChannel s cid = none) : resend s cid kind = none := by
   simp [resend, h]
 
+/-! ## Reestablish: retransmission without rollback
+
+The model represents "unacknowledged update" by the retained last-sent copy
+(`ChannelRecord.lastSent`); it has no separate acknowledgement bit, so the
+retransmission property is stated over that retained copy.  `advanceReceived`
+is the only reestablish-counter transition in this module, and the lemmas
+below show it is monotone in both counters and preserves BOLT 2's
+`next_revocation_number ≤ next_commitment_number` condition. -/
+
+namespace ChannelRecord
+
+/-- Receiving a message never decreases `next_commitment_number`.  Only a
+`commitment_signed` changes it, and `afterCommitment` adds one. -/
+theorem advanceReceived_nextCommitment_ge (c : ChannelRecord) (m : Msg) :
+    c.reestablish.nextCommitmentNumber ≤
+      (c.advanceReceived m).reestablish.nextCommitmentNumber := by
+  cases hk : m.kind
+  case commitmentSigned =>
+    simp only [advanceReceived, hk, ReestablishFields.afterCommitment]
+    omega
+  case revokeAndAck =>
+    simp only [advanceReceived, hk]
+    split <;> simp [ReestablishFields.afterRevocation] <;> omega
+  all_goals
+    simp only [advanceReceived, hk]
+    omega
+
+/-- Receiving a message never decreases `next_revocation_number`.  Only a
+`revoke_and_ack` changes it, and only when the counter is strictly behind, in
+which case `afterRevocation` adds one. -/
+theorem advanceReceived_nextRevocation_ge (c : ChannelRecord) (m : Msg) :
+    c.reestablish.nextRevocationNumber ≤
+      (c.advanceReceived m).reestablish.nextRevocationNumber := by
+  cases hk : m.kind
+  case commitmentSigned =>
+    simp only [advanceReceived, hk, ReestablishFields.afterCommitment]
+    omega
+  case revokeAndAck =>
+    simp only [advanceReceived, hk]
+    split <;> simp [ReestablishFields.afterRevocation] <;> omega
+  all_goals
+    simp only [advanceReceived, hk]
+    omega
+
+/-- `advanceReceived` preserves BOLT 2's counter consistency: from
+`next_revocation_number ≤ next_commitment_number` the same holds afterwards.
+This is the "no rollback" part of the reestablish story: the transition can
+only advance a counter and never makes the revocation counter lead the
+commitment counter. -/
+theorem advanceReceived_consistent (c : ChannelRecord) (m : Msg)
+    (h : c.reestablish.consistent) :
+    (c.advanceReceived m).reestablish.consistent := by
+  cases hk : m.kind
+  case commitmentSigned =>
+    simp only [advanceReceived, hk]
+    exact ReestablishFields.afterCommitment_consistent h
+  case revokeAndAck =>
+    simp only [advanceReceived, hk, ReestablishFields.afterRevocation]
+    split
+    · rename_i hlt
+      exact ReestablishFields.afterRevocation_consistent h hlt
+    · exact h
+  all_goals
+    simp only [advanceReceived, hk]
+    exact h
+
+end ChannelRecord
+
+namespace Peer
+
+/-- **`channel_reestablish` retransmits without rolling state back.**
+
+The three conjuncts are the model-level content of the catalog claim:
+
+1. for a known channel, `resend` returns exactly the retained last-sent
+   message of the requested kind — the retransmission BOLT 2 asks for;
+2. for an unknown channel, `resend` returns nothing, so a reestablish cannot
+   invent a message for a channel the peer does not have;
+3. `advanceReceived` never decreases either reestablish counter, and it
+   preserves `next_revocation_number ≤ next_commitment_number` whenever the
+   incoming record satisfies that condition.
+
+The model has no separate acknowledgement flag: `lastSent kind` *is* the
+unacknowledged copy that survives reconnection.  Consequently this theorem
+does not claim that the peer has acknowledged, nor that an update was ever
+sent; it says that whatever the record retains is retransmitted unchanged and
+that the reestablish counters move only forward. -/
+theorem reestablish_no_rollback :
+    (∀ (s : PeerState) (channelId : ChannelId) (kind : MsgKind)
+        (c : ChannelRecord),
+        findChannel s channelId = some c →
+          resend s channelId kind = c.lastSent kind) ∧
+    (∀ (s : PeerState) (channelId : ChannelId) (kind : MsgKind),
+        findChannel s channelId = none → resend s channelId kind = none) ∧
+    (∀ (c : ChannelRecord) (m : Msg),
+        c.reestablish.nextCommitmentNumber ≤
+            (c.advanceReceived m).reestablish.nextCommitmentNumber ∧
+        c.reestablish.nextRevocationNumber ≤
+            (c.advanceReceived m).reestablish.nextRevocationNumber ∧
+        (c.reestablish.consistent → (c.advanceReceived m).reestablish.consistent)) :=
+  ⟨resend_of_channel, resend_none_of_unknown, fun c m =>
+    ⟨ChannelRecord.advanceReceived_nextCommitment_ge c m,
+     ChannelRecord.advanceReceived_nextRevocation_ge c m,
+     ChannelRecord.advanceReceived_consistent c m⟩⟩
+
+end Peer
+
 end LnLean.Protocol

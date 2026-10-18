@@ -268,4 +268,205 @@ theorem commitmentPair_toLocal_asymmetry
       (commitmentPairOfBalances localParams remoteParams b 0 number .local).remoteCommitment.toLocalSat := by
   simpa [commitmentPairOfBalances] using h
 
+/-! ## Output nonnegativity and the funding bound (LN-CH-002)
+
+The catalog claim LN-CH-002 has two halves.  The first half — no commitment
+output has a negative value — is structural in this model: every value field is
+a `Nat`, so `CommitmentOutput.value` and every emitted output value are
+nonnegative, unconditionally.  The second half — the output sum stays within
+the funding value — is *not* structural: `Commitment` is a plain record with no
+well-formedness invariant, so a caller can supply `toLocalSat` larger than
+`fundingValueSat`.  The bound therefore needs the BOLT 3 balance equation as an
+explicit hypothesis.
+
+The proof layer states that equation as `CommitmentConserved` in
+`LnLean.Proofs.Conservation`.  That module imports this one, so importing it
+here would invert the dependency.  We use the explicit equality
+`c.totalOutputValue + c.feeSat = c.fundingValueSat` instead, which is
+definitionally the same proposition; `CommitmentConserved` is definitionally
+equal to it, so the proof-layer theorem can be recovered without adding any
+new assumption. -/
+
+/-- Every `CommitmentOutput.value` is a natural number, hence nonnegative. -/
+theorem CommitmentOutput.value_nonneg (o : CommitmentOutput) : 0 ≤ o.value :=
+  Nat.zero_le _
+
+/-- Nonnegativity of an output value when read as a mathematical integer. -/
+theorem CommitmentOutput.value_nonneg_int (o : CommitmentOutput) :
+    0 ≤ (o.value : Int) := by
+  exact_mod_cast CommitmentOutput.value_nonneg o
+
+/-- Every output emitted by `Commitment.commitmentOutputs` is nonnegative. -/
+theorem Commitment.commitmentOutputs_value_nonneg (c : Commitment) :
+    ∀ o ∈ c.commitmentOutputs, 0 ≤ o.value :=
+  fun o _ => CommitmentOutput.value_nonneg o
+
+/-- Every emitted output value is nonnegative after coercion to `Int`.  This is
+the model-level reading of "no commitment output has a negative value". -/
+theorem Commitment.commitmentOutputs_value_nonneg_int (c : Commitment) :
+    ∀ o ∈ c.commitmentOutputs, 0 ≤ (o.value : Int) :=
+  fun o _ => CommitmentOutput.value_nonneg_int o
+
+/-- The sum of the emitted output values is nonnegative. -/
+theorem Commitment.commitmentOutputs_sum_nonneg (c : Commitment) :
+    0 ≤ (c.commitmentOutputs.map CommitmentOutput.value).sum :=
+  Nat.zero_le _
+
+/-- `totalOutputValue` is a natural number, hence nonnegative. -/
+theorem Commitment.totalOutputValue_nonneg (c : Commitment) :
+    0 ≤ c.totalOutputValue :=
+  Nat.zero_le _
+
+/-- `totalOutputValue` is nonnegative after coercion to `Int`. -/
+theorem Commitment.totalOutputValue_nonneg_int (c : Commitment) :
+    0 ≤ (c.totalOutputValue : Int) := by
+  exact_mod_cast Commitment.totalOutputValue_nonneg c
+
+/-- The value paid by the emitted output list is exactly `totalOutputValue`.
+A zero-valued `to_local`/`to_remote` is omitted from the list but contributes
+zero, so the identity needs no trimming hypothesis. -/
+theorem Commitment.commitmentOutputs_sum_eq_totalOutputValue (c : Commitment) :
+    (c.commitmentOutputs.map CommitmentOutput.value).sum = c.totalOutputValue := by
+  have hloc :
+      ((if c.toLocalSat = 0 then []
+        else [CommitmentOutput.toLocal c.toLocalSat]).map
+          CommitmentOutput.value).sum = c.toLocalSat := by
+    by_cases h : c.toLocalSat = 0 <;> simp [h, CommitmentOutput.value]
+  have hrem :
+      ((if c.toRemoteSat = 0 then []
+        else [CommitmentOutput.toRemote c.toRemoteSat]).map
+          CommitmentOutput.value).sum = c.toRemoteSat := by
+    by_cases h : c.toRemoteSat = 0 <;> simp [h, CommitmentOutput.value]
+  have hhtlc :
+      ((c.htlcs.map
+        (fun h => CommitmentOutput.htlc h.direction h.amountSat)).map
+          CommitmentOutput.value).sum = c.htlcOutputValue := by
+    unfold Commitment.htlcOutputValue
+    induction c.htlcs with
+    | nil => rfl
+    | cons h t ih =>
+        simp only [List.map_cons, List.sum_cons, CommitmentOutput.value,
+          htlcOutputsValue]
+        rw [ih]
+  have hanch :
+      ((if c.anchorOutputs then
+        [CommitmentOutput.localAnchor, CommitmentOutput.remoteAnchor] else []).map
+          CommitmentOutput.value).sum = c.anchorOutputValue := by
+    unfold Commitment.anchorOutputValue
+    by_cases h : c.anchorOutputs <;>
+      simp [h, CommitmentOutput.value, anchorOutputSat]
+  simp only [Commitment.commitmentOutputs, List.map_append, List.sum_append]
+  rw [hloc, hrem, hhtlc, hanch]
+  unfold Commitment.totalOutputValue
+  omega
+
+/-- **Conservation-conditional funding bound.**  If a commitment's emitted
+outputs plus its fee equal the funding value (the BOLT 3 balance equation),
+then the output sum cannot exceed the funding value.  The fee is a `Nat`, so no
+further side condition is needed.  This is the second half of LN-CH-002; it is
+conditional because the model has no built-in conservation invariant. -/
+theorem Commitment.totalOutputValue_le_funding_of_fee (c : Commitment)
+    (h : c.totalOutputValue + c.feeSat = c.fundingValueSat) :
+    c.totalOutputValue ≤ c.fundingValueSat := by
+  omega
+
+/-- The emitted output-list sum is within funding under the same explicit
+conservation hypothesis. -/
+theorem Commitment.commitmentOutputs_sum_le_funding_of_fee (c : Commitment)
+    (h : c.totalOutputValue + c.feeSat = c.fundingValueSat) :
+    (c.commitmentOutputs.map CommitmentOutput.value).sum ≤ c.fundingValueSat := by
+  rw [Commitment.commitmentOutputs_sum_eq_totalOutputValue c]
+  exact Commitment.totalOutputValue_le_funding_of_fee c h
+
+/-- Combined conditional form of LN-CH-002: every emitted output is
+nonnegative (unconditional) and, assuming the BOLT 3 balance equation, the
+emitted sum is at most the funding value. -/
+theorem Commitment.outputs_nonneg_and_sum_le_funding_of_fee (c : Commitment)
+    (h : c.totalOutputValue + c.feeSat = c.fundingValueSat) :
+    (∀ o ∈ c.commitmentOutputs, 0 ≤ (o.value : Int)) ∧
+      (c.commitmentOutputs.map CommitmentOutput.value).sum ≤ c.fundingValueSat :=
+  ⟨Commitment.commitmentOutputs_value_nonneg_int c,
+    Commitment.commitmentOutputs_sum_le_funding_of_fee c h⟩
+
+/-! ## Model-level trimming facts (LN-CH-003)
+
+`commitmentOutputs` trims a `to_local`/`to_remote` output exactly when its
+value is zero, and it emits every HTLC in `c.htlcs` verbatim.  The latter is
+*not* BOLT 3's dust test: the model assumes HTLCs are already pre-trimmed (see
+the docstring of `commitmentOutputs`), and `LnLean.Proofs.WaveD.D12` mechanizes
+both the exact dust filter over `HTLCRecord` and the counterexample showing
+that a zero-valued HTLC output is still emitted.  The lemmas below record the
+true model-level facts, including the conditional "no sub-dust HTLC output"
+statement for a pre-trimmed `htlcs` list.
+
+No unconditional `output_ordering` theorem is added: D12 refutes it
+(`waveD_d12_output_ordering_fails`), and `CommitmentOutput` carries neither a
+script nor an HTLC expiry, so the BOLT `(value, script, cltv)` key is not even
+representable on this type. -/
+
+/-- A `to_local` output occurs in `commitmentOutputs` exactly when it carries
+the commitment's `toLocalSat` and that value is nonzero. -/
+theorem Commitment.toLocal_mem_commitmentOutputs_iff {c : Commitment} {v : Nat} :
+    CommitmentOutput.toLocal v ∈ c.commitmentOutputs ↔
+      v = c.toLocalSat ∧ c.toLocalSat ≠ 0 := by
+  unfold Commitment.commitmentOutputs
+  by_cases h : c.toLocalSat = 0
+  · rw [h]
+    simp
+  · simp [h]
+
+/-- A `to_remote` output occurs in `commitmentOutputs` exactly when it carries
+the commitment's `toRemoteSat` and that value is nonzero. -/
+theorem Commitment.toRemote_mem_commitmentOutputs_iff {c : Commitment} {v : Nat} :
+    CommitmentOutput.toRemote v ∈ c.commitmentOutputs ↔
+      v = c.toRemoteSat ∧ c.toRemoteSat ≠ 0 := by
+  unfold Commitment.commitmentOutputs
+  by_cases h : c.toRemoteSat = 0
+  · rw [h]
+    simp
+  · simp [h]
+
+/-- Zero-valued `to_local` outputs are trimmed. -/
+theorem Commitment.toLocal_zero_not_mem (c : Commitment) :
+    CommitmentOutput.toLocal 0 ∉ c.commitmentOutputs := by
+  rw [Commitment.toLocal_mem_commitmentOutputs_iff]
+  intro h
+  omega
+
+/-- Zero-valued `to_remote` outputs are trimmed. -/
+theorem Commitment.toRemote_zero_not_mem (c : Commitment) :
+    CommitmentOutput.toRemote 0 ∉ c.commitmentOutputs := by
+  rw [Commitment.toRemote_mem_commitmentOutputs_iff]
+  intro h
+  omega
+
+/-- An HTLC output occurs in `commitmentOutputs` exactly when some HTLC in
+`c.htlcs` has the same direction and amount.  This makes explicit that the
+model applies no dust filter in `commitmentOutputs` itself. -/
+theorem Commitment.htlc_mem_commitmentOutputs_iff {c : Commitment}
+    {dir : Direction} {v : Nat} :
+    CommitmentOutput.htlc dir v ∈ c.commitmentOutputs ↔
+      ∃ h ∈ c.htlcs, h.direction = dir ∧ h.amountSat = v := by
+  unfold Commitment.commitmentOutputs
+  by_cases hl : c.toLocalSat = 0 <;>
+  by_cases hr : c.toRemoteSat = 0 <;>
+  by_cases ha : c.anchorOutputs <;>
+  simp [hl, hr, ha, List.mem_map, and_assoc, and_comm]
+
+/-- **Conditional no-dust-output lemma.**  If every HTLC already in `c.htlcs`
+is at or above a dust limit (i.e. the record was built from pre-trimmed
+HTLCs), then every emitted HTLC output is at or above that limit.  The
+hypothesis is the model's pre-trimming contract, not BOLT 3's
+`amount - second_stage_fee < dust_limit` test; the exact test and its
+counterexample live in D12. -/
+theorem Commitment.htlc_mem_commitmentOutputs_value_ge {c : Commitment}
+    {dustLimitSat : Nat} (hpre : ∀ h ∈ c.htlcs, dustLimitSat ≤ h.amountSat) :
+    ∀ (dir : Direction) (v : Nat),
+      CommitmentOutput.htlc dir v ∈ c.commitmentOutputs → dustLimitSat ≤ v := by
+  intro dir v hv
+  obtain ⟨h, hmem, _hdir, rfl⟩ :=
+    (Commitment.htlc_mem_commitmentOutputs_iff (c := c) (dir := dir)
+      (v := v)).1 hv
+  exact hpre h hmem
+
 end LnLean.Channel

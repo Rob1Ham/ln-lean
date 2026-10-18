@@ -1,11 +1,12 @@
 # Phase C Roadmap
 
-**Status:** plan written after the wave-A scaffold. The current tree has 48
-tracked obligations (`LN-L1-*`, `LN-CR-*`, `LN-CH-*`, `LN-HT-*`, `LN-PR-*`,
-`LN-RT-*`, `LN-PM-*`, `LN-SEC-*`), of which 13 are `proved` against the small
-models in `LnLean/Security/Model.lean` and `LnLean/Security/Invariants.lean`
-and 35 are `statement-only`. Phase C closes the `statement-only` rows, then
-audits the assumptions they use.
+**Status:** historical Phase-C plan, written after the wave-A scaffold. The
+current counts live in `docs/THEOREM-INDEX.md`: after the proof-wave round the
+tree has 48 tracked obligations (`LN-L1-*`, `LN-CR-*`, `LN-CH-*`, `LN-HT-*`,
+`LN-PR-*`, `LN-RT-*`, `LN-PM-*`, `LN-SEC-*`), of which 29 are `proved` and 19
+remain `statement-only`. The phase descriptions below remain the work
+breakdown for the remaining rows; some individual row statuses in the prose
+are older than the proof-wave promotions and should be read against the index.
 
 This roadmap separates four kinds of work, because they have very different
 costs:

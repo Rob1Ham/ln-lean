@@ -243,4 +243,88 @@ theorem unframe_frame_of_fits (m : WireMessage) (h : m.fits) :
   have hp : m.payload.size ≤ 65533 := (fits_payload_iff m).mp h
   omega
 
+/-! ## Declared length (catalog row LN-CR-006)
+
+The two-byte big-endian field between the type and the payload is the number of
+payload bytes.  The decoder `unframe` already rejects frames whose declared
+length disagrees with the bytes present; the lemmas below record the positive
+direction: on every successful decode the declared length is exactly the number
+of bytes consumed, those bytes are precisely the tail after the four-byte
+`type || length` header, and the whole frame is that header plus the payload. -/
+
+namespace Message
+
+/-- The declared payload length of an abstract frame, read from the two-byte
+big-endian length field.  Returns `none` when the input is too short to carry
+the four-byte `type || length` header. -/
+def declaredLength? (b : ByteArray) : Option Nat :=
+  match bytesToList b with
+  | _ :: _ :: c :: d :: _ => some (u16Nat c d)
+  | _ => none
+
+/-- Inversion for the frame decoder: a successful decode exposes the four
+header bytes, the payload tail, and the equation saying that the tail's length
+is exactly the numeric value of the declared length field. -/
+theorem unframeList_eq_some_iff (l : List UInt8) (m : WireMessage) :
+    unframeList l = some m ↔
+      ∃ a b c d rest, l = a :: b :: c :: d :: rest ∧
+        rest.length = u16Nat c d ∧
+        m = ⟨u16FromBytes a b, rest.toByteArray⟩ := by
+  constructor
+  · intro h
+    cases l with
+    | nil => simp [unframeList] at h
+    | cons a l1 =>
+      cases l1 with
+      | nil => simp [unframeList] at h
+      | cons b l2 =>
+        cases l2 with
+        | nil => simp [unframeList] at h
+        | cons c l3 =>
+          cases l3 with
+          | nil => simp [unframeList] at h
+          | cons d rest =>
+            simp only [unframeList] at h
+            by_cases hlen : rest.length = u16Nat c d
+            · rw [ite_eq_left hlen] at h
+              simp only [Option.some.injEq] at h
+              exact ⟨a, b, c, d, rest, rfl, hlen, h.symm⟩
+            · rw [ite_eq_right hlen] at h
+              simp at h
+  · rintro ⟨a, b, c, d, rest, rfl, hlen, rfl⟩
+    simp [unframeList, hlen]
+
+/-- **Declared length law (LN-CR-006).**  On every successful decode of an
+abstract frame `type || length || payload`:
+
+1. the two-byte declared length equals the size of the payload actually
+   consumed;
+2. the consumed payload is exactly the tail after the four-byte
+   `type || length` header;
+3. the frame accounts for every input byte: its size is `4 + payload.size`. -/
+theorem decode_length (b : ByteArray) (m : WireMessage) (h : unframe b = some m) :
+    declaredLength? b = some m.payload.size ∧
+      (bytesToList b).drop 4 = bytesToList m.payload ∧
+      b.size = 4 + m.payload.size := by
+  have hlist : unframeList (bytesToList b) = some m := by
+    simpa [unframe] using h
+  rcases (unframeList_eq_some_iff _ _).mp hlist with
+    ⟨a, bty, c, d, rest, hb, hlen, hm⟩
+  subst hm
+  have hdrop : (bytesToList b).drop 4 = rest := by
+    rw [hb]
+    simp
+  refine ⟨?_, ?_, ?_⟩
+  · unfold declaredLength?
+    rw [hb]
+    rw [List.size_toByteArray, hlen]
+  · rw [hdrop, bytesToList_toByteArray]
+  · have hb_size : b.size = (bytesToList b).length := (bytesToList_length b).symm
+    rw [hb_size, hb]
+    simp only [List.length_cons]
+    rw [List.size_toByteArray]
+    omega
+
+end Message
+
 end LnLean.Wire

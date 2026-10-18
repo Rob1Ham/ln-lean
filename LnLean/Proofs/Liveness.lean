@@ -1,6 +1,7 @@
 import LnLean.Channel.State
 import LnLean.Protocol.Peer
 import LnLean.Basic.Core
+import LnLean.Proofs.WaveE.E35
 
 /-!
 # LnLean.Proofs.Liveness
@@ -690,5 +691,37 @@ theorem retransmittable_five :
     (List.filter retransmittable
       [MsgKind.fundingSigned, MsgKind.channelReady, MsgKind.commitmentSigned,
        MsgKind.revokeAndAck, MsgKind.shutdown, MsgKind.init]).length = 5 := rfl
+
+/-! ## 8. Catalog target `LN-SEC-006`: watchtower bridge
+
+`LnLean.Proofs.WaveE.E35` does not import this module, so the import at the top
+of the file introduces no cycle (checked against the transitive import closure).
+The wrapper below restates `waveE_e35_watchtower_bridge` at exactly its
+strength.  The watchtower liveness conclusion is derived from the explicit
+report hypothesis `wt.reports c c.breachHeight` via `Watchtower.reports_live`;
+`wt.live` alone is not sufficient in this model, as
+`waveE_e35_live_watchtower_alone_does_not_punish` shows. -/
+
+section WatchtowerBridge
+
+open LnLean.Proofs.WaveE.E35
+
+/-- **A breach is punished given a report, a revocation secret, and a timely
+L1 transaction.**  If a watchtower reports the breach at the breach height
+(hence is live), and some party supplies a `BreachResponse` — the per-commitment
+secret, a penalty transaction spending both old main outputs, a sweep of their
+value minus the penalty fee, a confirmation inside the revocation window, and
+an L1 bridge that confirms it — then the breach is punished on L1, is
+`punishable` in the sense of `LnLean.Channel.Penalty`, and the tower is live. -/
+theorem watchtower_bridge (sh : Shachain) (scheme : RevocationScheme)
+    (bridge : L1ScriptBridge) (wt : Watchtower) (c : RevokedCommitment)
+    (r : BreachResponse sh bridge c)
+    (hreport : wt.reports c c.breachHeight) :
+    BreachPunished bridge c r.tx r.confirm r.window ∧
+      punishable scheme c r.tx r.witness r.confirm r.window ∧
+      wt.live :=
+  waveE_e35_watchtower_bridge sh scheme bridge wt c r hreport
+
+end WatchtowerBridge
 
 end LnLean.Proofs.Liveness

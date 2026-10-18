@@ -609,3 +609,26 @@ theorem brokenParameters_win_implies_failure :
 
 
 end LnLean.Proofs.PhaseC3.SecurityGame
+
+/-! ## Catalog target `LN-SEC-003`
+
+The game's transition function `step` is total and takes an arbitrary `Action`:
+`networkDeliver` is an adversarial stutter (the schedule chooses any tag at any
+point), and `∃ actions`/`∀ actions` quantify over all finite action lists with
+no fairness, eventual-delivery, or partial-synchrony hypothesis.  The target is
+therefore the existing `safe_of_assumptions` at exactly this strength; the four
+`Assumptions P` fields (signature unforgeability, hash binding, L1 timelock
+enforcement, channel conservation) remain explicit hypotheses. -/
+namespace LnLean.Proofs.Security
+
+open LnLean.Proofs.PhaseC3.SecurityGame
+
+/-- **Safety under an asynchronous adversarial schedule.**  For any parameter
+set `P`, any proof of the four modelled assumptions, and *any* finite list of
+adversarial actions (including arbitrary `networkDeliver` schedules), the
+adversary does not win.  No fairness hypothesis is used or required. -/
+theorem safety_async (P : GameParameters) (A : Assumptions P) :
+    ∀ actions : List Action, ¬ Wins P actions :=
+  safe_of_assumptions P A
+
+end LnLean.Proofs.Security

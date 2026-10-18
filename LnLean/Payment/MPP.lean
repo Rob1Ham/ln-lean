@@ -144,6 +144,83 @@ conservative scaffold statement and is flagged as an obligation to relax. -/
 def mppComplete (plan : MPPPlan) : Prop :=
   plan.parts ≠ [] ∧ sumParts plan.parts = plan.target.val
 
+/-- Summing a sub-multiset of the parts never exceeds summing the whole list,
+because part amounts are natural numbers (hence non-negative).  `List.Sublist`
+keeps multiplicity, so a part counted twice is not confused with one
+occurrence. -/
+theorem sumParts_sublist {collected all : List MPPPart}
+    (h : List.Sublist collected all) : sumParts collected ≤ sumParts all := by
+  induction h with
+  | slnil => simp
+  | cons q _ ih =>
+      simp only [sumParts_cons]
+      omega
+  | cons_cons q _ ih =>
+      simp only [sumParts_cons]
+      omega
+
+namespace MPP
+
+/-- The running total after the first `n` parts have arrived, in collection
+order. -/
+def runningTotal (plan : MPPPlan) (n : Nat) : Nat :=
+  sumParts (plan.parts.take n)
+
+/-- **Main theorem (catalog `LN-PM-005`).**  During MPP collection, every
+prefix of the plan's parts has a running total at or below `total_msat`
+(`plan.target`).  The hypothesis `mppComplete` supplies the exact-sum
+invariant `sumParts plan.parts = plan.target.val`; without it the claim is
+false (a part may exceed the target).  Stating the bound for an arbitrary
+prefix length `n` covers the intermediate collection states, not only the
+complete set. -/
+theorem running_total_bound {plan : MPPPlan} (hplan : mppComplete plan) (n : Nat) :
+    sumParts (plan.parts.take n) ≤ plan.target.val := by
+  have hle := sumParts_sublist (List.take_sublist n plan.parts)
+  rw [hplan.2] at hle
+  exact hle
+
+/-- The same bound phrased through the named running total. -/
+theorem runningTotal_bound {plan : MPPPlan} (hplan : mppComplete plan)
+    (n : Nat) : runningTotal plan n ≤ plan.target.val := by
+  simpa [runningTotal] using running_total_bound hplan n
+
+/-- Adding one more part to an already-collected sub-multiset keeps the
+running total at or below `total_msat`.  This is the literal "each additional
+part" form, stated for an arbitrary arrival order rather than only prefixes. -/
+theorem running_total_add_part {plan : MPPPlan} (hplan : mppComplete plan)
+    {collected : List MPPPart} {next : MPPPart}
+    (hsub : List.Sublist (collected ++ [next]) plan.parts) :
+    sumParts (collected ++ [next]) ≤ plan.target.val := by
+  have hle := sumParts_sublist hsub
+  rw [hplan.2] at hle
+  exact hle
+
+/-- The running total is monotone in the number of collected parts. -/
+theorem runningTotal_mono (plan : MPPPlan) {m n : Nat} (hmn : m ≤ n) :
+    runningTotal plan m ≤ runningTotal plan n := by
+  unfold runningTotal
+  have hsub : List.Sublist ((plan.parts.take n).take m) (plan.parts.take n) :=
+    List.take_sublist m (plan.parts.take n)
+  have hle := sumParts_sublist hsub
+  have ht : (plan.parts.take n).take m = plan.parts.take m := by
+    rw [List.take_take, Nat.min_eq_left hmn]
+  rwa [ht] at hle
+
+/-- One part arriving adds exactly its amount to the running total. -/
+theorem runningTotal_succ (plan : MPPPlan) {n : Nat}
+    (hn : n < plan.parts.length) :
+    runningTotal plan (n + 1) =
+      runningTotal plan n + (plan.parts[n]'hn).amount.val := by
+  unfold runningTotal
+  rw [List.take_add_one]
+  have hget : plan.parts[n]? = some (plan.parts[n]'hn) :=
+    List.getElem?_eq_getElem hn
+  rw [hget]
+  rw [sumParts_append]
+  simp [sumParts]
+
+end MPP
+
 /-- Atomicity: the observed outcomes are all successes or all failures.
 `outcomes` is positionally aligned with `plan.parts`.  The empty outcome list
 is vacuously atomic; `mppComplete` separately requires a non-empty plan. -/

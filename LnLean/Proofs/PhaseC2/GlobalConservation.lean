@@ -314,3 +314,35 @@ theorem totalValue_add_totalFee_cons
 end MultiChannelLedger
 
 end LnLean.Proofs.PhaseC2
+
+/-! ## Catalog target `LN-SEC-002`
+
+The catalog target is `LnLean.Proofs.Conservation.global_conservation`, but the
+multi-channel ledger and its additive totals are defined in
+`LnLean.Proofs.PhaseC2.MultiChannelLedger` (above), and importing this module
+from `LnLean.Proofs.Conservation` would create an import cycle
+(`Conservation` is imported here).  We therefore place the exact target in this
+file and reopen the `LnLean.Proofs.Conservation` namespace, so the fully
+qualified name exists exactly as catalogued.
+
+Scope note: this statement covers every channel in the ledger
+(`MultiChannelLedger.channels`).  It does **not** model an L1 spend set; the
+`MultiChannelLedger` has no UTXO/spend component.  Consequently the theorem
+covers the "all channels" half of the catalog wording only.  The L1 spend
+ledger is modelled separately (e.g. `LnLean.Security.L1Ledger` and
+`LnLean.Proofs.WaveD.D32`), not here. -/
+
+namespace LnLean.Proofs.Conservation
+
+open LnLean.Proofs.PhaseC2
+
+/-- **Global conservation across a multi-channel ledger.**  If every channel
+in `m` satisfies the BOLT 3 balance equation
+(`totalOutputValue + feeSat = fundingValueSat`), then the ledger's emitted
+value plus its commitment fees equals its total funding.  In particular no
+finite collection of conserving channels creates value. -/
+theorem global_conservation (m : MultiChannelLedger) (h : m.AllConserved) :
+    m.totalValue + m.totalFee = m.totalFunding :=
+  MultiChannelLedger.totalValue_add_totalFee_eq_totalFunding m h
+
+end LnLean.Proofs.Conservation

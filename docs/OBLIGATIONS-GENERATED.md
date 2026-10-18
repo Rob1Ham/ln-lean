@@ -6,8 +6,8 @@ a proof: a listed obligation may still be `sorry`.
 
 - proof files: **128**
 - wave-B obligation markers: **80**
-- wave-A catalog obligations: **48** (18 proved, 30 statement-only)
-- declarations: **4135**
+- wave-A catalog obligations: **48** (29 proved, 19 statement-only)
+- declarations: **4138**
 - `sorry` sites: **0**
 - duplicate marker ids: **0**
 
@@ -122,7 +122,7 @@ a proof: a listed obligation may still be `sorry`.
 | `LN-CR-003` | cryptoWire | statementOnly | `LnLean.Crypto.Hash.hmacSha256` | Onion integrity checks are HMAC-SHA256 tags, relying on assumption C8 (HMAC PRF). |
 | `LN-CR-004` | cryptoWire | proved | `LnLean.Wire.decode_encode` | BigSize encoding and decoding are inverse on canonical encodings. |
 | `LN-CR-005` | cryptoWire | statementOnly | `LnLean.Wire.TLVStream.WellFormed` | A TLV stream is strictly sorted by type and has no duplicate types. |
-| `LN-CR-006` | cryptoWire | statementOnly | `LnLean.Wire.Message.decode_length` | A Lightning message frame's declared length matches the payload actually consumed. |
+| `LN-CR-006` | cryptoWire | proved | `LnLean.Wire.Message.decode_length` | A Lightning message frame's declared length matches the payload actually consumed. |
 | `LN-CH-001` | channel | proved | `LnLean.Security.Ledger.step_conserves` | Every ledger transition preserves funding = local + remote + in-flight + fee. |
 | `LN-CH-002` | channel | statementOnly | `LnLean.Channel.Commitment.outputs_nonnegative` | No commitment output has a negative value and the output sum stays within the funding value. |
 | `LN-CH-003` | channel | statementOnly | `LnLean.Channel.Commitment.output_ordering` | Commitment outputs are ordered by value then script, and dust HTLCs are trimmed. |
@@ -139,26 +139,26 @@ a proof: a listed obligation may still be `sorry`.
 | `LN-PR-002` | protocol | proved | `LnLean.Protocol.Handshake.channel_ready_gate` | The channel enters normal operation only after both channel_ready messages. |
 | `LN-PR-003` | protocol | statementOnly | `LnLean.Protocol.Handshake.funding_signed_valid` | funding_signed carries a valid signature over the funding transaction. |
 | `LN-PR-004` | protocol | statementOnly | `LnLean.Protocol.Messages.commitment_signed_covers` | commitment_signed covers exactly the current HTLC set and fee. |
-| `LN-PR-005` | protocol | statementOnly | `LnLean.Protocol.Peer.reestablish_no_rollback` | channel_reestablish retransmits unacknowledged updates without rolling state back. |
+| `LN-PR-005` | protocol | proved | `LnLean.Protocol.Peer.reestablish_no_rollback` | channel_reestablish retransmits unacknowledged updates without rolling state back. |
 | `LN-PR-006` | protocol | statementOnly | `LnLean.Protocol.Handshake.feature_intersection` | Negotiated channel features are the intersection of both peers' supported features. |
 | `LN-RT-001` | routing | proved | `LnLean.Security.Route.wellFormed_connected; LnLean.Security.Route.wellFormed_capacity; LnLean.Security.Route.wellFormed_nonempty` | A well-formed route is non-empty, connected end-to-end, and every hop has enough capacity. |
-| `LN-RT-002` | routing | statementOnly | `LnLean.Routing.Gossip.update_monotone` | A newer channel_update replaces an older one only if its timestamp is greater. |
-| `LN-RT-003` | routing | statementOnly | `LnLean.Routing.Onion.peel_deterministic` | Peeling one onion layer exposes the next hop or a terminal payload, never both. |
-| `LN-RT-004` | routing | statementOnly | `LnLean.Routing.Onion.hmac_sound` | An onion layer with an invalid HMAC is rejected rather than forwarded. |
-| `LN-RT-005` | routing | statementOnly | `LnLean.Routing.Route.cltv_accumulates` | The CLTV expiry at each hop increases by at least that hop's cltv_expiry_delta. |
+| `LN-RT-002` | routing | proved | `LnLean.Routing.Gossip.update_monotone` | A newer channel_update replaces an older one only if its timestamp is greater. |
+| `LN-RT-003` | routing | proved | `LnLean.Routing.Onion.peel_deterministic` | Peeling one onion layer exposes the next hop or a terminal payload, never both. |
+| `LN-RT-004` | routing | proved | `LnLean.Routing.Onion.hmac_sound` | An onion layer with an invalid HMAC is rejected rather than forwarded. |
+| `LN-RT-005` | routing | proved | `LnLean.Routing.Route.cltv_accumulates` | The CLTV expiry at each hop increases by at least that hop's cltv_expiry_delta. |
 | `LN-RT-006` | routing | statementOnly | `LnLean.Routing.Gossip.announcement_valid` | The gossip graph contains only channels with valid announcement signatures. |
 | `LN-PM-001` | payment | proved | `LnLean.Security.Invoice.consistent_hash; LnLean.Security.Invoice.consistent_amount` | A consistent invoice has the payment session's hash and amount. |
-| `LN-PM-002` | payment | statementOnly | `LnLean.Payment.Invoice.signature_valid` | A BOLT 11 invoice signature is valid for the payee node key. |
+| `LN-PM-002` | payment | proved | `LnLean.Payment.Invoice.signature_valid` | A BOLT 11 invoice signature is valid for the payee node key. |
 | `LN-PM-003` | payment | proved | `LnLean.Payment.Invoice.payment_secret_match` | The final onion payload's payment secret matches the invoice's payment secret. |
 | `LN-PM-004` | payment | proved | `LnLean.Security.MppPayment.settle_requires_sum` | A settled multipart payment has parts summing exactly to the advertised total. |
-| `LN-PM-005` | payment | statementOnly | `LnLean.Payment.MPP.running_total_bound` | During MPP collection, each additional part keeps the running total at or below total_msat. |
+| `LN-PM-005` | payment | proved | `LnLean.Payment.MPP.running_total_bound` | During MPP collection, each additional part keeps the running total at or below total_msat. |
 | `LN-PM-006` | payment | proved | `LnLean.Payment.Keysend.preimage_binding` | A keysend payment uses the sender-supplied preimage as the payment preimage. |
 | `LN-SEC-001` | security | proved | `LnLean.Security.L1Ledger.spend_preserves_noDoubleSpend` | Spending a fresh L1 outpoint preserves the no-double-spend predicate. |
-| `LN-SEC-002` | security | statementOnly | `LnLean.Proofs.Conservation.global_conservation` | Across all channels and the L1 spend set, total value is conserved. |
-| `LN-SEC-003` | security | statementOnly | `LnLean.Proofs.Security.safety_async` | Safety holds under an asynchronous adversarial schedule (without a fairness hypothesis). |
+| `LN-SEC-002` | security | proved | `LnLean.Proofs.Conservation.global_conservation` | Across all channels and the L1 spend set, total value is conserved. |
+| `LN-SEC-003` | security | proved | `LnLean.Proofs.Security.safety_async` | Safety holds under an asynchronous adversarial schedule (without a fairness hypothesis). |
 | `LN-SEC-004` | security | proved | `LnLean.Security.partial_synchrony_delivers` | After GST every message is delivered within delta of its send time. |
 | `LN-SEC-005` | security | statementOnly | `LnLean.Proofs.Liveness.penalty_economical` | A penalty transaction remains economical under the modelled fee spike. |
-| `LN-SEC-006` | security | statementOnly | `LnLean.Proofs.Liveness.watchtower_bridge` | A breach is punished if some party has the revocation secret and a timely L1 transaction, given a live watchtower. |
+| `LN-SEC-006` | security | proved | `LnLean.Proofs.Liveness.watchtower_bridge` | A breach is punished if some party has the revocation secret and a timely L1 transaction, given a live watchtower. |
 
 ## Declarations
 
@@ -838,53 +838,54 @@ a proof: a listed obligation may still be `sorry`.
 | theorem | `taggedHash_collision_witness` | `LnLean/Proofs/Crypto/Sha256Props.lean:316` |
 | theorem | `no_injective_hash_into_32_bytes` | `LnLean/Proofs/Crypto/Sha256Props.lean:481` |
 | theorem | `preimageResistant_vacuous` | `LnLean/Proofs/Crypto/Sha256Props.lean:511` |
-| def | `step` | `LnLean/Proofs/Liveness.lean:125` |
-| theorem | `step` | `LnLean/Proofs/Liveness.lean:165` |
-| theorem | `step` | `LnLean/Proofs/Liveness.lean:230` |
-| theorem | `step` | `LnLean/Proofs/Liveness.lean:245` |
-| abbrev | `Scheduler` | `LnLean/Proofs/Liveness.lean:255` |
-| def | `runList` | `LnLean/Proofs/Liveness.lean:258` |
-| theorem | `runList_sound` | `LnLean/Proofs/Liveness.lean:263` |
-| theorem | `runList_phaseRank_le` | `LnLean/Proofs/Liveness.lean:280` |
-| def | `runPrefix` | `LnLean/Proofs/Liveness.lean:286` |
-| theorem | `runPrefix_succ` | `LnLean/Proofs/Liveness.lean:293` |
-| def | `NoLoss` | `LnLean/Proofs/Liveness.lean:299` |
-| def | `Fair` | `LnLean/Proofs/Liveness.lean:304` |
-| def | `Eventually` | `LnLean/Proofs/Liveness.lean:308` |
-| def | `ReachesPhase` | `LnLean/Proofs/Liveness.lean:312` |
-| theorem | `step_event_of_awaitingLockin` | `LnLean/Proofs/Liveness.lean:320` |
-| theorem | `exists_first_occurrence` | `LnLean/Proofs/Liveness.lean:338` |
-| theorem | `runPrefix_awaitingLockin_stays` | `LnLean/Proofs/Liveness.lean:352` |
-| theorem | `fair_awaitingLockin_eventually_normal` | `LnLean/Proofs/Liveness.lean:385` |
-| theorem | `awaitingLockin_reaches_normal` | `LnLean/Proofs/Liveness.lean:406` |
-| theorem | `fundingSigned_only_stays_awaitingLockin` | `LnLean/Proofs/Liveness.lean:414` |
-| theorem | `not_eventually_normal_without_fundingLocked` | `LnLean/Proofs/Liveness.lean:429` |
-| inductive | `Resolution` | `LnLean/Proofs/Liveness.lean:446` |
-| def | `Resolution.toState` | `LnLean/Proofs/Liveness.lean:453` |
-| inductive | `Resolves` | `LnLean/Proofs/Liveness.lean:462` |
-| theorem | `resolves_not_pending` | `LnLean/Proofs/Liveness.lean:468` |
-| theorem | `pending_htlc_resolves` | `LnLean/Proofs/Liveness.lean:475` |
-| inductive | `HTLCTrigger` | `LnLean/Proofs/Liveness.lean:485` |
-| def | `HTLCTrigger.resolution` | `LnLean/Proofs/Liveness.lean:494` |
-| def | `HonestTimer` | `LnLean/Proofs/Liveness.lean:500` |
-| theorem | `pending_htlc_eventually_resolved` | `LnLean/Proofs/Liveness.lean:505` |
-| theorem | `eventual_delivery_or_timeout_resolves` | `LnLean/Proofs/Liveness.lean:516` |
-| def | `retransmittable` | `LnLean/Proofs/Liveness.lean:531` |
-| theorem | `recordSent_lastSent` | `LnLean/Proofs/Liveness.lean:543` |
-| theorem | `advanceReceived_lastSent` | `LnLean/Proofs/Liveness.lean:552` |
-| theorem | `foldl_advanceReceived_lastSent` | `LnLean/Proofs/Liveness.lean:560` |
-| theorem | `reconnect_preserves_channelReady` | `LnLean/Proofs/Liveness.lean:571` |
-| theorem | `reconnect_resend_completes_lockin` | `LnLean/Proofs/Liveness.lean:583` |
-| def | `advanceCommitments` | `LnLean/Proofs/Liveness.lean:596` |
-| theorem | `advanceCommitments_nextCommitmentNumber` | `LnLean/Proofs/Liveness.lean:602` |
-| theorem | `reestablish_catches_up` | `LnLean/Proofs/Liveness.lean:618` |
-| theorem | `shuttingDown_reaches_closed` | `LnLean/Proofs/Liveness.lean:629` |
-| theorem | `normal_reaches_closed` | `LnLean/Proofs/Liveness.lean:636` |
-| theorem | `awaitingLockin_reaches_closed` | `LnLean/Proofs/Liveness.lean:647` |
-| theorem | `negotiating_reaches_closed` | `LnLean/Proofs/Liveness.lean:658` |
-| theorem | `noLoss_shuttingDown_eventually_closed` | `LnLean/Proofs/Liveness.lean:672` |
-| theorem | `phaseRank_closed_eq` | `LnLean/Proofs/Liveness.lean:687` |
-| theorem | `retransmittable_five` | `LnLean/Proofs/Liveness.lean:689` |
+| def | `step` | `LnLean/Proofs/Liveness.lean:126` |
+| theorem | `step` | `LnLean/Proofs/Liveness.lean:166` |
+| theorem | `step` | `LnLean/Proofs/Liveness.lean:231` |
+| theorem | `step` | `LnLean/Proofs/Liveness.lean:246` |
+| abbrev | `Scheduler` | `LnLean/Proofs/Liveness.lean:256` |
+| def | `runList` | `LnLean/Proofs/Liveness.lean:259` |
+| theorem | `runList_sound` | `LnLean/Proofs/Liveness.lean:264` |
+| theorem | `runList_phaseRank_le` | `LnLean/Proofs/Liveness.lean:281` |
+| def | `runPrefix` | `LnLean/Proofs/Liveness.lean:287` |
+| theorem | `runPrefix_succ` | `LnLean/Proofs/Liveness.lean:294` |
+| def | `NoLoss` | `LnLean/Proofs/Liveness.lean:300` |
+| def | `Fair` | `LnLean/Proofs/Liveness.lean:305` |
+| def | `Eventually` | `LnLean/Proofs/Liveness.lean:309` |
+| def | `ReachesPhase` | `LnLean/Proofs/Liveness.lean:313` |
+| theorem | `step_event_of_awaitingLockin` | `LnLean/Proofs/Liveness.lean:321` |
+| theorem | `exists_first_occurrence` | `LnLean/Proofs/Liveness.lean:339` |
+| theorem | `runPrefix_awaitingLockin_stays` | `LnLean/Proofs/Liveness.lean:353` |
+| theorem | `fair_awaitingLockin_eventually_normal` | `LnLean/Proofs/Liveness.lean:386` |
+| theorem | `awaitingLockin_reaches_normal` | `LnLean/Proofs/Liveness.lean:407` |
+| theorem | `fundingSigned_only_stays_awaitingLockin` | `LnLean/Proofs/Liveness.lean:415` |
+| theorem | `not_eventually_normal_without_fundingLocked` | `LnLean/Proofs/Liveness.lean:430` |
+| inductive | `Resolution` | `LnLean/Proofs/Liveness.lean:447` |
+| def | `Resolution.toState` | `LnLean/Proofs/Liveness.lean:454` |
+| inductive | `Resolves` | `LnLean/Proofs/Liveness.lean:463` |
+| theorem | `resolves_not_pending` | `LnLean/Proofs/Liveness.lean:469` |
+| theorem | `pending_htlc_resolves` | `LnLean/Proofs/Liveness.lean:476` |
+| inductive | `HTLCTrigger` | `LnLean/Proofs/Liveness.lean:486` |
+| def | `HTLCTrigger.resolution` | `LnLean/Proofs/Liveness.lean:495` |
+| def | `HonestTimer` | `LnLean/Proofs/Liveness.lean:501` |
+| theorem | `pending_htlc_eventually_resolved` | `LnLean/Proofs/Liveness.lean:506` |
+| theorem | `eventual_delivery_or_timeout_resolves` | `LnLean/Proofs/Liveness.lean:517` |
+| def | `retransmittable` | `LnLean/Proofs/Liveness.lean:532` |
+| theorem | `recordSent_lastSent` | `LnLean/Proofs/Liveness.lean:544` |
+| theorem | `advanceReceived_lastSent` | `LnLean/Proofs/Liveness.lean:553` |
+| theorem | `foldl_advanceReceived_lastSent` | `LnLean/Proofs/Liveness.lean:561` |
+| theorem | `reconnect_preserves_channelReady` | `LnLean/Proofs/Liveness.lean:572` |
+| theorem | `reconnect_resend_completes_lockin` | `LnLean/Proofs/Liveness.lean:584` |
+| def | `advanceCommitments` | `LnLean/Proofs/Liveness.lean:597` |
+| theorem | `advanceCommitments_nextCommitmentNumber` | `LnLean/Proofs/Liveness.lean:603` |
+| theorem | `reestablish_catches_up` | `LnLean/Proofs/Liveness.lean:619` |
+| theorem | `shuttingDown_reaches_closed` | `LnLean/Proofs/Liveness.lean:630` |
+| theorem | `normal_reaches_closed` | `LnLean/Proofs/Liveness.lean:637` |
+| theorem | `awaitingLockin_reaches_closed` | `LnLean/Proofs/Liveness.lean:648` |
+| theorem | `negotiating_reaches_closed` | `LnLean/Proofs/Liveness.lean:659` |
+| theorem | `noLoss_shuttingDown_eventually_closed` | `LnLean/Proofs/Liveness.lean:673` |
+| theorem | `phaseRank_closed_eq` | `LnLean/Proofs/Liveness.lean:688` |
+| theorem | `retransmittable_five` | `LnLean/Proofs/Liveness.lean:690` |
+| theorem | `watchtower_bridge` | `LnLean/Proofs/Liveness.lean:716` |
 | def | `FundingHashLinked` | `LnLean/Proofs/ModelHardening/F01.lean:49` |
 | def | `FundingScriptCollisionResistant` | `LnLean/Proofs/ModelHardening/F01.lean:57` |
 | theorem | `waveF_f01_witnessScriptHash_size_of_hashLinked` | `LnLean/Proofs/ModelHardening/F01.lean:66` |
@@ -1718,6 +1719,7 @@ a proof: a listed obligation may still be `sorry`.
 | theorem | `multiLedger_step_total_le_funding` | `LnLean/Proofs/PhaseC2/GlobalConservation.lean:271` |
 | theorem | `totalValue_add_totalFee_append` | `LnLean/Proofs/PhaseC2/GlobalConservation.lean:293` |
 | theorem | `totalValue_add_totalFee_cons` | `LnLean/Proofs/PhaseC2/GlobalConservation.lean:304` |
+| theorem | `global_conservation` | `LnLean/Proofs/PhaseC2/GlobalConservation.lean:344` |
 | def | `paymentBranchScript` | `LnLean/Proofs/PhaseC2/HTLCBridge.lean:44` |
 | def | `timeoutBranchScript` | `LnLean/Proofs/PhaseC2/HTLCBridge.lean:57` |
 | def | `twoBranchScript` | `LnLean/Proofs/PhaseC2/HTLCBridge.lean:66` |
@@ -2408,6 +2410,7 @@ a proof: a listed obligation may still be `sorry`.
 | theorem | `brokenParameters_conservationFailure` | `LnLean/Proofs/PhaseC3/SecurityGame.lean:581` |
 | theorem | `brokenParameters_wins` | `LnLean/Proofs/PhaseC3/SecurityGame.lean:596` |
 | theorem | `brokenParameters_win_implies_failure` | `LnLean/Proofs/PhaseC3/SecurityGame.lean:606` |
+| theorem | `safety_async` | `LnLean/Proofs/PhaseC3/SecurityGame.lean:630` |
 | structure | `field` | `LnLean/Proofs/PhaseC3/WatchtowerBreach.lean:77` |
 | structure | `DetectionBeforeDeadline` | `LnLean/Proofs/PhaseC3/WatchtowerBreach.lean:78` |
 | structure | `BridgeAcceptance` | `LnLean/Proofs/PhaseC3/WatchtowerBreach.lean:90` |
@@ -2976,48 +2979,48 @@ a proof: a listed obligation may still be `sorry`.
 | def | `idTable` | `LnLean/Proofs/Traceability.lean:160` |
 | def | `targetTable` | `LnLean/Proofs/Traceability.lean:212` |
 | def | `provedTable` | `LnLean/Proofs/Traceability.lean:264` |
-| def | `provedDeclarations` | `LnLean/Proofs/Traceability.lean:292` |
-| def | `lneanModules` | `LnLean/Proofs/Traceability.lean:317` |
-| def | `theoremIndexIds` | `LnLean/Proofs/Traceability.lean:349` |
-| def | `traceabilityIds` | `LnLean/Proofs/Traceability.lean:361` |
-| theorem | `domains_exhaustive` | `LnLean/Proofs/Traceability.lean:375` |
-| theorem | `statuses_exhaustive` | `LnLean/Proofs/Traceability.lean:379` |
-| theorem | `rowWellFormed_iff` | `LnLean/Proofs/Traceability.lean:383` |
-| theorem | `obligations_rows_well_formed` | `LnLean/Proofs/Traceability.lean:391` |
-| theorem | `obligations_rows_well_formed'` | `LnLean/Proofs/Traceability.lean:395` |
-| theorem | `obligations_ids_nodup` | `LnLean/Proofs/Traceability.lean:402` |
-| theorem | `obligations_ids_in_table` | `LnLean/Proofs/Traceability.lean:406` |
-| theorem | `id_areas_known` | `LnLean/Proofs/Traceability.lean:411` |
-| theorem | `id_numbers_in_range` | `LnLean/Proofs/Traceability.lean:416` |
-| theorem | `id_six_per_area` | `LnLean/Proofs/Traceability.lean:421` |
-| theorem | `id_areas_nodup` | `LnLean/Proofs/Traceability.lean:426` |
-| theorem | `obligations_statuses_enumerated` | `LnLean/Proofs/Traceability.lean:430` |
-| theorem | `obligations_domains_enumerated` | `LnLean/Proofs/Traceability.lean:435` |
-| theorem | `obligations_count_ge_40` | `LnLean/Proofs/Traceability.lean:440` |
-| theorem | `obligations_domain_count` | `LnLean/Proofs/Traceability.lean:444` |
-| theorem | `every_domain_used` | `LnLean/Proofs/Traceability.lean:449` |
-| theorem | `obligations_targets_nonempty` | `LnLean/Proofs/Traceability.lean:456` |
-| theorem | `obligations_targets_in_table` | `LnLean/Proofs/Traceability.lean:461` |
-| theorem | `target_modules_nonempty` | `LnLean/Proofs/Traceability.lean:466` |
-| theorem | `target_modules_lnean` | `LnLean/Proofs/Traceability.lean:472` |
-| theorem | `proved_rows_in_table` | `LnLean/Proofs/Traceability.lean:480` |
-| theorem | `proved_rows_have_decls` | `LnLean/Proofs/Traceability.lean:486` |
-| theorem | `proved_decls_in_snapshot` | `LnLean/Proofs/Traceability.lean:491` |
-| theorem | `proved_snapshot_all_used` | `LnLean/Proofs/Traceability.lean:499` |
-| theorem | `proved_declarations_nodup` | `LnLean/Proofs/Traceability.lean:506` |
-| theorem | `proved_declaration_modules_lnean` | `LnLean/Proofs/Traceability.lean:512` |
-| theorem | `proved_row_count` | `LnLean/Proofs/Traceability.lean:518` |
-| theorem | `statement_only_row_count` | `LnLean/Proofs/Traceability.lean:524` |
-| theorem | `no_unanchored_rows` | `LnLean/Proofs/Traceability.lean:530` |
-| theorem | `catalog_ids_match_theorem_index` | `LnLean/Proofs/Traceability.lean:538` |
-| theorem | `catalog_ids_match_traceability` | `LnLean/Proofs/Traceability.lean:544` |
-| theorem | `index_ids_match_traceability` | `LnLean/Proofs/Traceability.lean:549` |
-| def | `sampleRow` | `LnLean/Proofs/Traceability.lean:558` |
-| theorem | `sampleRow_wellFormed` | `LnLean/Proofs/Traceability.lean:568` |
-| theorem | `emptyId_not_wellFormed` | `LnLean/Proofs/Traceability.lean:572` |
-| theorem | `statuses_length` | `LnLean/Proofs/Traceability.lean:581` |
-| theorem | `domains_length` | `LnLean/Proofs/Traceability.lean:584` |
-| theorem | `lneanModules_nodup` | `LnLean/Proofs/Traceability.lean:587` |
+| def | `provedDeclarations` | `LnLean/Proofs/Traceability.lean:306` |
+| def | `lneanModules` | `LnLean/Proofs/Traceability.lean:342` |
+| def | `theoremIndexIds` | `LnLean/Proofs/Traceability.lean:376` |
+| def | `traceabilityIds` | `LnLean/Proofs/Traceability.lean:388` |
+| theorem | `domains_exhaustive` | `LnLean/Proofs/Traceability.lean:402` |
+| theorem | `statuses_exhaustive` | `LnLean/Proofs/Traceability.lean:406` |
+| theorem | `rowWellFormed_iff` | `LnLean/Proofs/Traceability.lean:410` |
+| theorem | `obligations_rows_well_formed` | `LnLean/Proofs/Traceability.lean:418` |
+| theorem | `obligations_rows_well_formed'` | `LnLean/Proofs/Traceability.lean:422` |
+| theorem | `obligations_ids_nodup` | `LnLean/Proofs/Traceability.lean:429` |
+| theorem | `obligations_ids_in_table` | `LnLean/Proofs/Traceability.lean:433` |
+| theorem | `id_areas_known` | `LnLean/Proofs/Traceability.lean:438` |
+| theorem | `id_numbers_in_range` | `LnLean/Proofs/Traceability.lean:443` |
+| theorem | `id_six_per_area` | `LnLean/Proofs/Traceability.lean:448` |
+| theorem | `id_areas_nodup` | `LnLean/Proofs/Traceability.lean:453` |
+| theorem | `obligations_statuses_enumerated` | `LnLean/Proofs/Traceability.lean:457` |
+| theorem | `obligations_domains_enumerated` | `LnLean/Proofs/Traceability.lean:462` |
+| theorem | `obligations_count_ge_40` | `LnLean/Proofs/Traceability.lean:467` |
+| theorem | `obligations_domain_count` | `LnLean/Proofs/Traceability.lean:471` |
+| theorem | `every_domain_used` | `LnLean/Proofs/Traceability.lean:476` |
+| theorem | `obligations_targets_nonempty` | `LnLean/Proofs/Traceability.lean:483` |
+| theorem | `obligations_targets_in_table` | `LnLean/Proofs/Traceability.lean:488` |
+| theorem | `target_modules_nonempty` | `LnLean/Proofs/Traceability.lean:493` |
+| theorem | `target_modules_lnean` | `LnLean/Proofs/Traceability.lean:499` |
+| theorem | `proved_rows_in_table` | `LnLean/Proofs/Traceability.lean:507` |
+| theorem | `proved_rows_have_decls` | `LnLean/Proofs/Traceability.lean:513` |
+| theorem | `proved_decls_in_snapshot` | `LnLean/Proofs/Traceability.lean:518` |
+| theorem | `proved_snapshot_all_used` | `LnLean/Proofs/Traceability.lean:526` |
+| theorem | `proved_declarations_nodup` | `LnLean/Proofs/Traceability.lean:533` |
+| theorem | `proved_declaration_modules_lnean` | `LnLean/Proofs/Traceability.lean:539` |
+| theorem | `proved_row_count` | `LnLean/Proofs/Traceability.lean:545` |
+| theorem | `statement_only_row_count` | `LnLean/Proofs/Traceability.lean:551` |
+| theorem | `no_unanchored_rows` | `LnLean/Proofs/Traceability.lean:557` |
+| theorem | `catalog_ids_match_theorem_index` | `LnLean/Proofs/Traceability.lean:565` |
+| theorem | `catalog_ids_match_traceability` | `LnLean/Proofs/Traceability.lean:571` |
+| theorem | `index_ids_match_traceability` | `LnLean/Proofs/Traceability.lean:576` |
+| def | `sampleRow` | `LnLean/Proofs/Traceability.lean:585` |
+| theorem | `sampleRow_wellFormed` | `LnLean/Proofs/Traceability.lean:595` |
+| theorem | `emptyId_not_wellFormed` | `LnLean/Proofs/Traceability.lean:599` |
+| theorem | `statuses_length` | `LnLean/Proofs/Traceability.lean:608` |
+| theorem | `domains_length` | `LnLean/Proofs/Traceability.lean:611` |
+| theorem | `lneanModules_nodup` | `LnLean/Proofs/Traceability.lean:614` |
 | theorem | `waveD_d01_fundingScriptPubKey_is_p2wsh` | `LnLean/Proofs/WaveD/D01.lean:52` |
 | theorem | `waveD_d01_fundingScriptPubKey_shape` | `LnLean/Proofs/WaveD/D01.lean:56` |
 | theorem | `waveD_d01_fundingScriptPubKey_size` | `LnLean/Proofs/WaveD/D01.lean:61` |

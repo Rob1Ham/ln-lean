@@ -475,4 +475,75 @@ theorem packetSize_empty (code : ErrorCode) :
 
 end OnionError
 
+/-! ## Catalog targets (exact names)
+
+The catalog identifiers `LnLean.Routing.Onion.peel_deterministic` and
+`LnLean.Routing.Onion.hmac_sound` carry an `Onion` namespace component (the
+module name), whereas the definitions above live directly in
+`LnLean.Routing`.  The two theorems below are stated at the exact catalog
+names so that `Traceability.targetTable` resolves without an alias. -/
+
+namespace Onion
+
+/-- **Peel determinism (LN-RT-003).**  Every packet peels in exactly one of
+two mutually exclusive ways: either no layer remains, `peel` returns the
+terminal payload `p.routingInfo`, and no forwarding payload can be produced;
+or at least one layer remains, `peel` returns a forwarding payload whose
+inner packet is `p` with the head layer removed, and no terminal payload can
+be produced.  The branches are exclusive because `OnionPayload.final` and
+`OnionPayload.forward` are distinct constructors.  This bundles
+exhaustiveness, the exact terminal payload, the exact remaining layer list,
+and the impossibility of both outcomes, so it is not a restatement of the
+definition of `peel`. -/
+theorem peel_deterministic (p : OnionPacket) :
+    (p.layers = [] ∧ peel p = some (.final p.routingInfo) ∧
+        ∀ (hop : OnionHop) (next : OnionPacket),
+          peel p = some (.forward hop next) → False) ∨
+      (p.layers ≠ [] ∧
+        (∃ (hop : OnionHop) (next : OnionPacket),
+          peel p = some (.forward hop next) ∧ next.layers = p.layers.tail) ∧
+        ∀ (payload : ByteArray), peel p = some (.final payload) → False) := by
+  rcases p with ⟨v, k, r, layers, hm⟩
+  cases layers with
+  | nil =>
+    refine Or.inl ⟨rfl, rfl, ?_⟩
+    intro hop next h
+    simp [peel] at h
+  | cons l ls =>
+    refine Or.inr ⟨by simp, ⟨l.hop, ⟨v, k, r, ls, hm⟩, rfl, rfl⟩, ?_⟩
+    intro payload h
+    simp [peel] at h
+
+/-- **HMAC soundness (LN-RT-004).**  On the checked forward path, if the
+verifier rejects the head layer's HMAC, `openLayer` returns `none`: the layer
+is rejected and no hop is forwarded.
+
+This is a claim about `openLayer`, the checked acceptance/forwarding step.
+The model's raw `peel` is the documented *structural* peel: it never consults
+an HMAC and always returns `some` (`peel_isSome`).  The counterexample
+`LnLean.Proofs.WaveD.D25.waveD_d25_peel_bypasses_hmac` exhibits a packet under
+an always-rejecting verifier where `openLayer` returns `none` while `peel`
+still returns a forwarding payload.  Hence "invalid HMAC ⇒ rejected rather
+than forwarded" holds for a caller that forwards via `openLayer`, not for one
+that forwards straight from `peel`. -/
+theorem hmac_sound {I : OnionInterface} {tag : ByteArray}
+    {p : OnionPacket} {l : OnionLayer} {ls : List OnionLayer}
+    (hp : p.layers = l :: ls) (hver : I.verifyHmac tag l.hmac = false) :
+    openLayer I tag p = none :=
+  openLayer_reject hp hver
+
+/-- Companion to `hmac_sound`: under a rejected head HMAC there is no
+hop/inner-packet pair returned by the checked step, so nothing can be
+forwarded from it. -/
+theorem hmac_sound_not_forwarded {I : OnionInterface} {tag : ByteArray}
+    {p : OnionPacket} {l : OnionLayer} {ls : List OnionLayer}
+    (hp : p.layers = l :: ls) (hver : I.verifyHmac tag l.hmac = false) :
+    ¬ ∃ (hop : OnionHop) (next : OnionPacket),
+      openLayer I tag p = some (hop, next) := by
+  rintro ⟨hop, next, h⟩
+  rw [hmac_sound hp hver] at h
+  simp at h
+
+end Onion
+
 end LnLean.Routing

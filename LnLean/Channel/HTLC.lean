@@ -195,6 +195,144 @@ theorem hasOutput_iff (h : HTLCRecord) (d t s : Nat) :
   unfold hasOutput isDustHTLC
   rw [Bool.not_eq_true', decide_eq_false_iff_not, Nat.not_lt]
 
+/-! ## The offered / received / trimmed amount partition
+
+`HTLCRecord` carries no balance, fee, or funding value, so the catalog claim
+`LN-HT-003` cannot be stated here in its balance-and-fee form.  What the model
+does determine is the HTLC half of that claim: the live HTLC value splits
+exactly into the offered, received, and trimmed buckets.  A future channel
+ledger (a `Balance` with a fee and a `fundingValue`, as in
+`LnLean.Channel.Types`) can wrap that identity with the non-HTLC part; the
+hypothesis of `htlcValue_conservation_of_ledger` is exactly that missing
+ledger. -/
+
+/-- The live HTLCs whose commitment output survives the dust test. -/
+def htlcUntrimmed (dustLimit timeoutFee successFee : Nat)
+    (hs : List HTLCRecord) : List HTLCRecord :=
+  (htlcSet hs).filter (fun h => !isDustHTLC h dustLimit timeoutFee successFee)
+
+/-- The untrimmed HTLCs offered by the local endpoint. -/
+def htlcOffered (dustLimit timeoutFee successFee : Nat)
+    (hs : List HTLCRecord) : List HTLCRecord :=
+  (htlcUntrimmed dustLimit timeoutFee successFee hs).filter
+    (fun h => decide (h.direction = Direction.local))
+
+/-- The untrimmed HTLCs received by the local endpoint. -/
+def htlcReceived (dustLimit timeoutFee successFee : Nat)
+    (hs : List HTLCRecord) : List HTLCRecord :=
+  (htlcUntrimmed dustLimit timeoutFee successFee hs).filter
+    (fun h => decide (h.direction = Direction.remote))
+
+/-- The live HTLCs whose output is trimmed.  BOLT 3 adds the value of a
+trimmed output to the commitment fee (`refs/bolts/03-transactions.md:305`). -/
+def htlcTrimmed (dustLimit timeoutFee successFee : Nat)
+    (hs : List HTLCRecord) : List HTLCRecord :=
+  (htlcSet hs).filter (fun h => isDustHTLC h dustLimit timeoutFee successFee)
+
+/-- Filtering offered and received records covers the list, up to
+permutation.  Every `Direction` is either `local` or `remote`. -/
+theorem htlc_filter_direction_perm (l : List HTLCRecord) :
+    List.Perm
+      (l.filter (fun h => decide (h.direction = Direction.local)) ++
+        l.filter (fun h => decide (h.direction = Direction.remote))) l := by
+  have hcomp :
+      (fun h : HTLCRecord => !decide (h.direction = Direction.local)) =
+        (fun h => decide (h.direction = Direction.remote)) := by
+    funext h
+    cases h.direction <;> rfl
+  simpa [hcomp] using
+    List.filter_append_perm
+      (fun h : HTLCRecord => decide (h.direction = Direction.local)) l
+
+/-- **Offered / received / trimmed partition.**  For any HTLC list, the three
+BOLT 3 buckets cover the live set exactly, up to permutation.  The statement is
+about `htlcSet hs`, so settled and removed records are excluded. -/
+theorem htlcSet_partition_perm (dustLimit timeoutFee successFee : Nat)
+    (hs : List HTLCRecord) :
+    List.Perm
+      (htlcOffered dustLimit timeoutFee successFee hs ++
+        htlcReceived dustLimit timeoutFee successFee hs ++
+        htlcTrimmed dustLimit timeoutFee successFee hs) (htlcSet hs) := by
+  have hdir :
+      List.Perm
+        (htlcOffered dustLimit timeoutFee successFee hs ++
+          htlcReceived dustLimit timeoutFee successFee hs)
+        (htlcUntrimmed dustLimit timeoutFee successFee hs) := by
+    unfold htlcOffered htlcReceived
+    exact htlc_filter_direction_perm _
+  have hdust :
+      List.Perm
+        (htlcUntrimmed dustLimit timeoutFee successFee hs ++
+          htlcTrimmed dustLimit timeoutFee successFee hs) (htlcSet hs) := by
+    unfold htlcUntrimmed htlcTrimmed
+    simpa using List.filter_append_perm
+      (fun h : HTLCRecord => !isDustHTLC h dustLimit timeoutFee successFee)
+      (htlcSet hs)
+  exact (hdir.append_right _).trans hdust
+
+/-- The live HTLC value splits exactly into the offered, received, and trimmed
+amounts.  `List.sum` is permutation-invariant, so the permutation form of
+`htlcSet_partition_perm` is enough. -/
+theorem totalHtlcValue_partition (dustLimit timeoutFee successFee : Nat)
+    (hs : List HTLCRecord) :
+    totalHtlcValue (htlcSet hs) =
+      totalHtlcValue (htlcOffered dustLimit timeoutFee successFee hs) +
+        totalHtlcValue (htlcReceived dustLimit timeoutFee successFee hs) +
+        totalHtlcValue (htlcTrimmed dustLimit timeoutFee successFee hs) := by
+  have hp := htlcSet_partition_perm dustLimit timeoutFee successFee hs
+  have hsum := (hp.map (fun h : HTLCRecord => h.amountMsat.val)).sum_nat
+  rw [List.map_append, List.map_append, List.sum_append, List.sum_append] at hsum
+  unfold totalHtlcValue
+  exact hsum.symm
+
+/-- **Arithmetic content of `LN-HT-003`, with the missing ledger explicit.**
+`ledger` is the catalog's "balances and fee" total.  This module has no
+`Balance`, `fee`, or `fundingValue` field, so `hledger` is an explicit
+channel-ledger invariant rather than a theorem about the model.  Under it the
+offered, received, and trimmed amounts plus the ledger equal the funding value.
+The claim is false without `hledger` (see the counterexample in
+`LnLean.Proofs.WaveD.D15`); the satoshi and commitment-fee form lives there
+too. -/
+theorem htlcValue_conservation_of_ledger
+    (dustLimit timeoutFee successFee ledger funding : Nat)
+    (hs : List HTLCRecord)
+    (hledger : ledger + totalHtlcValue (htlcSet hs) = funding) :
+    ledger + totalHtlcValue (htlcOffered dustLimit timeoutFee successFee hs) +
+        totalHtlcValue (htlcReceived dustLimit timeoutFee successFee hs) +
+        totalHtlcValue (htlcTrimmed dustLimit timeoutFee successFee hs) =
+      funding := by
+  have hpart := totalHtlcValue_partition dustLimit timeoutFee successFee hs
+  omega
+
+/-- For one HTLC whose second-stage fee is covered, the commitment output value
+plus the withheld second-stage fee is exactly the floored amount.  This is the
+per-output BOLT 3 rule that a fee-aware conservation target wraps with the
+balance/funding ledger. -/
+theorem htlcOutputValue_add_secondStageFee (h : HTLCRecord)
+    (timeoutFee successFee : Nat)
+    (hfee : secondStageFee h.direction timeoutFee successFee ≤
+      Msat.toSatFloor h.amountMsat) :
+    htlcOutputValue h timeoutFee successFee +
+        secondStageFee h.direction timeoutFee successFee =
+      Msat.toSatFloor h.amountMsat := by
+  unfold htlcOutputValue
+  exact Nat.sub_add_cancel hfee
+
+/-- A non-dust HTLC can pay its second-stage fee.  A positive dust limit is
+needed: the output value is the floored amount minus the fee, and the output is
+untrimmed only when that value reaches the dust limit. -/
+theorem secondStageFee_le_of_not_dust (dustLimit timeoutFee successFee : Nat)
+    (hdust : 0 < dustLimit) {h : HTLCRecord}
+    (hnd : isDustHTLC h dustLimit timeoutFee successFee = false) :
+    secondStageFee h.direction timeoutFee successFee ≤
+      Msat.toSatFloor h.amountMsat := by
+  have hhas : hasOutput h dustLimit timeoutFee successFee = true := by
+    unfold hasOutput
+    simp [hnd]
+  have hge := (hasOutput_iff h dustLimit timeoutFee successFee).1 hhas
+  unfold htlcOutputValue at hge
+  omega
+
 /-! ## Transitions -/
 
 /-- BOLT 2 `update_add_htlc`.  The guard is the conjunction of the sending
@@ -335,5 +473,234 @@ theorem removeHTLC_ok_state (h h' : HTLCRecord) (ok : removeHTLC h = .ok h') :
   · simp only [Result.ok.injEq] at ok
     exact ok.symm
   · simp at ok
+
+/-! ## Live-set id uniqueness
+
+`HTLCRecord.id` is the BOLT 2 `update_add_htlc.id`.  The model's `addHTLC`
+takes the id from the caller and never sees the current list, so no theorem
+about `addHTLC` alone can establish uniqueness; the catalog claim `LN-HT-004`
+is a list invariant.  The strongest facts available in this module are:
+
+* `liveHtlcIdsNodup_add` — consing a record with a fresh live id preserves
+  pairwise distinctness of the live ids (freshness is needed only when the
+  added record is itself live);
+* `liveHtlcIdsNodup_addHTLC` — the same for the record produced by a
+  successful model `addHTLC`, whose id is the caller's id;
+* `liveHtlcIdsNodup_filter` — any record filter preserves live-id
+  distinctness, which covers dropping settled records and removal by id;
+* `liveHtlcIdsNodup_unique` — pairwise distinctness gives the relational
+  uniqueness property the catalog states.
+
+The unconditional claim is false in this model: `liveHtlcIdsNodup_unconditional_false`
+exhibits a live list with two distinct records carrying the same id.  That is
+protocol-conforming because BOLT 2 allocates ids from one counter per sender,
+and `HTLCRecord` has neither a counter nor a distinctness field.  A faithful
+exact target therefore requires a channel/ledger record carrying the per-sender
+counters (as in `LnLean.Proofs.WaveD.D16`) or a `Nodup` invariant on the state.
+-/
+
+/-- The BOLT 2 ids of a list of HTLC records, in list order. -/
+def htlcIds (hs : List HTLCRecord) : List Nat := hs.map HTLCRecord.id
+
+/-- The ids of the live HTLC set, in list order. -/
+def liveHtlcIds (hs : List HTLCRecord) : List Nat :=
+  (htlcSet hs).map HTLCRecord.id
+
+/-- The live HTLC ids are pairwise distinct. -/
+def liveHtlcIdsNodup (hs : List HTLCRecord) : Prop := (liveHtlcIds hs).Nodup
+
+theorem mem_htlcIds_iff (x : Nat) (hs : List HTLCRecord) :
+    x ∈ htlcIds hs ↔ ∃ h ∈ hs, h.id = x := by
+  unfold htlcIds
+  exact List.mem_map
+
+theorem mem_liveHtlcIds_iff (x : Nat) (hs : List HTLCRecord) :
+    x ∈ liveHtlcIds hs ↔ ∃ h ∈ htlcSet hs, h.id = x := by
+  unfold liveHtlcIds
+  exact List.mem_map
+
+/-- Every live id is an id of the full record list. -/
+theorem liveHtlcIds_subset_htlcIds (hs : List HTLCRecord) :
+    ∀ x ∈ liveHtlcIds hs, x ∈ htlcIds hs := by
+  intro x hx
+  unfold liveHtlcIds at hx
+  obtain ⟨h, hh, hid⟩ := List.mem_map.1 hx
+  unfold htlcIds
+  exact List.mem_map.2 ⟨h, (List.mem_filter.mp hh).1, hid⟩
+
+/-- Distinct ids on the full list imply distinct ids on the live set. -/
+theorem liveHtlcIdsNodup_of_htlcIds_nodup (hs : List HTLCRecord)
+    (hnd : (htlcIds hs).Nodup) : liveHtlcIdsNodup hs := by
+  unfold liveHtlcIdsNodup liveHtlcIds htlcIds htlcSet at *
+  exact (List.filter_sublist.map HTLCRecord.id).nodup hnd
+
+theorem htlcSet_cons_live (h : HTLCRecord) (hs : List HTLCRecord)
+    (hl : h.isLive = true) : htlcSet (h :: hs) = h :: htlcSet hs := by
+  unfold htlcSet
+  simp [hl]
+
+theorem htlcSet_cons_not_live (h : HTLCRecord) (hs : List HTLCRecord)
+    (hl : h.isLive = false) : htlcSet (h :: hs) = htlcSet hs := by
+  unfold htlcSet
+  simp [hl]
+
+theorem liveHtlcIds_cons_live (h : HTLCRecord) (hs : List HTLCRecord)
+    (hl : h.isLive = true) :
+    liveHtlcIds (h :: hs) = h.id :: liveHtlcIds hs := by
+  unfold liveHtlcIds
+  rw [htlcSet_cons_live h hs hl, List.map_cons]
+
+theorem liveHtlcIds_cons_not_live (h : HTLCRecord) (hs : List HTLCRecord)
+    (hl : h.isLive = false) : liveHtlcIds (h :: hs) = liveHtlcIds hs := by
+  unfold liveHtlcIds
+  rw [htlcSet_cons_not_live h hs hl]
+
+/-- Consing one record preserves pairwise distinctness of the live ids when
+its id is fresh for the live set.  Freshness is required only when the added
+record is live, which is the strongest insert law available for the unchecked
+transition. -/
+theorem liveHtlcIdsNodup_add (h : HTLCRecord) (hs : List HTLCRecord)
+    (hnd : liveHtlcIdsNodup hs) (hfresh : h.id ∉ liveHtlcIds hs) :
+    liveHtlcIdsNodup (h :: hs) := by
+  unfold liveHtlcIdsNodup at hnd ⊢
+  by_cases hl : h.isLive = true
+  · rw [liveHtlcIds_cons_live h hs hl]
+    exact List.nodup_cons.2 ⟨hfresh, hnd⟩
+  · have hf : h.isLive = false := by
+      cases hb : h.isLive <;> simp_all
+    rw [liveHtlcIds_cons_not_live h hs hf]
+    exact hnd
+
+/-- Any record filter preserves pairwise distinctness of the live ids.
+Instances include dropping settled records and removing every record with a
+given id. -/
+theorem liveHtlcIdsNodup_filter (p : HTLCRecord → Bool)
+    (hs : List HTLCRecord) (hnd : liveHtlcIdsNodup hs) :
+    liveHtlcIdsNodup (hs.filter p) := by
+  unfold liveHtlcIdsNodup liveHtlcIds htlcSet at hnd ⊢
+  rw [List.filter_filter]
+  have hcomm : (fun a : HTLCRecord => HTLCRecord.isLive a && p a) =
+      (fun a => p a && HTLCRecord.isLive a) := by
+    funext a
+    exact Bool.and_comm _ _
+  rw [hcomm, ← List.filter_filter (p := p) (q := HTLCRecord.isLive)]
+  exact (List.filter_sublist.map HTLCRecord.id).nodup hnd
+
+/-- Removing every record with a given id preserves live-id distinctness. -/
+theorem liveHtlcIdsNodup_removeId (id : Nat) (hs : List HTLCRecord)
+    (hnd : liveHtlcIdsNodup hs) :
+    liveHtlcIdsNodup (hs.filter (fun h => decide (h.id ≠ id))) :=
+  liveHtlcIdsNodup_filter (fun h => decide (h.id ≠ id)) hs hnd
+
+/-- If the ids of a record list are distinct, membership plus equality of ids
+determines the record.  This is the combinatorial core of id uniqueness. -/
+theorem eq_of_id_eq_of_htlcIds_nodup {l : List HTLCRecord}
+    (hnd : (l.map HTLCRecord.id).Nodup) :
+    ∀ h1 ∈ l, ∀ h2 ∈ l, h1.id = h2.id → h1 = h2 := by
+  induction l with
+  | nil =>
+      intro h1 hm1
+      simp at hm1
+  | cons x xs ih =>
+      have hnd' : (x.id :: xs.map HTLCRecord.id).Nodup := by
+        simpa using hnd
+      have hx : x.id ∉ xs.map HTLCRecord.id := (List.nodup_cons.mp hnd').1
+      have htail : (xs.map HTLCRecord.id).Nodup :=
+        (List.nodup_cons.mp hnd').2
+      intro h1 hm1 h2 hm2 hid
+      simp only [List.mem_cons] at hm1 hm2
+      rcases hm1 with rfl | hm1
+      · rcases hm2 with rfl | hm2
+        · rfl
+        · exact absurd (List.mem_map.mpr ⟨h2, hm2, hid.symm⟩) hx
+      · rcases hm2 with rfl | hm2
+        · exact absurd (List.mem_map.mpr ⟨h1, hm1, hid⟩) hx
+        · exact ih htail h1 hm1 h2 hm2 hid
+
+/-- Pairwise distinctness of the live ids gives the relational uniqueness
+property: within the live set an id determines the record.  The converse is
+not claimed, because a list may contain the same record twice. -/
+theorem liveHtlcIdsNodup_unique (hs : List HTLCRecord)
+    (hnd : liveHtlcIdsNodup hs) :
+    ∀ h1 ∈ htlcSet hs, ∀ h2 ∈ htlcSet hs, h1.id = h2.id → h1 = h2 := by
+  unfold liveHtlcIdsNodup liveHtlcIds at hnd
+  exact eq_of_id_eq_of_htlcIds_nodup hnd
+
+/-- The model's `addHTLC` returns the caller-supplied id, so the freshness
+guard needed for uniqueness has to be discharged by the caller: `addHTLC` does
+not inspect the current record list. -/
+theorem addHTLC_id (maxHtlcValue currentTotal : Msat) (id : Nat)
+    (dir : Direction) (amount : Msat) (ph : PaymentHash) (cltv : Height)
+    (h : HTLCRecord)
+    (ok : addHTLC maxHtlcValue currentTotal id dir amount ph cltv = .ok h) :
+    h.id = id := by
+  unfold addHTLC at ok
+  split at ok
+  · simp only [Result.ok.injEq] at ok
+    subst ok
+    rfl
+  · simp at ok
+
+/-- The record produced by a successful `addHTLC` is live. -/
+theorem addHTLC_isLive (maxHtlcValue currentTotal : Msat) (id : Nat)
+    (dir : Direction) (amount : Msat) (ph : PaymentHash) (cltv : Height)
+    (h : HTLCRecord)
+    (ok : addHTLC maxHtlcValue currentTotal id dir amount ph cltv = .ok h) :
+    h.isLive = true := by
+  cases dir
+  · have hs := addHTLC_state_local maxHtlcValue currentTotal id amount ph cltv h ok
+    simp [HTLCRecord.isLive, hs, HTLCState.isLive]
+  · have hs := addHTLC_state_remote maxHtlcValue currentTotal id amount ph cltv h ok
+    simp [HTLCRecord.isLive, hs, HTLCState.isLive]
+
+/-- Inserting the record produced by a successful model add preserves live-id
+distinctness when the caller's id is fresh.  The freshness premise cannot be
+dropped: `addHTLC` accepts a reused id (two adds with the same id both succeed
+in the model). -/
+theorem liveHtlcIdsNodup_addHTLC
+    (maxHtlcValue currentTotal : Msat) (id : Nat) (dir : Direction)
+    (amount : Msat) (ph : PaymentHash) (cltv : Height)
+    (h : HTLCRecord) (hs : List HTLCRecord)
+    (ok : addHTLC maxHtlcValue currentTotal id dir amount ph cltv = .ok h)
+    (hnd : liveHtlcIdsNodup hs) (hfresh : id ∉ liveHtlcIds hs) :
+    liveHtlcIdsNodup (h :: hs) := by
+  have hid : h.id = id :=
+    addHTLC_id maxHtlcValue currentTotal id dir amount ph cltv h ok
+  exact liveHtlcIdsNodup_add h hs hnd (by simpa [hid] using hfresh)
+
+/-- `addHTLC` performs no id check: two adds carrying the same id but
+different amounts both succeed.  Freshness therefore has to come from the
+caller or from a channel record that owns the id counters. -/
+theorem addHTLC_same_id_distinct_amounts_ok :
+    (addHTLC ⟨1000⟩ ⟨0⟩ 7 .local ⟨1⟩ ⟨ByteArray.empty⟩ 0).isOk = true ∧
+      (addHTLC ⟨1000⟩ ⟨0⟩ 7 .local ⟨2⟩ ⟨ByteArray.empty⟩ 0).isOk = true :=
+  ⟨rfl, rfl⟩
+
+/-- **The unconditional catalog claim is false in this model.**  Two distinct
+live records may carry the same id: BOLT 2 allocates from one counter per
+sender, and `HTLCRecord` has no counter and no distinctness field. -/
+theorem liveHtlcIdsNodup_unconditional_false :
+    ¬ (∀ hs : List HTLCRecord, liveHtlcIdsNodup hs) := by
+  intro hall
+  let a : HTLCRecord :=
+    { id := 0
+      direction := Direction.local
+      amountMsat := ⟨1000⟩
+      paymentHash := ⟨ByteArray.empty⟩
+      cltvExpiry := 0
+      state := .offered }
+  let b : HTLCRecord :=
+    { id := 0
+      direction := Direction.remote
+      amountMsat := ⟨2000⟩
+      paymentHash := ⟨ByteArray.empty⟩
+      cltvExpiry := 0
+      state := .received }
+  have h := hall [a, b]
+  have hids : liveHtlcIds [a, b] = [0, 0] := by
+    decide
+  unfold liveHtlcIdsNodup at h
+  rw [hids] at h
+  simp at h
 
 end LnLean.Channel

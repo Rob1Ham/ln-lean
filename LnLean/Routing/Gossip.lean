@@ -346,4 +346,34 @@ theorem applyGossip_stale_update (s : GossipState) (u : ChannelUpdate)
     applyGossip s (.channelUpdate u) = s :=
   GossipState.applyUpdate_stale s u h
 
+/-! ## Replacement rule (catalog target `LN-RT-002`) -/
+
+namespace Gossip
+
+/-- **Gossip timestamp monotonicity and replacement rule**
+(catalog target `LnLean.Routing.Gossip.update_monotone`, `LN-RT-002`).
+
+Both halves of the BOLT 7 `channel_update` replacement claim are recorded:
+
+* the newest stored timestamp never decreases under
+  `GossipState.applyUpdate`;
+* if an update actually changes the store, then the update's timestamp was
+  strictly greater than the old clock.  Thus an older (or equally old) update
+  can never replace the stored one; a replacement requires a strictly greater
+  timestamp.
+
+The second half is the contrapositive of `GossipState.applyUpdate_stale`; no
+positivity or `wellFormed` hypothesis is needed, because the replacement
+guard itself compares the timestamps. -/
+theorem update_monotone (s : GossipState) (u : ChannelUpdate) :
+    s.latestUpdateTimestamp ≤ (s.applyUpdate u).latestUpdateTimestamp ∧
+      (s.applyUpdate u ≠ s → s.latestUpdateTimestamp < u.timestamp) := by
+  refine ⟨GossipState.latestUpdateTimestamp_applyUpdate_ge s u, ?_⟩
+  intro hchange
+  by_cases hle : u.timestamp ≤ s.latestUpdateTimestamp
+  · exact absurd (GossipState.applyUpdate_stale s u hle) hchange
+  · exact Nat.lt_of_not_le hle
+
+end Gossip
+
 end LnLean.Routing

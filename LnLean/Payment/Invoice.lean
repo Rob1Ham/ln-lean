@@ -254,6 +254,22 @@ def verify (digest : Invoice → ByteArray)
     (i : Invoice) : Prop :=
   i.Valid ∧ sigCheck i.payee (digest i) i.signature = true
 
+/-- Model-level signature validity: the supplied checker accepts the invoice's
+own payee node key, the invoice's signable digest, and the invoice's compact
+signature.  This is exactly the second conjunct of `Invoice.verify`.
+
+The theorem is a projection from the model's verification predicate.  It is
+*not* a cryptographic soundness result: `sigCheck` is an unconstrained
+parameter, and nothing here proves that a real ECDSA verifier cannot accept a
+forged signature.  ECDSA unforgeability/key binding remains assumption C3
+(`LnLean.Crypto.Model`).  In particular, `Invoice.Valid` alone does **not**
+imply this statement, since `Valid` says nothing about `sigCheck`. -/
+theorem signature_valid {digest : Invoice → ByteArray}
+    {sigCheck : PubKey → ByteArray → InvoiceSignature → Bool}
+    {i : Invoice} (h : verify digest sigCheck i) :
+    sigCheck i.payee (digest i) i.signature = true :=
+  h.2
+
 /-- The BOLT 4 / BOLT 11 amount rule: with a specified amount `a`, the payer
 must send at least `a` and should not send more than twice `a` (BOLT 4
 "Final Node" requirements).  With no amount, any strictly positive payment

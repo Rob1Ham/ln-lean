@@ -2,7 +2,7 @@
   "files": 128,
   "obligations": 80,
   "catalog_obligations": 48,
-  "declarations": 4135,
+  "declarations": 4138,
   "sorries": 0,
   "by_domain": {
     "Bitcoin": 3,
@@ -17,7 +17,7 @@
     "def": 957,
     "inductive": 34,
     "structure": 98,
-    "theorem": 3028
+    "theorem": 3031
   },
   "duplicate_ids": [],
   "catalog_duplicate_ids": [],
@@ -689,7 +689,7 @@
       "lean_target": "LnLean.Wire.Message.decode_length",
       "boltdoc": "BOLT 1 \u00a7Lightning Message Format",
       "anchor": "lightning/src/ln/peer_handler.rs:331",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "cryptoWire"
     },
     {
@@ -842,7 +842,7 @@
       "lean_target": "LnLean.Protocol.Peer.reestablish_no_rollback",
       "boltdoc": "BOLT 2 \u00a7Message Retransmission",
       "anchor": "lightning/src/ln/channelmanager.rs:17831; lightning/src/ln/channel.rs:10826",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "protocol"
     },
     {
@@ -869,7 +869,7 @@
       "lean_target": "LnLean.Routing.Gossip.update_monotone",
       "boltdoc": "BOLT 7 \u00a7The channel_update Message",
       "anchor": "lightning/src/routing/gossip.rs:906; lightning/src/routing/gossip.rs:422",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "routing"
     },
     {
@@ -878,7 +878,7 @@
       "lean_target": "LnLean.Routing.Onion.peel_deterministic",
       "boltdoc": "BOLT 4 \u00a7Onion Decryption",
       "anchor": "lightning/src/ln/onion_payment.rs:505",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "routing"
     },
     {
@@ -887,7 +887,7 @@
       "lean_target": "LnLean.Routing.Onion.hmac_sound",
       "boltdoc": "BOLT 4 \u00a7Packet Structure",
       "anchor": "lightning/src/ln/onion_payment.rs:505",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "routing"
     },
     {
@@ -896,7 +896,7 @@
       "lean_target": "LnLean.Routing.Route.cltv_accumulates",
       "boltdoc": "BOLT 4 \u00a7Payload for the Last Node; BOLT 7 \u00a7HTLC Fees",
       "anchor": "lightning/src/routing/router.rs:657",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "routing"
     },
     {
@@ -923,7 +923,7 @@
       "lean_target": "LnLean.Payment.Invoice.signature_valid",
       "boltdoc": "BOLT 11 \u00a7Data Part; BOLT 11 \u00a7Payer / Payee Interactions",
       "anchor": "lightning-invoice/src/lib.rs:272; lightning-invoice/src/lib.rs:588",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "payment"
     },
     {
@@ -950,7 +950,7 @@
       "lean_target": "LnLean.Payment.MPP.running_total_bound",
       "boltdoc": "BOLT 4 \u00a7Basic Multi-Part Payments",
       "anchor": "lightning/src/ln/onion_payment.rs:857",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "payment"
     },
     {
@@ -977,7 +977,7 @@
       "lean_target": "LnLean.Proofs.Conservation.global_conservation",
       "boltdoc": "BOLT 3 \u00a7Commitment Transaction",
       "anchor": "lightning/src/ln/chan_utils.rs:716",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "security"
     },
     {
@@ -986,7 +986,7 @@
       "lean_target": "LnLean.Proofs.Security.safety_async",
       "boltdoc": "BOLT 2 \u00a7Message Retransmission",
       "anchor": "lightning/src/ln/channelmanager.rs:17831",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "security"
     },
     {
@@ -1013,7 +1013,7 @@
       "lean_target": "LnLean.Proofs.Liveness.watchtower_bridge",
       "boltdoc": "BOLT 5 \u00a7Revoked Transaction Close Handling",
       "anchor": "lightning/src/chain/channelmonitor.rs:5079",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "security"
     }
   ]

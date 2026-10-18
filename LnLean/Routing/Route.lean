@@ -235,6 +235,53 @@ theorem endExpiry_gt' (r : Route) (start : Nat) (hne : r.NonEmpty)
     start < r.endExpiry start :=
   endExpiry_gt r.hops start hne hpos
 
+/-- A single hop's CLTV delta is at most the sum of all hop deltas. -/
+theorem cltvDelta_le_sum {l : List Hop} {h : Hop} (hh : h ∈ l) :
+    h.cltvDelta ≤ (l.map Hop.cltvDelta).sum := by
+  induction l with
+  | nil => simp at hh
+  | cons x xs ih =>
+    simp only [List.map_cons, List.sum_cons]
+    rcases List.mem_cons.mp hh with rfl | hmem
+    · exact Nat.le_add_right _ _
+    · have hle := ih hmem
+      omega
+
+/-- A single hop's CLTV delta is covered by the route's total CLTV delta. -/
+theorem cltvDelta_le_totalCltv (r : Route) {h : Hop} (hh : h ∈ r.hops) :
+    h.cltvDelta ≤ r.totalCltv := by
+  simpa [totalCltv] using cltvDelta_le_sum hh
+
+/-- **CLTV expiry accumulates by each hop's `cltv_expiry_delta`**
+(catalog target `LnLean.Routing.Route.cltv_accumulates`, `LN-RT-005`).
+
+Three facts, all without any positivity hypothesis (deltas are natural
+numbers):
+
+* the final expiry starting at `start` is exactly `start` plus the route's
+  total CLTV delta: `start + r.totalCltv = r.endExpiry start`;
+* every hop's `cltvDelta` is at most `r.totalCltv`, so the accumulated total
+  covers each individual hop's delta;
+* the prefix/step form: after taking `i` hops the expiry is `E`, and taking
+  hop `i` next yields exactly `E + r.hops[i].cltvDelta`.  Hence the expiry at
+  each hop increases by *at least* that hop's `cltv_expiry_delta` (in fact
+  exactly it).  The step is an equality, which directly implies the catalog's
+  "at least" wording. -/
+theorem cltv_accumulates (r : Route) (start : Nat) :
+    start + r.totalCltv = r.endExpiry start ∧
+      (∀ h ∈ r.hops, h.cltvDelta ≤ r.totalCltv) ∧
+      (∀ (i : Nat) (hi : i < r.hops.length),
+        (r.hops.take i).foldl (fun acc h => acc + h.cltvDelta) start +
+            (r.hops[i]'hi).cltvDelta =
+          (r.hops.take (i + 1)).foldl (fun acc h => acc + h.cltvDelta) start) := by
+  refine ⟨?_, ?_, ?_⟩
+  · rw [endExpiry, foldl_add_eq_sum, totalCltv]
+  · intro h hh
+    exact cltvDelta_le_totalCltv r hh
+  · intro i hi
+    rw [← List.take_append_getElem hi, List.foldl_append]
+    simp
+
 end Route
 
 /-! ## Construction and validity -/

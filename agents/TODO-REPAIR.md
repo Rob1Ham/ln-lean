@@ -87,6 +87,51 @@ delete the negative result.
   created, no rewrite of `main` or another worker's branch. The isolated
   `repair/pubbump` compatibility branch was also pushed separately.
 
+## R6 — Proof-wave round (done)
+
+Supersedes the R5 catalog counts. Eight disjoint lanes ran against the green
+repair tree; the catalog now has exact targets for eleven additional rows.
+
+- [x] `W01` — `LN-CR-006` `LnLean.Wire.Message.decode_length`.
+- [x] `R01` — `LN-RT-002` `Gossip.update_monotone`, `LN-RT-005`
+  `Route.cltv_accumulates`.
+- [x] `O01` — `LN-RT-003` `Onion.peel_deterministic`, `LN-RT-004`
+  `Onion.hmac_sound` (checked `openLayer`; raw-`peel` D25 counterexample
+  retained).
+- [x] `P01` — `LN-PR-005` `Peer.reestablish_no_rollback`; D17/E19/E20/
+  FeatureClosure retargets documented for the other protocol rows.
+- [x] `M01` — `LN-PM-002` `Invoice.signature_valid` (model projection; C3
+  remains an assumption), `LN-PM-005` `MPP.running_total_bound`.
+- [x] `S01` — `LN-SEC-002` `Conservation.global_conservation` (multi-channel
+  only), `LN-SEC-003` `Security.safety_async` (explicit `Assumptions P`),
+  `LN-SEC-006` `Liveness.watchtower_bridge` (requires a report).
+- [x] `H01` — no fake exact target; added HTLC partition and live-id
+  invariants, retained the unconditional-id counterexample.
+- [x] `C01` — no fake exact target; added commitment nonnegativity/sum/
+  trimming lemmas, retained D46/D12 counterexamples.
+- [x] Catalog: **29 proved / 19 statementOnly**, **12 planned**, 0 promotion
+  candidates.
+- [x] Full build **170 jobs RC 0**; `check.sh`, `check-final.py`, vendor,
+  anchors, public-reference, and planned-aware catalog audit all RC 0.
+- [ ] Commit and non-force push to `origin/repair/integrated`.
+
+### Remaining planned/statement-only gaps
+
+- `LN-CR-001/002/003`: crypto model fields (`sha256`, `ecdsaVerify`,
+  `hmacSha256`), not standalone declarations.
+- `LN-CH-002`: needs the conservation premise split out; nonnegativity is
+  proved, unconditional funding bound is false (D46).
+- `LN-CH-003`: unconditional ordering is false (D12); script/CLTV key absent.
+- `LN-HT-003`: needs a balance/fee/funding ledger record.
+- `LN-HT-004`: needs per-sender id counters or a `Nodup` state invariant.
+- `LN-PR-001`: faithful D17 acceptor model, wrong wave-A target.
+- `LN-PR-003`: faithful E19 verifier model, not a length check.
+- `LN-PR-004`: faithful E20 conditional model; unconditional form false.
+- `LN-PR-006`: feature model is in FeaturesProps/FeatureClosure; raw
+  intersection is not negotiated support.
+- `LN-SEC-005`: unbounded fee model has a D34 counterexample; needs a bounded
+  feerate schedule.
+
 ## Commands
 
 ```sh

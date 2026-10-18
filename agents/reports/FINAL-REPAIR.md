@@ -2,11 +2,11 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `68c236da89b6063dd884799453f076bdc006de2f`
+**Gate HEAD:** `PENDING-PROOF-WAVE-COMMIT`
 **Toolchain:** `leanprover/lean4:v4.35.0`
 **Author:** D02 (integration documentation lane), finalized by the integration lane
-**Status:** repair lanes complete; **final gate PASS at this HEAD**
-**Commit/push:** integrated commit `68c236d`; pushed non-force to
+**Status:** repair + proof-wave lanes complete; **proof-wave gate PASS**
+**Commit/push:** proof-wave commit pending; will be pushed non-force to
 `origin/repair/integrated`.
 
 ## 1. Starting point
@@ -121,12 +121,13 @@ for `sorry`, and marks a row `proved` only when every target is a
 `sorry`-free theorem/lemma. It reports promotion candidates but never edits
 the catalog.
 
-K02 promoted five exact candidates and corrected two stale targets. Final
-counts are **18 `proved` / 30 `statementOnly`** out of 48 rows. The strict
-audit still exits 1 because 23 planned `statementOnly` targets do not exist;
+K02 promoted five exact candidates and corrected two stale targets. Its counts
+were **18 `proved` / 30 `statementOnly`** out of 48 rows; the proof-wave round
+supersedes them with **29 / 19**. At the proof-wave gate the strict audit still
+exits 1 because 12 planned `statementOnly` targets do not exist;
 `--allow-planned` exits 0 and reports them as `PLANNED`, never as proved. The
-fifth promotion is `LN-CR-004` (`LnLean.Wire.decode_encode`); its target was
-first corrected from the stale `LnLean.Wire.BigSize.decode_encode`.
+fifth K02 promotion is `LN-CR-004` (`LnLean.Wire.decode_encode`); its target
+was first corrected from the stale `LnLean.Wire.BigSize.decode_encode`.
 
 ### 2.6 `L01`: public L1 reference
 
@@ -155,12 +156,32 @@ The repair defines `lastAmount` as `(forwardAmounts path).getLastD 0` and proves
 tail, finishing with `ac_rfl`. The statement and downstream results are
 unchanged. The module now builds in ~1.3–1.5 s at ~1.7 GiB peak.
 
+### 2.8 Proof-wave lanes
+
+Eight disjoint lanes added exact targets and retained the model gaps where no
+faithful exact declaration exists.
+
+| Lane | Result |
+|---|---|
+| `W01` | `LN-CR-006` `Wire.Message.decode_length`: declared length equals the consumed payload size, with exact tail and frame-size conjuncts |
+| `R01` | `LN-RT-002` `Gossip.update_monotone` (clock monotonicity + replacement requires a greater timestamp); `LN-RT-005` `Route.cltv_accumulates` (total and per-hop prefix accumulation) |
+| `O01` | `LN-RT-003` `Onion.peel_deterministic`; `LN-RT-004` `Onion.hmac_sound` for the checked `openLayer` path (D25 raw-`peel` counterexample retained) |
+| `P01` | `LN-PR-005` `Peer.reestablish_no_rollback`; D17/E19/E20/FeatureClosure retargets documented for the other protocol rows |
+| `M01` | `LN-PM-002` `Invoice.signature_valid` (model projection from `Invoice.verify`; C3 remains an assumption); `LN-PM-005` `MPP.running_total_bound` |
+| `S01` | `LN-SEC-002` `Conservation.global_conservation` (multi-channel only); `LN-SEC-003` `Security.safety_async` (four explicit assumptions); `LN-SEC-006` `Liveness.watchtower_bridge` (requires a report) |
+| `H01` | No exact target: `LN-HT-003/004` need a balance/fee ledger or per-sender id counters. Added the offered/received/trimmed partition and live-id insert/filter/uniqueness invariants; retained the duplicate-id counterexample |
+| `C01` | No exact target: `LN-CH-002` needs the conservation premise; `LN-CH-003` is refuted unconditionally by D12. Added nonnegativity, sum, and trimming lemmas; retained D46/D12 counterexamples |
+
+The lane reports are `agents/reports/W01-WIRE.md`, `R01-ROUTING.md`,
+`O01-ONION.md`, `P01-PROTOCOL.md`, `M01-PAYMENTS.md`, `S01-SECURITY.md`,
+`H01-HTLC.md`, and `C01-COMMITMENT.md`.
+
 ## 3. What is actually checked
 
-At the committed final HEAD `68c236d` (G01 gate):
+At the proof-wave gate:
 
 ```text
-flock -w 3600 /tmp/ln-build.lock lake build LnLean
+flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build
   -> Build completed successfully (170 jobs).  RC 0
 
 grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'
@@ -182,11 +203,14 @@ python3 scripts/check-final.py
   -> check-public-reference: OK (offline).  RC 0
 
 python3 scripts/check-catalog.py --allow-planned
-  -> rows=48 proved=18 statementOnly=30 planned=23 proved_failures=0
+  -> rows=48 proved=29 statementOnly=19 planned=12 proved_failures=0
      duplicate_ids=0 candidates=0; RC 0
 
 python3 scripts/check-catalog.py --audit
-  -> RC 1: 23 unresolved planned statementOnly targets; 0 proved failures
+  -> RC 1: 12 unresolved planned statementOnly targets; 0 proved failures
+
+lake build LnLean.Proofs.Traceability
+  -> Build completed successfully (10 jobs).  RC 0
 ```
 
 Tree size: 164 Lean files, 162 root imports. `LnLean.Proofs.All` and the
@@ -202,7 +226,7 @@ comments/prose.
   RC 0).
 - No proof body contains `sorry`, `admit`, `axiom`, `constant`, `opaque`,
   `native_decide`, `unsafe`, or `@[implemented_by]` in executable code.
-- The 18 catalog `proved` rows name exact declarations that exist and are
+- The 29 catalog `proved` rows name exact declarations that exist and are
   `sorry`-free in their source bodies.
 - The mechanical C1/C8 facts: 32-byte widths, hash-lock equality, verifier
   equality, stored-tag extraction, and the pigeonhole negative results.
@@ -213,14 +237,20 @@ comments/prose.
   full tree.
 
 This is **not** a proof of Lightning security. It is a sorry-free Lean tree of
-conditional/algebraic results plus 30 tracked statement-only claims.
+conditional/algebraic results plus 19 tracked statement-only claims. The newer
+promotions keep their scope caveats: `LN-RT-004` is checked-`openLayer` only,
+`LN-PM-002` is a verification projection, `LN-SEC-002` has no L1 spend-set
+bridge, `LN-SEC-003` keeps four assumptions, and `LN-SEC-006` requires a
+watchtower report.
 
 ## 5. What remains conditional or planned
 
-- 23 `statementOnly` rows name planned declarations not present in the tree.
+- 12 `statementOnly` rows name planned declarations not present in the tree:
+  `LN-CR-001/002/003`, `LN-CH-002/003`, `LN-HT-003/004`,
+  `LN-PR-001/003/004/006`, and `LN-SEC-005`.
 - 7 `statementOnly` rows resolve exactly but are not theorem/lemma candidates
-  (six `def`s; `LN-CR-005` is a predicate `def`). No promotion candidate
-  remains.
+  (all seven name `def`s or predicate `def`s). No promotion candidate remains.
+- 19 rows remain `statementOnly` in total.
 - C1 is exact algebraic injectivity on 32-byte inputs, stronger than
   computational collision hardness; no reduction is proved.
 - C8 is a finite-execution admission supplied by the caller; computational PRF
@@ -229,8 +259,9 @@ conditional/algebraic results plus 30 tracked statement-only claims.
 - L1 spendability is conditional on `FundingSpendBridge`, `HTLCSpendBridge`,
   and `PenaltyL1Bridge`, and on script-checker / sighash / C1 hypotheses.
   `toLocalScript` is a flat seam fragment, not the full BOLT 3 witness script.
-- Network liveness is conditional on partial synchrony/fairness; watchtower
-  liveness and penalty economics are assumptions.
+- Network liveness is conditional on partial synchrony/fairness. The watchtower
+  bridge requires a report (which implies liveness), not `live` alone. Penalty
+  economics remains unproved; the unbounded fee model has a D34 counterexample.
 - Deep-reorg behaviour (`LN-CHAIN-REORG`) is a separate obligation.
 - No differential conformance against `rust-lightning` or BOLT vectors is
   claimed.
@@ -238,10 +269,11 @@ conditional/algebraic results plus 30 tracked statement-only claims.
 
 ## 6. Residual risks / final-gate findings
 
-1. **Final gate PASS at `68c236d`.** The earlier `check.sh` doc-comment false
-   positive and the stale 132-file `check-final.py` assumption are fixed and
-   committed. Both checkers are RC 0 at the final HEAD.
-2. **Catalog strict mode remains RC 1 by design.** 23 unresolved planned
+1. **Proof-wave gate PASS at the commit recorded above.** The earlier
+   `check.sh` doc-comment false positive and the stale 132-file
+   `check-final.py` assumption are fixed. Both checkers are RC 0 at the
+   proof-wave HEAD.
+2. **Catalog strict mode remains RC 1 by design.** 12 unresolved planned
    `statementOnly` targets remain. `--allow-planned` is RC 0 and never promotes
    them; it is the mode used by the final gate, with the strict audit retained
    as the planning report.
@@ -281,12 +313,13 @@ Module-level reproducers are in the individual lane reports
 The repair removed the two vacuous global crypto assumptions, removed all ten
 remaining refuted unconditional headlines without hiding them behind `True` or
 axioms, eliminated every actual `sorry` term, fixed the catalog checker and the
-`CrossChannelRouting` blowup, and pinned the public L1 reference. The result is
-a 170-job RC 0 Lean tree with 18 exact catalog rows proved and 30 rows tracked
-as statement-only.
+`CrossChannelRouting` blowup, and pinned the public L1 reference. The proof-wave
+round then added eleven exact catalog targets across wire, protocol, routing,
+payments, and security/liveness. The result is a 170-job RC 0 Lean tree with 29
+exact catalog rows proved and 19 rows tracked as statement-only.
 
 It is still a conditional scaffold. Zero `sorry` is not zero assumptions: C1
 and C8 are explicit finite/algebraic boundaries, L1 spendability depends on the
 Phase-C2 bridges, and computational cryptographic security is not modelled. The
-final gate is green at `68c236d`, and the branch is on
-`origin/repair/integrated`.
+proof-wave gate is green at the commit recorded above, and the branch is pushed
+non-force to `origin/repair/integrated`.

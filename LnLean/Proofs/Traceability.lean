@@ -18,7 +18,7 @@ hand-maintained traceability tables:
 4. every status and every domain is one of the model's enumerations, and the
    catalog covers all eight domains (`obligations_statuses_enumerated`,
    `obligations_domains_enumerated`, `every_domain_used`);
-5. the catalog has 48 rows, `18` marked `proved` and `30` marked
+5. the catalog has 48 rows, `29` marked `proved` and `19` marked
    `statementOnly`, matching the summary table of `docs/THEOREM-INDEX.md`
    (`obligations_count_ge_40`, `proved_row_count`,
    `statement_only_row_count`);
@@ -27,7 +27,7 @@ hand-maintained traceability tables:
    `LnLean.*` modules (`obligations_targets_in_table`,
    `target_modules_lnean`);
 7. every `proved` row names at least one declaration, all named declarations
-   occur in the twenty-one-name snapshot `provedDeclarations`, no snapshot name
+   occur in the thirty-two-name snapshot `provedDeclarations`, no snapshot name
    is unused, and every snapshot declaration lives in a module from
    `lneanModules` (`proved_rows_have_decls`, `proved_decls_in_snapshot`,
    `proved_snapshot_all_used`, `proved_declaration_modules_lnean`).  This is
@@ -260,11 +260,12 @@ def targetTable : List TargetEntry :=
   , ⟨"LnLean.Proofs.Liveness.watchtower_bridge", ["LnLean.Proofs.Liveness"]⟩
   ]
 
-/-- The 18 `proved` rows' targets and the declarations each names. -/
+/-- The 29 `proved` rows' targets and the declarations each names. -/
 def provedTable : List ProvedEntry :=
   [ ⟨"LnLean.Bitcoin.fundingOutput_moneyRange", ["LnLean.Bitcoin.fundingOutput_moneyRange"]⟩
   , ⟨"LnLean.Bitcoin.anchorValue_eq", ["LnLean.Bitcoin.anchorValue_eq"]⟩
   , ⟨"LnLean.Wire.decode_encode", ["LnLean.Wire.decode_encode"]⟩
+  , ⟨"LnLean.Wire.Message.decode_length", ["LnLean.Wire.Message.decode_length"]⟩
   , ⟨"LnLean.Security.Ledger.step_conserves", ["LnLean.Security.Ledger.step_conserves"]⟩
   , ⟨"LnLean.Security.advance_monotone", ["LnLean.Security.advance_monotone"]⟩
   , ⟨"LnLean.Channel.Reserve.bounds", ["LnLean.Channel.Reserve.bounds"]⟩
@@ -273,22 +274,35 @@ def provedTable : List ProvedEntry :=
   , ⟨"LnLean.Security.revoked_commitment_is_old", ["LnLean.Security.revoked_commitment_is_old"]⟩
   , ⟨"LnLean.Security.breach_penalty_spends_both", ["LnLean.Security.breach_penalty_spends_both"]⟩
   , ⟨"LnLean.Protocol.Handshake.channel_ready_gate", ["LnLean.Protocol.Handshake.channel_ready_gate"]⟩
+  , ⟨"LnLean.Protocol.Peer.reestablish_no_rollback", ["LnLean.Protocol.Peer.reestablish_no_rollback"]⟩
   , ⟨"LnLean.Security.Route.wellFormed_connected; LnLean.Security.Route.wellFormed_capacity; LnLean.Security.Route.wellFormed_nonempty", ["LnLean.Security.Route.wellFormed_connected", "LnLean.Security.Route.wellFormed_capacity", "LnLean.Security.Route.wellFormed_nonempty"]⟩
+  , ⟨"LnLean.Routing.Gossip.update_monotone", ["LnLean.Routing.Gossip.update_monotone"]⟩
+  , ⟨"LnLean.Routing.Onion.peel_deterministic", ["LnLean.Routing.Onion.peel_deterministic"]⟩
+  , ⟨"LnLean.Routing.Onion.hmac_sound", ["LnLean.Routing.Onion.hmac_sound"]⟩
+  , ⟨"LnLean.Routing.Route.cltv_accumulates", ["LnLean.Routing.Route.cltv_accumulates"]⟩
   , ⟨"LnLean.Security.Invoice.consistent_hash; LnLean.Security.Invoice.consistent_amount", ["LnLean.Security.Invoice.consistent_hash", "LnLean.Security.Invoice.consistent_amount"]⟩
+  , ⟨"LnLean.Payment.Invoice.signature_valid", ["LnLean.Payment.Invoice.signature_valid"]⟩
   , ⟨"LnLean.Payment.Invoice.payment_secret_match", ["LnLean.Payment.Invoice.payment_secret_match"]⟩
   , ⟨"LnLean.Security.MppPayment.settle_requires_sum", ["LnLean.Security.MppPayment.settle_requires_sum"]⟩
+  , ⟨"LnLean.Payment.MPP.running_total_bound", ["LnLean.Payment.MPP.running_total_bound"]⟩
   , ⟨"LnLean.Payment.Keysend.preimage_binding", ["LnLean.Payment.Keysend.preimage_binding"]⟩
   , ⟨"LnLean.Security.L1Ledger.spend_preserves_noDoubleSpend", ["LnLean.Security.L1Ledger.spend_preserves_noDoubleSpend"]⟩
+  , ⟨"LnLean.Proofs.Conservation.global_conservation", ["LnLean.Proofs.Conservation.global_conservation"]⟩
+  , ⟨"LnLean.Proofs.Security.safety_async", ["LnLean.Proofs.Security.safety_async"]⟩
   , ⟨"LnLean.Security.partial_synchrony_delivers", ["LnLean.Security.partial_synchrony_delivers"]⟩
+  , ⟨"LnLean.Proofs.Liveness.watchtower_bridge", ["LnLean.Proofs.Liveness.watchtower_bridge"]⟩
   ]
 
-/-- Every declaration named by a `proved` row, transcribed from
-`LnLean/Bitcoin/Seam.lean`, `LnLean/Wire/BigSize.lean`,
-`LnLean/Security/Invariants.lean`, and the
-wave-D/wave-E modules `LnLean.Proofs.WaveD.D14`, `D18`, `D29`, and
-`LnLean.Proofs.WaveE.E31`.  Adding a `proved` row with an unlisted target
-makes `proved_decls_in_snapshot` fail, which is the intended maintenance
-signal. -/
+/-- Every declaration named by a `proved` row, transcribed from the model
+modules (`LnLean/Wire/Message`, `LnLean/Protocol/Peer`, the routing modules,
+`LnLean/Payment/Invoice`, `LnLean/Payment/MPP`), the foundational
+`LnLean/Bitcoin/Seam`, `LnLean/Security/Invariants`, `LnLean/Wire/BigSize`,
+and the proof modules `LnLean.Proofs.Conservation`,
+`LnLean.Proofs.PhaseC2.GlobalConservation`,
+`LnLean.Proofs.PhaseC3.SecurityGame`, `LnLean.Proofs.Liveness`, and
+`LnLean.Proofs.WaveD.D14`, `D18`, `D29`, `LnLean.Proofs.WaveE.E31`.  Adding a
+`proved` row with an unlisted target makes `proved_decls_in_snapshot` fail,
+which is the intended maintenance signal. -/
 def provedDeclarations : List DeclEntry :=
   [ ⟨"LnLean.Bitcoin.fundingOutput_moneyRange", "LnLean.Bitcoin.Seam"⟩
   , ⟨"LnLean.Bitcoin.anchorValue_eq", "LnLean.Bitcoin.Seam"⟩
@@ -311,6 +325,17 @@ def provedDeclarations : List DeclEntry :=
   , ⟨"LnLean.Payment.Keysend.preimage_binding", "LnLean.Proofs.WaveE.E31"⟩
   , ⟨"LnLean.Security.L1Ledger.spend_preserves_noDoubleSpend", "LnLean.Security.Invariants"⟩
   , ⟨"LnLean.Security.partial_synchrony_delivers", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Wire.Message.decode_length", "LnLean.Wire.Message"⟩
+  , ⟨"LnLean.Protocol.Peer.reestablish_no_rollback", "LnLean.Protocol.Peer"⟩
+  , ⟨"LnLean.Routing.Gossip.update_monotone", "LnLean.Routing.Gossip"⟩
+  , ⟨"LnLean.Routing.Onion.peel_deterministic", "LnLean.Routing.Onion"⟩
+  , ⟨"LnLean.Routing.Onion.hmac_sound", "LnLean.Routing.Onion"⟩
+  , ⟨"LnLean.Routing.Route.cltv_accumulates", "LnLean.Routing.Route"⟩
+  , ⟨"LnLean.Payment.Invoice.signature_valid", "LnLean.Payment.Invoice"⟩
+  , ⟨"LnLean.Payment.MPP.running_total_bound", "LnLean.Payment.MPP"⟩
+  , ⟨"LnLean.Proofs.Conservation.global_conservation", "LnLean.Proofs.PhaseC2.GlobalConservation"⟩
+  , ⟨"LnLean.Proofs.Security.safety_async", "LnLean.Proofs.PhaseC3.SecurityGame"⟩
+  , ⟨"LnLean.Proofs.Liveness.watchtower_bridge", "LnLean.Proofs.Liveness"⟩
   ]
 
 /-- Modules named by the catalog, all of them under `LnLean`. -/
@@ -337,7 +362,9 @@ def lneanModules : List String :=
   , "LnLean.Payment.MPP"
   , "LnLean.Payment.Keysend"
   , "LnLean.Proofs.Conservation"
+  , "LnLean.Proofs.PhaseC2.GlobalConservation"
   , "LnLean.Proofs.Security"
+  , "LnLean.Proofs.PhaseC3.SecurityGame"
   , "LnLean.Proofs.Liveness"
   , "LnLean.Proofs.WaveD.D14"
   , "LnLean.Proofs.WaveD.D18"
@@ -476,7 +503,7 @@ theorem target_modules_lnean :
 
 /-! ## `proved` rows -/
 
-/-- The 18 `proved` rows' target strings equal the transcribed table. -/
+/-- The 29 `proved` rows' target strings equal the transcribed table. -/
 theorem proved_rows_in_table :
     (obligations.filter (fun o => o.status == .proved)).map (fun o => o.leanTarget) =
       provedTable.map (fun e => e.target) := by
@@ -513,16 +540,16 @@ theorem proved_declaration_modules_lnean :
     provedDeclarations.all (fun p => decide (p.module ∈ lneanModules)) = true := by
   decide
 
-/-- Exactly 18 rows are `proved`, matching the `docs/THEOREM-INDEX.md`
+/-- Exactly 29 rows are `proved`, matching the `docs/THEOREM-INDEX.md`
 summary table. -/
 theorem proved_row_count :
-    (obligations.filter (fun o => o.status == .proved)).length = 18 := by
+    (obligations.filter (fun o => o.status == .proved)).length = 29 := by
   decide
 
-/-- Exactly 30 rows are `statementOnly`, matching the
+/-- Exactly 19 rows are `statementOnly`, matching the
 `docs/THEOREM-INDEX.md` summary table. -/
 theorem statement_only_row_count :
-    (obligations.filter (fun o => o.status == .statementOnly)).length = 30 := by
+    (obligations.filter (fun o => o.status == .statementOnly)).length = 19 := by
   decide
 
 /-- No row uses the `UNANCHORED` fallback, matching the anchor policy in
