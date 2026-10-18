@@ -162,7 +162,7 @@ outside an agent lane.
 |---|---|---|
 | `S8-L1-TXVALID` | `L1-02`, `L1-07` | Import `Bitcoin.TxValidation.Full`/`txCheckerFor`, complete the final delayed/revocation transfer, and model the `minimalData`/`csv ≥ 32768` policy edges |
 | `S8-PR-HTLCPREIMAGE` | `PR-05` | Instantiate the byte-equality theorem for `HtlcWire`, synthesize the HTLC scriptCode, and document display-order txid conversion |
-| `S8-L1-OPENCHANNEL-WIRE` | `L1-03` | Apply the exact `Messages.lean` type-32 `openChannel` patch (313-byte length, channel id, pubkeys), add the root import, and connect the phase machine end-to-end |
+| `S8-L1-OPENCHANNEL-WIRE` | `L1-03` | Apply the exact `Messages.lean` type-32 `openChannel` patch (319-byte mandatory payload; the earlier 313 sketch was an under-count), add the root import, and connect the phase machine end-to-end |
 | `S8-PR-ACCEPT-PAYLOAD` | `PR-01` | Add `acceptChannel?` to `HandshakeState`, set it on `recvAcceptChannel`, and either model registration/proof-of-possession or strengthen the conditional attribution contract |
 | `S8-CH-CONSUMER-SITES` | `CH-01` | Apply the migrated consumer path at the actual downstream construction sites and compile the proposed `SighashTargets` `viewOfState` adapter |
 | `S8-L1-EC-BRIDGE` | `L1-01`, `L1-07` | Investigate a concrete ECDSA verifier bridge for `Bitcoin.Crypto.Ecdsa.Verify.verifyImpl`; keep the abstract-verifier boundary if no faithful implementation is available |
