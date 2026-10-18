@@ -25,9 +25,10 @@ that the wave-A model does not enforce the length without the contract.
   `signatureValid` predicates but not the byte length.
 * The contract is not implied by the wave-A model: the always-accepting
   verifier accepts an empty signature, so the unconditional length claim is
-  false.  The faithful unconditional statement is retained below with one
-  `sorry`, next to the obligation marker, together with a concrete
-  counterexample.
+  false.  The refuted unconditional declaration has been removed below; the
+  strongest true form is
+  `accepted_message_signatures_64_of_lengthRespecting`, and the concrete
+  counterexample `accepted_message_signatures_64_counterexample` is retained.
 
 **BOLT sections.**  BOLT 1 §Lightning Message Format (`signature` is 64
 bytes); BOLT 7 §The `channel_announcement` Message (four signatures),
@@ -141,20 +142,16 @@ theorem bound_announcement_signatures_64 {verify : SigVerifier}
     channelAnnouncementSignatures64 a :=
   announcement_signatures64_of_signaturesValid hl (bindChannel_requires_signature h)
 
-/-! ## Faithful unconditional statement (false in the wave-A model) -/
+/-! ## Refuted unconditional statement (removed) -/
 
-/-- **Faithful unconditional form of `LN-GOSSIP-SIG`.**  Every signature of an
-accepted gossip message is 64 bytes, with no hypothesis on the verifier.  This
-is false in the wave-A model, because `SigVerifier` is an arbitrary function:
-`accepted_message_signatures_64_counterexample` below exhibits an
-always-accepting verifier and an empty signature.  The missing admission is
-exactly `lengthRespecting` (or, equivalently, a byte-length check in
-`acceptChannelUpdate` / `applyGossipChecked`). -/
--- OBLIGATION: LN-WF-F07 every signature of an accepted gossip message is 64 bytes (missing admission: the abstract SigVerifier need not respect GossipSignature.Valid; see accepted_message_signatures_64_counterexample)
-theorem accepted_message_signatures_64 (verify : SigVerifier) (s : GossipState)
-    (m : GossipMessage) (h : applyGossipChecked verify s m ≠ s) :
-    gossipMessageSignatures64 m := by
-  sorry
+-- REPAIRED: removed the refuted unconditional `accepted_message_signatures_64`
+-- (it had obligation marker LN-WF-F07).  It is false in the wave-A model:
+-- `accepted_message_signatures_64_counterexample` exhibits an always-accepting
+-- verifier that stores a message whose signatures are not 64 bytes.  The
+-- strongest true replacement is
+-- `accepted_message_signatures_64_of_lengthRespecting`, which takes the
+-- explicit hypothesis `hl : lengthRespecting verify`; the counterexample and
+-- its supporting negative theorems are retained below.
 
 /-! ## Mechanized counterexample: the always-accepting verifier -/
 
