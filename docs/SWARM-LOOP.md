@@ -158,13 +158,14 @@ the remaining issues are research-only, or the gate cannot be kept green.
 
 ## Current wave
 
-Wave 4 is complete: 48/48 catalog rows are proved, 61 targets, full build 188
-jobs, strict catalog audit green, and the BigSize/TLV vector checker is green.
-Reports are in `agents/reports/swarm4/`; the plan is
-`agents/swarm/WAVE-4.md`. Wave 5 is running from base `79a92ce` (plan:
-`agents/swarm/WAVE-5.md`): vendor interpreter bridge, commitment gross/net
-patch, BOLT 3 sighash, differential conformance, state-machine constructor,
-funding hash link, gossip key consistency, and crypto limits. Results will be
+Wave 5 is complete: 48/48 catalog rows are proved, 67 resolved targets, full
+build 204 jobs, strict catalog audit green, 133 audited theorems, and the
+vector/framing/differential conformance checker is green. Reports are in
+`agents/reports/swarm5/`; the plan is `agents/swarm/WAVE-5.md`. Wave 6 is
+defined in `docs/OPEN-ISSUES.md` and attacks the residual gaps: BIP 143
+sighash/locktime, the revocation branch, literal gross/net `Types.lean` fields,
+bit-exact BOLT 3 preimages, digest-to-view binding, commitment dance, gossip
+invariant derivation, and live transport/fixture conformance. Every wave is
 integrated under the same gate and recorded here.
 
 ## Why this is not a fully autonomous daemon

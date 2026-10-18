@@ -1,8 +1,8 @@
 {
   "schema": "lnlean.conformance.v1",
-  "lane": "S4-CONFORMANCE",
-  "issue": "CONF-01",
-  "scope": "Wire-encoding vector conformance for BOLT 1 BigSize and TLV. This is NOT a full implementation test: it checks the encoded bytes and the modelled accept/reject decisions for a finite vector set. IO, allocation limits, message-specific TLV value decoding, namespace/known-type policy, and rust-lightning byte-for-byte behaviour are out of scope.",
+  "lane": "S5-CONF-DIFF",
+  "issue": "CONF-01, CONF-02",
+  "scope": "Wire-encoding and message-framing vector conformance for BOLT 1 BigSize/TLV and the BOLT 8 transport frame, plus pinned rust-lightning differential fixtures. This is NOT a full implementation test: it checks encoded bytes and the modelled accept/reject decisions for a finite vector set. IO, allocation limits, message-specific TLV value decoding, namespace/known-type policy, Noise encryption, and byte-for-byte equivalence with a running rust-lightning node are out of scope.",
   "sources": {
     "bolts": {
       "path": "refs/bolts/01-messaging.md",
@@ -13,9 +13,21 @@
         "Type-Length-Value Format"
       ]
     },
+    "bolts_transport": {
+      "path": "refs/bolts/08-transport.md",
+      "commit": "1aadb719b4007c4cea0ba6e36b08c4fb53788dee",
+      "sections": [
+        "Lightning Message Specification"
+      ],
+      "anchor": "Each message is prefixed with a 2-byte big-endian total message length; maximum 65535."
+    },
     "rust_lightning": {
       "anchors": [
-        "lightning/src/util/ser.rs:442-490 (BigSize Writeable/Readable and canonicality)"
+        "lightning/src/util/ser.rs:442-490 (BigSize Writeable/Readable and canonicality)",
+        "lightning/src/ln/peer_channel_encryptor.rs:36 (LN_MAX_MSG_LEN = u16::MAX)",
+        "lightning/src/ln/peer_channel_encryptor.rs:518-540 (length = msgbuf.len() - 16 - 2, includes type)",
+        "lightning/src/util/ser.rs:1857-1901 (bigsize_encoding_decoding unit test)",
+        "lightning/src/util/ser_macros.rs:2047-2071 (retired_tlvs_skipped_on_read unit test)"
       ],
       "commit": "fe4900930c6bd5786ec4203274d7cf312776a5a6"
     },
@@ -23,7 +35,8 @@
       "bigsize": "LnLean/Wire/BigSize.lean",
       "tlv": "LnLean/Wire/TLV.lean",
       "admission": "LnLean/Proofs/Wire/TLVTargets.lean",
-      "vector_theorems": "LnLean/Proofs/ConformanceTargets.lean"
+      "vector_theorems": "LnLean/Proofs/ConformanceTargets.lean",
+      "framing": "LnLean/Proofs/ConformanceDiffTargets.lean"
     }
   },
   "bigsize": {
@@ -605,6 +618,285 @@
         "model_scope": "not-modelled:known-type-length",
         "source": "BOLT 1 Appendix B (0x01 02 0001; not minimal amount_msat)",
         "lean": {"decode": "tlv_known_type_nonminimal_value_decode", "admission": "tlv_known_type_nonminimal_value_admission"}
+      }
+    ]
+  },
+  "framing": {
+    "layout": "type(2 bytes, big-endian) || transport_length(2 bytes, big-endian) || payload",
+    "length_semantics": "transport_length = 2 + payload.size = WireMessage.messageSize; the BOLT 8 length covers the type and payload, not the payload alone",
+    "model_note": "LnLean.Wire.frame is the abstract payload-only frame type || payload.size || payload; Transport.transportFrame is the BOLT 8 frame and is defined in LnLean.Proofs.Conformance.Diff",
+    "cases": [
+      {
+        "id": "frame_init_empty",
+        "category": "valid",
+        "type": 16,
+        "payload": "",
+        "declared_length": 2,
+        "frame": "00100002",
+        "decision": "accept",
+        "reason": "declared transport length equals 2 + payload bytes",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450); rust-lightning peer_channel_encryptor.rs:518-540 (pinned fe49009)",
+        "lean": "frame_init_empty"
+      },
+      {
+        "id": "frame_init_four",
+        "category": "valid",
+        "type": 16,
+        "payload": "01020304",
+        "declared_length": 6,
+        "frame": "0010000601020304",
+        "decision": "accept",
+        "reason": "declared transport length equals 2 + payload bytes",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450); rust-lightning peer_channel_encryptor.rs:518-540 (pinned fe49009)",
+        "lean": "frame_init_four"
+      },
+      {
+        "id": "frame_type_zero",
+        "category": "valid",
+        "type": 0,
+        "payload": "aabb",
+        "declared_length": 4,
+        "frame": "00000004aabb",
+        "decision": "accept",
+        "reason": "declared transport length equals 2 + payload bytes",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450); type-0 setup/control boundary",
+        "lean": "frame_type_zero"
+      },
+      {
+        "id": "frame_type_255",
+        "category": "valid",
+        "type": 255,
+        "payload": "ff",
+        "declared_length": 3,
+        "frame": "00ff0003ff",
+        "decision": "accept",
+        "reason": "declared transport length equals 2 + payload bytes",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450); commitment-group upper boundary",
+        "lean": "frame_type_255"
+      },
+      {
+        "id": "frame_type_256",
+        "category": "valid",
+        "type": 256,
+        "payload": "",
+        "declared_length": 2,
+        "frame": "01000002",
+        "decision": "accept",
+        "reason": "declared transport length equals 2 + payload bytes",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450); routing-group lower boundary",
+        "lean": "frame_type_256"
+      },
+      {
+        "id": "frame_type_custom_65535",
+        "category": "valid",
+        "type": 65535,
+        "payload": "2a",
+        "declared_length": 3,
+        "frame": "ffff00032a",
+        "decision": "accept",
+        "reason": "declared transport length equals 2 + payload bytes",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450); custom-group upper boundary",
+        "lean": "frame_type_custom_65535"
+      },
+      {
+        "id": "frame_empty",
+        "category": "malformed",
+        "bytes": "",
+        "decision": "reject",
+        "reason": "missing-header",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "frame_reject_empty"
+      },
+      {
+        "id": "frame_short_header",
+        "category": "malformed",
+        "bytes": "001000",
+        "decision": "reject",
+        "reason": "missing-header",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "frame_reject_short_header"
+      },
+      {
+        "id": "frame_length_zero",
+        "category": "malformed",
+        "bytes": "00100000",
+        "decision": "reject",
+        "reason": "length-too-small",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450); a length below 2 cannot contain the type",
+        "lean": "frame_reject_length_zero"
+      },
+      {
+        "id": "frame_length_one",
+        "category": "malformed",
+        "bytes": "00100001",
+        "decision": "reject",
+        "reason": "length-too-small",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450); a length below 2 cannot contain the type",
+        "lean": "frame_reject_length_one"
+      },
+      {
+        "id": "frame_truncated_declared_three",
+        "category": "malformed",
+        "bytes": "00100003",
+        "decision": "reject",
+        "reason": "truncated",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "frame_reject_truncated_payload"
+      },
+      {
+        "id": "frame_truncated_declared_four_short",
+        "category": "malformed",
+        "bytes": "00100004aa",
+        "decision": "reject",
+        "reason": "truncated",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "frame_reject_truncated_payload_short"
+      },
+      {
+        "id": "frame_trailing_one",
+        "category": "malformed",
+        "bytes": "00100002aa",
+        "decision": "reject",
+        "reason": "trailing-bytes",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "frame_reject_trailing_byte"
+      },
+      {
+        "id": "frame_trailing_two",
+        "category": "malformed",
+        "bytes": "00100003aabb",
+        "decision": "reject",
+        "reason": "trailing-bytes",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "frame_reject_trailing_two_bytes"
+      },
+      {
+        "id": "frame_max_truncated",
+        "category": "malformed",
+        "bytes": "0010ffff",
+        "decision": "reject",
+        "reason": "truncated",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "frame_reject_max_length_truncated"
+      },
+      {
+        "id": "frame_zero_type_zero_length",
+        "category": "malformed",
+        "bytes": "00000000",
+        "decision": "reject",
+        "reason": "length-too-small",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "frame_reject_zero_type_zero_length"
+      }
+    ],
+    "boundaries": [
+      {
+        "id": "frame_boundary_payload_0",
+        "payload_length": 0,
+        "declared_length": 2,
+        "length_hex": "0002",
+        "frame_size": 4,
+        "fits": true,
+        "header_truncated": false,
+        "note": "empty payload; transport frame is 00 10 00 02",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "boundary_declared_0"
+      },
+      {
+        "id": "frame_boundary_payload_1",
+        "payload_length": 1,
+        "declared_length": 3,
+        "length_hex": "0003",
+        "frame_size": 5,
+        "fits": true,
+        "header_truncated": false,
+        "note": "one payload byte",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "boundary_declared_1"
+      },
+      {
+        "id": "frame_boundary_payload_252",
+        "payload_length": 252,
+        "declared_length": 254,
+        "length_hex": "00fe",
+        "frame_size": 256,
+        "fits": true,
+        "header_truncated": false,
+        "note": "payload length 252 -> header 00fe",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "boundary_declared_252"
+      },
+      {
+        "id": "frame_boundary_payload_253",
+        "payload_length": 253,
+        "declared_length": 255,
+        "length_hex": "00ff",
+        "frame_size": 257,
+        "fits": true,
+        "header_truncated": false,
+        "note": "payload length 253 -> header 00ff",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "boundary_declared_253"
+      },
+      {
+        "id": "frame_boundary_payload_256",
+        "payload_length": 256,
+        "declared_length": 258,
+        "length_hex": "0102",
+        "frame_size": 260,
+        "fits": true,
+        "header_truncated": false,
+        "note": "payload length 256 -> header 0102",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "boundary_declared_256"
+      },
+      {
+        "id": "frame_boundary_payload_65532",
+        "payload_length": 65532,
+        "declared_length": 65534,
+        "length_hex": "fffe",
+        "frame_size": 65536,
+        "fits": true,
+        "header_truncated": false,
+        "note": "largest payload with header fffe",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "boundary_declared_65532"
+      },
+      {
+        "id": "frame_boundary_payload_65533",
+        "payload_length": 65533,
+        "declared_length": 65535,
+        "length_hex": "ffff",
+        "frame_size": 65537,
+        "fits": true,
+        "header_truncated": false,
+        "note": "maximum legal transport length ffff",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "boundary_declared_65533"
+      },
+      {
+        "id": "frame_boundary_payload_65534",
+        "payload_length": 65534,
+        "declared_length": 65536,
+        "length_hex": "0000",
+        "frame_size": 65538,
+        "fits": false,
+        "header_truncated": true,
+        "note": "over the limit; u16BE truncates 65536 to 0000 (header_65536_truncates)",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "boundary_declared_65534"
+      },
+      {
+        "id": "frame_boundary_payload_65535",
+        "payload_length": 65535,
+        "declared_length": 65537,
+        "length_hex": "0001",
+        "frame_size": 65539,
+        "fits": false,
+        "header_truncated": true,
+        "note": "over the limit; header would truncate to 0001",
+        "source": "BOLT 8 transport message length (pinned 08-transport.md:416-450)",
+        "lean": "boundary_declared_65535"
       }
     ]
   }

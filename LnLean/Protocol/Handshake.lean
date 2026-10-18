@@ -1,4 +1,5 @@
 import LnLean.Protocol.Messages
+import LnLean.Bitcoin.Funding
 
 /-!
 # LnLean.Protocol.Handshake
@@ -397,5 +398,89 @@ inductive ReestablishStep : ReestablishFields → ReestablishFields → Prop whe
   | revocation (r : ReestablishFields)
       (_h : r.nextRevocationNumber < r.nextCommitmentNumber) :
       ReestablishStep r r.afterRevocation
+
+/-! ## Funding data negotiated by the handshake
+
+BOLT 2 fixes the funding output during `open_channel`/`accept_channel`: the
+opener proposes `funding_satoshis`, `push_msat`, a temporary channel id, and
+its own `funding_pubkey`, and the acceptor replies with its `funding_pubkey`
+in `accept_channel`.  This model has no `open_channel` constructor (see the
+module docstring), so the opener's fields are represented as local values,
+while the acceptor's key is read from the modelled `accept_channel` record.
+The resulting `FundingNegotiation` is the handshake input to
+`FundingNegotiation.toFundingParams`, which *computes* the P2WSH program from
+the BOLT 3 witness script instead of accepting a hash. -/
+
+open LnLean.Bitcoin
+
+/-- The funding negotiation determined by a received `accept_channel`.  The
+peer's `funding_pubkey` field becomes `remoteFundingKey`; the remaining fields
+are the opener's local choices from `open_channel`. -/
+def AcceptChannel.toFundingNegotiation
+    (localFundingKey : PubKey) (fundingSatoshis : BtcAmount) (pushMsat : Msat)
+    (temporaryChannelId : TemporaryChannelId) (m : AcceptChannel) :
+    LnLean.Bitcoin.FundingNegotiation :=
+  { fundingSatoshis := fundingSatoshis
+    pushMsat := pushMsat
+    localFundingKey := localFundingKey
+    remoteFundingKey := m.fundingPubKey
+    temporaryChannelId := temporaryChannelId }
+
+/-- The remote funding key of the negotiation is exactly the `funding_pubkey`
+field the peer sent in `accept_channel`. -/
+@[simp] theorem AcceptChannel.toFundingNegotiation_remoteFundingKey
+    (localFundingKey : PubKey) (fundingSatoshis : BtcAmount) (pushMsat : Msat)
+    (temporaryChannelId : TemporaryChannelId) (m : AcceptChannel) :
+    (m.toFundingNegotiation localFundingKey fundingSatoshis pushMsat
+      temporaryChannelId).remoteFundingKey = m.fundingPubKey := rfl
+
+/-- The local funding key of the negotiation is the opener's own key. -/
+@[simp] theorem AcceptChannel.toFundingNegotiation_localFundingKey
+    (localFundingKey : PubKey) (fundingSatoshis : BtcAmount) (pushMsat : Msat)
+    (temporaryChannelId : TemporaryChannelId) (m : AcceptChannel) :
+    (m.toFundingNegotiation localFundingKey fundingSatoshis pushMsat
+      temporaryChannelId).localFundingKey = localFundingKey := rfl
+
+/-- The funding parameters determined by the handshake.  The P2WSH program is
+computed as `H` of the BOLT 3 witness script; there is no separate hash
+argument to get wrong. -/
+def AcceptChannel.toFundingParams (H : ByteArray → ByteArray)
+    (localFundingKey : PubKey) (fundingSatoshis : BtcAmount) (pushMsat : Msat)
+    (temporaryChannelId : TemporaryChannelId) (m : AcceptChannel) :
+    LnLean.Bitcoin.FundingParams :=
+  (m.toFundingNegotiation localFundingKey fundingSatoshis pushMsat
+    temporaryChannelId).toFundingParams H
+
+/-- The handshake-derived parameters satisfy the hash link by construction. -/
+theorem AcceptChannel.toFundingParams_witnessScriptHash
+    (H : ByteArray → ByteArray) (localFundingKey : PubKey)
+    (fundingSatoshis : BtcAmount) (pushMsat : Msat)
+    (temporaryChannelId : TemporaryChannelId) (m : AcceptChannel) :
+    (m.toFundingParams H localFundingKey fundingSatoshis pushMsat
+        temporaryChannelId).witnessScriptHash =
+      H ((m.toFundingParams H localFundingKey fundingSatoshis pushMsat
+        temporaryChannelId).witnessScript.bytes) :=
+  LnLean.Bitcoin.FundingNegotiation.toFundingParams_witnessScriptHash H _
+
+/-- `funding_created` cannot be sent before `accept_channel` has been
+received, so the peer's `funding_pubkey` is available at the point where the
+funding output is built. -/
+theorem acceptReceived_of_sendFundingCreated {s s' : HandshakeState}
+    (h : handshakeStep s .sendFundingCreated = some s') :
+    s.acceptReceived = true := by
+  by_cases hg : s.canSendFundingCreated
+  · exact hg.2.2.2.1
+  · simp [handshakeStep, hg] at h
+
+/-- A permitted `accept_channel` receipt records the peer's key exchange: the
+successor state has `acceptReceived = true`. -/
+theorem acceptReceived_of_recvAcceptChannel {s s' : HandshakeState}
+    (h : handshakeStep s .recvAcceptChannel = some s') :
+    s'.acceptReceived = true := by
+  by_cases hg : s.canRecvAccept
+  · simp [handshakeStep, hg] at h
+    rcases h with ⟨-, h⟩
+    rw [← h]
+  · simp [handshakeStep, hg] at h
 
 end LnLean.Protocol

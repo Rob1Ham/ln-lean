@@ -78,8 +78,8 @@ def obligations : List Obligation :=
   [
   -- Foundations / L1 (6)
   { id := "LN-L1-001", domain := .l1,
-    claim := "The funding output is P2WSH over the constructed 2-of-2 funding witness script, conditional on the witness-script hash link and a finite pair-level collision-free admission.",
-    leanTarget := "LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo",
+    claim := "The funding output is P2WSH over the constructed 2-of-2 funding witness script; the handshake construction derives the witness-script hash link, and the vendored interpreter executes the funding script under explicit signature and context laws.",
+    leanTarget := "LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo; LnLean.Proofs.Bitcoin.FundingLinkTargets.fundingScriptPubKey_eq_p2wsh_ordered; LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.funding_interpreters_agree",
     status := .proved,
     boltdoc := "BOLT 2 §Channel Establishment v1; BOLT 3 §Funding Transaction Output",
     rlAnchor := "lightning/src/ln/chan_utils.rs:847" },
@@ -96,8 +96,8 @@ def obligations : List Obligation :=
     boltdoc := "BOLT 5 §Commitment Transaction",
     rlAnchor := "lightning/src/chain/channelmonitor.rs:514" },
   { id := "LN-L1-004", domain := .l1,
-    claim := "The full BOLT 3 to_local witness script carries the CSV contest delay and the revocation key, and the commitment output commits to both.",
-    leanTarget := "LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.commitmentOutputs_toLocal_commits_delay_and_revocationKey",
+    claim := "The full BOLT 3 to_local witness script carries the CSV contest delay and the revocation key, the commitment output commits to both, and the delayed branch executes through the vendored OP_IF/OP_CSV/OP_DROP/OP_CHECKSIG path under explicit decoding and sequence laws.",
+    leanTarget := "LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.commitmentOutputs_toLocal_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.toLocal_delayed_interpreters_agree",
     status := .proved,
     boltdoc := "BOLT 3 §to_local Output",
     rlAnchor := "lightning/src/ln/chan_utils.rs:687" },
@@ -185,8 +185,8 @@ def obligations : List Obligation :=
   -- sorting.  D12 still refutes the unconditional legacy
   -- `commitmentOutputs` reading; the legacy function is unchanged.
   { id := "LN-CH-003", domain := .channel,
-    claim := "In the rich commitment-output model, outputs are sorted by value, script, and CLTV, and dust HTLCs are trimmed; the legacy output function remains refuted by D12.",
-    leanTarget := "LnLean.Channel.Commitment.output_ordering",
+    claim := "In the rich commitment-output model, outputs are sorted by value, script, and CLTV, and dust HTLCs are trimmed; the net/gross layer proves the canonical legacy permutation and effective fee at arbitrary dust, while the legacy output function remains refuted by D12.",
+    leanTarget := "LnLean.Channel.Commitment.output_ordering; LnLean.Channel.CommitmentTx.migratedFrom_outputsNet_perm_commitmentOutputs",
     status := .proved,
     boltdoc := "BOLT 3 §Transaction Output Ordering; BOLT 3 §Trimmed Outputs",
     rlAnchor := "lightning/src/ln/chan_utils.rs:1985" },
@@ -275,8 +275,8 @@ def obligations : List Obligation :=
   -- transaction/message binding, not signing completeness or key attribution;
   -- the lane includes a counterexample showing that gap.
   { id := "LN-PR-003", domain := .protocol,
-    claim := "Under an explicit signing law and key-binding hypothesis, funding_signed carries a valid signature over the funding transaction and attributes it to the funding key; C3 alone gives neither.",
-    leanTarget := "LnLean.Protocol.Handshake.funding_signed_signing_contract",
+    claim := "Under an explicit signing law and key-binding hypothesis, funding_signed carries a valid signature over the funding transaction and attributes it to the funding key; one joint contract also covers commitment_signed, while C3 alone gives neither.",
+    leanTarget := "LnLean.Protocol.Handshake.funding_signed_signing_contract; LnLean.Proofs.Channel.SighashTargets.funding_and_commitment_signing_contract",
     status := .proved,
     boltdoc := "BOLT 2 §The funding_signed Message",
     rlAnchor := "lightning/src/ln/channel.rs:2107" },
@@ -286,8 +286,8 @@ def obligations : List Obligation :=
   -- negative result and includes an honest covering construction.  There is
   -- still no BOLT 3 sighash serializer or C3 derivation of the digests.
   { id := "LN-PR-004", domain := .protocol,
-    claim := "Under a per-output signed-data relation and the BOLT 3 commitment value equations, commitment_signed covers exactly the current HTLC set and fee; the wire record alone determines neither.",
-    leanTarget := "LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact; LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary",
+    claim := "Under a structural BOLT 3 serializer, an explicit signing law, and the commitment value equations, commitment_signed covers exactly the current HTLC set and fee and its digest/signatures are derived under C3; C3 binds to digests rather than views, and the wire record alone determines neither.",
+    leanTarget := "LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact; LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary; LnLean.Proofs.Channel.SighashTargets.SighashProduces.coverage",
     status := .proved,
     boltdoc := "BOLT 2 §Committing Updates So Far",
     rlAnchor := "lightning/src/ln/channel.rs:2386; lightning/src/ln/channel.rs:6270" },

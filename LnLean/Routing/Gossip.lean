@@ -570,4 +570,515 @@ theorem latestUpdateTimestamp_applyUpdateAttributed_ge (s : GossipState)
 
 end GossipState
 
+/-! ## Direction-keyed update signing, node-key consistency, and announcement
+deduplication (additive, `RT-01`, wave 5)
+
+The wave-4 relation `GossipState.updateKeyAnnounced` accepts either announced
+node key for a `channel_update`, because it does not decode the BOLT 7
+`channel_flags` direction bit.  BOLT 7 is stricter: the direction bit selects
+which endpoint sends the update and therefore which `node_id` signs it.
+
+This section adds, without changing any existing definition or theorem:
+
+* `ChannelUpdate.direction`, the decoded `channel_flags` bit 0
+  (`false` = direction 0, node 1 to node 2; `true` = direction 1, node 2 to
+  node 1);
+* `ChannelAnnellation.attributesKeyForDirection`, the direction-selected
+  announced key (direction 0 uses `nodeKey1`, direction 1 uses `nodeKey2`);
+* `GossipState.updateKeyAnnouncedDirectional`, the direction-keyed
+  attribution relation, and the additional store step
+  `GossipState.applyUpdateDirected`;
+* `GossipState.NodeKeyConsistent`, the explicit `NodeId → PubKey`
+  consistency invariant (the missing map from wave A);
+* `CanonicalAnnouncements`, `dedupAnnouncements`, and
+  `GossipState.canonicalView`, a canonical announcement view that removes
+  same-`short_channel_id` duplicates.
+
+All of these are definitions and lemmas.  `applyGossip`, `applyUpdate`, and
+the wave-4 `applyUpdateAttributed` keep their exact signatures and behaviour.
+The raw store is still append-only and still neither signature-filtered nor
+deduplicated. -/
+
+namespace ChannelUpdate
+
+/-- BOLT 7 `channel_flags` bit 0, decoded: `false` is direction 0
+(`node_1` to `node_2`) and `true` is direction 1 (`node_2` to `node_1`). -/
+def direction (u : ChannelUpdate) : Bool :=
+  u.channelFlags % 2 == 1
+
+/-- The decoded direction is exactly the low bit of `channel_flags`. -/
+theorem direction_eq_true_iff (u : ChannelUpdate) :
+    u.direction = true ↔ u.channelFlags % 2 = 1 := by
+  unfold direction
+  by_cases h : u.channelFlags % 2 = 1
+  · simp [h]
+  · have h0 : u.channelFlags % 2 = 0 := by omega
+    simp [h0]
+
+/-- The complement form: `false` is direction 0. -/
+theorem direction_eq_false_iff (u : ChannelUpdate) :
+    u.direction = false ↔ u.channelFlags % 2 = 0 := by
+  unfold direction
+  by_cases h : u.channelFlags % 2 = 1
+  · simp [h]
+  · have h0 : u.channelFlags % 2 = 0 := by omega
+    simp [h0]
+
+/-- `channel_flags = 0` is direction 0. -/
+theorem direction_of_channelFlags_zero {u : ChannelUpdate}
+    (h : u.channelFlags = 0) : u.direction = false := by
+  rw [direction_eq_false_iff, h]
+
+/-- `channel_flags = 1` is direction 1. -/
+theorem direction_of_channelFlags_one {u : ChannelUpdate}
+    (h : u.channelFlags = 1) : u.direction = true := by
+  rw [direction_eq_true_iff, h]
+
+end ChannelUpdate
+
+namespace ChannelAnnellation
+
+/-- **Direction-keyed announced key.**  Direction 0 updates must be signed by
+`nodeKey1`; direction 1 updates must be signed by `nodeKey2`.  This is the
+BOLT 7 direction-to-node-key rule, stated as a predicate over the
+announcement and the decoded direction. -/
+def attributesKeyForDirection (a : ChannelAnnellation) (direction : Bool)
+    (key : PubKey) : Prop :=
+  if direction then a.nodeKey2 = key else a.nodeKey1 = key
+
+/-- **Exact unfolding** of the direction-keyed relation. -/
+theorem attributesKeyForDirection_iff (a : ChannelAnnellation) (direction : Bool)
+    (key : PubKey) :
+    a.attributesKeyForDirection direction key ↔
+      (direction = false ∧ a.nodeKey1 = key) ∨
+        (direction = true ∧ a.nodeKey2 = key) := by
+  cases direction <;> simp [attributesKeyForDirection]
+
+/-- Direction 0 attributes the first announced node key. -/
+theorem attributesKeyForDirection_node1 (a : ChannelAnnellation) :
+    a.attributesKeyForDirection false a.nodeKey1 := by
+  simp [attributesKeyForDirection]
+
+/-- Direction 1 attributes the second announced node key. -/
+theorem attributesKeyForDirection_node2 (a : ChannelAnnellation) :
+    a.attributesKeyForDirection true a.nodeKey2 := by
+  simp [attributesKeyForDirection]
+
+/-- **Direction keying refines the wave-4 key set.**  A direction-correct key
+is always one of the two announced node keys, so the directional gate is
+stronger than `attributesKey`.  The converse fails
+(`directional_attribution_of_general_fails` in
+`LnLean.Proofs.Routing.GossipKeyConsistencyTargets`). -/
+theorem attributesKeyForDirection_implies_attributesKey (a : ChannelAnnellation)
+    (direction : Bool) (key : PubKey)
+    (h : a.attributesKeyForDirection direction key) : a.attributesKey key := by
+  by_cases hd : direction
+  · rw [attributesKeyForDirection, ite_eq_left hd] at h
+    exact Or.inr h
+  · rw [attributesKeyForDirection, ite_eq_right hd] at h
+    exact Or.inl h
+
+end ChannelAnnellation
+
+/-! ### Direction-keyed attribution in the store -/
+
+namespace GossipState
+
+open Classical
+
+/-- **Direction-keyed update-key attribution.**  Some stored announcement for
+the update's channel names the direction-appropriate endpoint key as the
+update's signing key.  This is the BOLT 7 key check with the direction bit
+decoded, and it is strictly stronger than the wave-4
+`updateKeyAnnounced`. -/
+def updateKeyAnnouncedDirectional (s : GossipState) (u : ChannelUpdate) : Prop :=
+  ∃ a ∈ s.announcements, a.shortChannelId = u.shortChannelId ∧
+    a.attributesKeyForDirection u.direction u.signingKey
+
+/-- **Exact unfolding** of the direction-keyed relation. -/
+theorem updateKeyAnnouncedDirectional_iff (s : GossipState) (u : ChannelUpdate) :
+    s.updateKeyAnnouncedDirectional u ↔
+      ∃ a ∈ s.announcements, a.shortChannelId = u.shortChannelId ∧
+        a.attributesKeyForDirection u.direction u.signingKey :=
+  Iff.rfl
+
+/-- Introduction form: a stored same-channel announcement that attributes the
+direction-selected key witnesses direction-keyed attribution. -/
+theorem updateKeyAnnouncedDirectional_of_mem {s : GossipState}
+    {u : ChannelUpdate} {a : ChannelAnnellation} (ha : a ∈ s.announcements)
+    (hscid : a.shortChannelId = u.shortChannelId)
+    (hkey : a.attributesKeyForDirection u.direction u.signingKey) :
+    s.updateKeyAnnouncedDirectional u :=
+  ⟨a, ha, hscid, hkey⟩
+
+/-- Direction-keyed attribution is monotone in the announcement list. -/
+theorem updateKeyAnnouncedDirectional_mono {s t : GossipState}
+    {u : ChannelUpdate}
+    (hsub : ∀ a ∈ s.announcements, a ∈ t.announcements)
+    (h : s.updateKeyAnnouncedDirectional u) :
+    t.updateKeyAnnouncedDirectional u := by
+  rcases h with ⟨a, ha, hscid, hkey⟩
+  exact ⟨a, hsub a ha, hscid, hkey⟩
+
+/-- **The directional gate implies the wave-4 gate.**  Every direction-correct
+key is one of the two announced keys, but not conversely. -/
+theorem updateKeyAnnouncedDirectional_implies_updateKeyAnnounced
+    (s : GossipState) (u : ChannelUpdate)
+    (h : s.updateKeyAnnouncedDirectional u) : s.updateKeyAnnounced u := by
+  rcases h with ⟨a, ha, hscid, hkey⟩
+  exact ⟨a, ha, hscid,
+    a.attributesKeyForDirection_implies_attributesKey u.direction u.signingKey hkey⟩
+
+/-- An announced direction-correct key stays announced after wave-A
+`applyUpdate`. -/
+theorem updateKeyAnnouncedDirectional_applyUpdate (s : GossipState)
+    (u : ChannelUpdate) (h : s.updateKeyAnnouncedDirectional u) :
+    (s.applyUpdate u).updateKeyAnnouncedDirectional u := by
+  refine updateKeyAnnouncedDirectional_mono ?_ h
+  intro a ha
+  rw [applyUpdate_announcements]
+  exact ha
+
+/-- **Directed attributed `channel_update` store step.**  It differs from the
+wave-4 `applyUpdateAttributed` only by using the direction-selected key.  The
+underlying timestamp replacement is exactly `applyUpdate`. -/
+noncomputable def applyUpdateDirected (s : GossipState) (verify : SigVerifier)
+    (u : ChannelUpdate) : GossipState :=
+  if u.signatureValid verify ∧ s.updateKeyAnnouncedDirectional u then
+    s.applyUpdate u
+  else s
+
+/-- When both directed admission conditions hold, the directed step is the
+wave-A update step. -/
+theorem applyUpdateDirected_eq_applyUpdate_of_admitted (s : GossipState)
+    (verify : SigVerifier) (u : ChannelUpdate)
+    (hsig : u.signatureValid verify)
+    (hk : s.updateKeyAnnouncedDirectional u) :
+    s.applyUpdateDirected verify u = s.applyUpdate u := by
+  unfold applyUpdateDirected
+  rw [ite_eq_left ⟨hsig, hk⟩]
+
+/-- A directionally unannounced update is rejected outright. -/
+theorem applyUpdateDirected_eq_self_of_unannounced (s : GossipState)
+    (verify : SigVerifier) (u : ChannelUpdate)
+    (hk : ¬ s.updateKeyAnnouncedDirectional u) :
+    s.applyUpdateDirected verify u = s := by
+  unfold applyUpdateDirected
+  rw [ite_eq_right]
+  rintro ⟨_, hk'⟩
+  exact hk hk'
+
+/-- **Soundness of directed admission.**  Any change requires the signature
+predicate and direction-keyed attribution. -/
+theorem applyUpdateDirected_change_requires (s : GossipState)
+    (verify : SigVerifier) (u : ChannelUpdate)
+    (h : s.applyUpdateDirected verify u ≠ s) :
+    u.signatureValid verify ∧ s.updateKeyAnnouncedDirectional u := by
+  apply Classical.byContradiction
+  intro hcon
+  apply h
+  unfold applyUpdateDirected
+  rw [ite_eq_right]
+  rintro ⟨hsig, hk⟩
+  exact hcon ⟨hsig, hk⟩
+
+/-- The directed step still requires a strictly newer timestamp. -/
+theorem applyUpdateDirected_change_requires_newer (s : GossipState)
+    (verify : SigVerifier) (u : ChannelUpdate)
+    (h : s.applyUpdateDirected verify u ≠ s) :
+    s.latestUpdateTimestamp < u.timestamp := by
+  by_cases hnew : s.latestUpdateTimestamp < u.timestamp
+  · exact hnew
+  · have hle : u.timestamp ≤ s.latestUpdateTimestamp := Nat.le_of_not_lt hnew
+    have heq : s.applyUpdateDirected verify u = s := by
+      unfold applyUpdateDirected
+      split
+      · exact applyUpdate_stale s u hle
+      · rfl
+    exact absurd heq h
+
+/-- The directed step never changes the announcement list. -/
+theorem applyUpdateDirected_announcements (s : GossipState)
+    (verify : SigVerifier) (u : ChannelUpdate) :
+    (s.applyUpdateDirected verify u).announcements = s.announcements := by
+  unfold applyUpdateDirected
+  split
+  · exact applyUpdate_announcements s u
+  · rfl
+
+/-- A direction-correct announced key stays announced after the directed
+step. -/
+theorem updateKeyAnnouncedDirectional_applyUpdateDirected
+    (s : GossipState) (verify : SigVerifier) (u : ChannelUpdate)
+    (h : s.updateKeyAnnouncedDirectional u) :
+    (s.applyUpdateDirected verify u).updateKeyAnnouncedDirectional u := by
+  refine updateKeyAnnouncedDirectional_mono ?_ h
+  intro a ha
+  rw [applyUpdateDirected_announcements]
+  exact ha
+
+/-- The directed step never lowers the gossip clock. -/
+theorem latestUpdateTimestamp_applyUpdateDirected_ge (s : GossipState)
+    (verify : SigVerifier) (u : ChannelUpdate) :
+    s.latestUpdateTimestamp ≤
+      (s.applyUpdateDirected verify u).latestUpdateTimestamp := by
+  unfold applyUpdateDirected
+  split
+  · exact latestUpdateTimestamp_applyUpdate_ge s u
+  · exact Nat.le_refl s.latestUpdateTimestamp
+
+/-! ### `NodeId → PubKey` consistency -/
+
+/-- **Node-key consistency invariant.**  An explicit graph-node to BOLT 7 key
+map agrees with every stored announcement: `nodeKeyOf a.node1 = a.nodeKey1`
+and `nodeKeyOf a.node2 = a.nodeKey2`.  Wave A has no such map; this predicate
+is the invariant a production admission path must maintain. -/
+def NodeKeyConsistent (nodeKeyOf : NodeId → PubKey) (s : GossipState) : Prop :=
+  ∀ a ∈ s.announcements, nodeKeyOf a.node1 = a.nodeKey1 ∧
+    nodeKeyOf a.node2 = a.nodeKey2
+
+/-- The empty store is consistent for every map. -/
+theorem nodeKeyConsistent_empty (nodeKeyOf : NodeId → PubKey) :
+    NodeKeyConsistent nodeKeyOf ⟨[], [], []⟩ := by
+  intro a ha
+  simp at ha
+
+/-- Node-key consistency is monotone in the announcement list. -/
+theorem nodeKeyConsistent_mono {nodeKeyOf : NodeId → PubKey}
+    {s t : GossipState}
+    (hsub : ∀ a ∈ t.announcements, a ∈ s.announcements)
+    (h : NodeKeyConsistent nodeKeyOf s) : NodeKeyConsistent nodeKeyOf t := by
+  intro a ha
+  exact h a (hsub a ha)
+
+/-- Accepting an update preserves node-key consistency. -/
+theorem nodeKeyConsistent_applyUpdate {nodeKeyOf : NodeId → PubKey}
+    (s : GossipState) (u : ChannelUpdate)
+    (h : NodeKeyConsistent nodeKeyOf s) :
+    NodeKeyConsistent nodeKeyOf (s.applyUpdate u) := by
+  refine nodeKeyConsistent_mono ?_ h
+  intro a ha
+  rw [applyUpdate_announcements] at ha
+  exact ha
+
+/-- **Consistency implies agreement across announcements.**  If two stored
+announcements name the same graph node, the map forces the same BOLT 7 key.
+This is the uniqueness content of the invariant. -/
+theorem nodeKeyConsistent_node1_key_unique {nodeKeyOf : NodeId → PubKey}
+    {s : GossipState} (h : NodeKeyConsistent nodeKeyOf s)
+    {a b : ChannelAnnellation} (ha : a ∈ s.announcements)
+    (hb : b ∈ s.announcements) (hnode : a.node1 = b.node1) :
+    a.nodeKey1 = b.nodeKey1 := by
+  have ha' := (h a ha).1
+  have hb' := (h b hb).1
+  rw [hnode] at ha'
+  exact ha'.symm.trans hb'
+
+/-- The second-endpoint form of `nodeKeyConsistent_node1_key_unique`. -/
+theorem nodeKeyConsistent_node2_key_unique {nodeKeyOf : NodeId → PubKey}
+    {s : GossipState} (h : NodeKeyConsistent nodeKeyOf s)
+    {a b : ChannelAnnellation} (ha : a ∈ s.announcements)
+    (hb : b ∈ s.announcements) (hnode : a.node2 = b.node2) :
+    a.nodeKey2 = b.nodeKey2 := by
+  have ha' := (h a ha).2
+  have hb' := (h b hb).2
+  rw [hnode] at ha'
+  exact ha'.symm.trans hb'
+
+end GossipState
+
+/-! ### Canonical announcement view and deduplication -/
+
+/-- **Canonical announcements.**  No two stored announcements with the same
+`short_channel_id` are distinct.  Under this invariant a channel has exactly
+one announcement record, so endpoint keys and direction keys cannot be
+ambiguous.  The raw store does not maintain it. -/
+def CanonicalAnnouncements (l : List ChannelAnnellation) : Prop :=
+  ∀ a ∈ l, ∀ b ∈ l, a.shortChannelId = b.shortChannelId → a = b
+
+/-- Boolean test for the channel identity used by the deduplicator. -/
+def sameScid (a b : ChannelAnnellation) : Bool :=
+  decide (a.shortChannelId = b.shortChannelId)
+
+/-- Exact unfolding of `sameScid`. -/
+theorem sameScid_eq_true_iff (a b : ChannelAnnellation) :
+    sameScid a b = true ↔ a.shortChannelId = b.shortChannelId := by
+  simp [sameScid]
+
+/-- The complement form of `sameScid`. -/
+theorem sameScid_eq_false_iff (a b : ChannelAnnellation) :
+    sameScid a b = false ↔ a.shortChannelId ≠ b.shortChannelId := by
+  by_cases h : a.shortChannelId = b.shortChannelId
+  · simp [sameScid, h]
+  · simp [sameScid, h]
+
+/-- Insert an announcement into a list only when the list has no announcement
+for the same `short_channel_id`.  The existing (later in the input) record
+wins, so the fold below keeps the last occurrence of each channel. -/
+def insertCanonical (a : ChannelAnnellation)
+    (l : List ChannelAnnellation) : List ChannelAnnellation :=
+  if l.any (sameScid a) then l else a :: l
+
+/-- Membership in `insertCanonical` is either the new announcement or an old
+one. -/
+theorem mem_insertCanonical_cases {a b : ChannelAnnellation}
+    {l : List ChannelAnnellation} (h : b ∈ insertCanonical a l) :
+    b = a ∨ b ∈ l := by
+  unfold insertCanonical at h
+  split at h
+  · exact Or.inr h
+  · rcases List.mem_cons.mp h with h' | h'
+    · exact Or.inl h'
+    · exact Or.inr h'
+
+/-- Insertion preserves all old members. -/
+theorem mem_insertCanonical_of_mem {a b : ChannelAnnellation}
+    {l : List ChannelAnnellation} (h : b ∈ l) :
+    b ∈ insertCanonical a l := by
+  unfold insertCanonical
+  split
+  · exact h
+  · exact List.mem_cons_of_mem _ h
+
+/-- **Canonical deduplication.**  Keep the last stored announcement for each
+`short_channel_id`.  This is a canonical *view*; the raw store is not changed. -/
+def dedupAnnouncements (l : List ChannelAnnellation) : List ChannelAnnellation :=
+  l.foldr insertCanonical []
+
+/-- Unfolding of the deduplicator at a cons. -/
+theorem dedupAnnouncements_cons (a : ChannelAnnellation)
+    (l : List ChannelAnnellation) :
+    dedupAnnouncements (a :: l) = insertCanonical a (dedupAnnouncements l) :=
+  rfl
+
+/-- Deduplication only removes announcements; it never invents one. -/
+theorem mem_of_mem_dedupAnnouncements {a : ChannelAnnellation}
+    {l : List ChannelAnnellation} (h : a ∈ dedupAnnouncements l) : a ∈ l := by
+  induction l with
+  | nil => simp [dedupAnnouncements] at h
+  | cons b bs ih =>
+      rw [dedupAnnouncements_cons] at h
+      rcases mem_insertCanonical_cases h with rfl | h
+      · exact List.mem_cons_self ..
+      · exact List.mem_cons_of_mem _ (ih h)
+
+/-- **The deduplicated view is canonical.**  No two distinct announcements
+with the same `short_channel_id` survive. -/
+theorem canonical_dedupAnnouncements (l : List ChannelAnnellation) :
+    CanonicalAnnouncements (dedupAnnouncements l) := by
+  induction l with
+  | nil =>
+      intro a ha
+      simp [dedupAnnouncements] at ha
+  | cons b bs ih =>
+      rw [dedupAnnouncements_cons]
+      unfold insertCanonical
+      by_cases hany : (dedupAnnouncements bs).any (sameScid b) = true
+      · rw [ite_eq_left hany]
+        exact ih
+      · rw [ite_eq_right hany]
+        have hanyf : (dedupAnnouncements bs).any (sameScid b) = false := by
+          cases h : (dedupAnnouncements bs).any (sameScid b) <;> simp_all
+        have hpoint : ∀ x ∈ dedupAnnouncements bs, sameScid b x = false := by
+          intro x hx
+          have hx' := (List.any_eq_false
+            (l := dedupAnnouncements bs) (p := sameScid b)).mp hanyf x hx
+          simpa using hx'
+        intro x hx y hy hscid
+        rw [List.mem_cons] at hx hy
+        rcases hx with hxb | hxd <;> rcases hy with hyb | hyd
+        · rw [hxb, hyb]
+        · rw [hxb] at hscid ⊢
+          have hfalse := hpoint y hyd
+          have htrue : sameScid b y = true := by
+            simp [sameScid, hscid]
+          rw [htrue] at hfalse
+          exact Bool.noConfusion hfalse
+        · rw [hyb] at hscid ⊢
+          have hfalse := hpoint x hxd
+          have htrue : sameScid b x = true := by
+            simp [sameScid, hscid.symm]
+          rw [htrue] at hfalse
+          exact Bool.noConfusion hfalse
+        · exact ih x hxd y hyd hscid
+
+/-- **Deduplication is semantics-preserving under the canonical invariant.**
+If the input has no conflicting same-channel records, the canonical view keeps
+exactly its announcement members. -/
+theorem mem_dedupAnnouncements_of_canonical {a : ChannelAnnellation}
+    {l : List ChannelAnnellation} (hc : CanonicalAnnouncements l) (ha : a ∈ l) :
+    a ∈ dedupAnnouncements l := by
+  induction l with
+  | nil => simp at ha
+  | cons b bs ih =>
+      rw [dedupAnnouncements_cons]
+      have hcbs : CanonicalAnnouncements bs := by
+        intro x hx y hy h
+        exact hc x (List.mem_cons_of_mem _ hx) y (List.mem_cons_of_mem _ hy) h
+      rcases List.mem_cons.mp ha with hb | ha
+      · rw [hb]
+        unfold insertCanonical
+        by_cases hany : (dedupAnnouncements bs).any (sameScid b) = true
+        · rw [ite_eq_left hany]
+          rcases (List.any_eq_true
+            (l := dedupAnnouncements bs) (p := sameScid b)).mp hany with
+            ⟨x, hx, hsame⟩
+          have hxbs : x ∈ bs := mem_of_mem_dedupAnnouncements hx
+          have hscid : b.shortChannelId = x.shortChannelId :=
+            (sameScid_eq_true_iff b x).mp hsame
+          have hbx : b = x :=
+            hc b (List.mem_cons_self ..) x (List.mem_cons_of_mem _ hxbs) hscid
+          rw [hbx]
+          exact hx
+        · rw [ite_eq_right hany]
+          exact List.mem_cons_self ..
+      · exact mem_insertCanonical_of_mem (ih hcbs ha)
+
+namespace GossipState
+
+/-- The store-level canonical-invariant spelling. -/
+def Canonical (s : GossipState) : Prop :=
+  CanonicalAnnouncements s.announcements
+
+/-- **Canonical store view.**  The same store with announcements deduplicated
+by `short_channel_id`.  Update and node-announcement lists are untouched, so
+this is a viewing operation, not a gossip transition. -/
+def canonicalView (s : GossipState) : GossipState :=
+  { s with announcements := dedupAnnouncements s.announcements }
+
+/-- The canonical view's announcement list is the deduplicated list. -/
+@[simp] theorem canonicalView_announcements (s : GossipState) :
+    s.canonicalView.announcements = dedupAnnouncements s.announcements :=
+  rfl
+
+/-- The canonical view always satisfies the canonical invariant. -/
+theorem canonicalView_canonical (s : GossipState) : s.canonicalView.Canonical :=
+  canonical_dedupAnnouncements s.announcements
+
+/-- Under the canonical invariant, deduplication preserves ordinary key
+attribution exactly. -/
+theorem updateKeyAnnounced_canonicalView (s : GossipState) (u : ChannelUpdate)
+    (hc : s.Canonical) :
+    s.canonicalView.updateKeyAnnounced u ↔ s.updateKeyAnnounced u := by
+  constructor
+  · rintro ⟨a, ha, hscid, hkey⟩
+    exact ⟨a, mem_of_mem_dedupAnnouncements ha, hscid, hkey⟩
+  · rintro ⟨a, ha, hscid, hkey⟩
+    exact ⟨a, mem_dedupAnnouncements_of_canonical hc ha, hscid, hkey⟩
+
+/-- Under the canonical invariant, deduplication preserves direction-keyed
+attribution exactly.  This is the store-view justification for using
+`canonicalView` in the endpoint theorem. -/
+theorem updateKeyAnnouncedDirectional_canonicalView (s : GossipState)
+    (u : ChannelUpdate) (hc : s.Canonical) :
+    s.canonicalView.updateKeyAnnouncedDirectional u ↔
+      s.updateKeyAnnouncedDirectional u := by
+  constructor
+  · rintro ⟨a, ha, hscid, hkey⟩
+    exact ⟨a, mem_of_mem_dedupAnnouncements ha, hscid, hkey⟩
+  · rintro ⟨a, ha, hscid, hkey⟩
+    exact ⟨a, mem_dedupAnnouncements_of_canonical hc ha, hscid, hkey⟩
+
+end GossipState
+
 end LnLean.Routing

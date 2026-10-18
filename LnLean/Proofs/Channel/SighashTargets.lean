@@ -1,0 +1,960 @@
+/-
+# Commitment sighash targets — BOLT 3 serializer, `SighashProduces`, C3 binding (PR-02, PR-01)
+
+**Catalog issues.**
+
+* `PR-02` (P1): the legacy `CommitmentSigned` wire record has no data with
+  which to determine what it covers, and the wave-4 `CommitmentSignedFull`
+  record still carried the commitment digest and per-HTLC signed-data digest as
+  *explicit data*.  There was no BOLT 3 sighash serializer and no C3
+  verification, so `sigAt`/digests were supplied rather than derived.
+* `PR-01` (P1): `FundingSigningLaw` / `KeyBinding` are explicit hypotheses; C3
+  alone does not give signing completeness or key attribution.
+
+**Result of this module.**
+
+1. A BOLT 3-shaped commitment-transaction model (`CommitmentSighashView`) and a
+   per-HTLC second-stage model (`HtlcSighashView`) with a deterministic field
+   serializer (`commitmentPreimage`, `htlcPreimage`) covering the commitment
+   number, obscured commitment number, funding outpoint and value, the output
+   set, the HTLC set, the fee, the holder direction, the contest delay, the
+   anchor flag, the feerate, and the second-stage fee.
+2. Sighash digests `commitmentDigest` and `htlcDigest`, computed as
+   `digest32 (sha256 (commitmentTag ++ preimage))`.  The tag is the existing
+   `LnLean.Crypto.commitmentTag`, so a commitment sighash cannot be replayed in
+   the funding or close domain.
+3. An explicit `SignedBy` relation (verification in a named domain) and an
+   explicit production relation `SighashProduces`: the full record's
+   commitment digest, commitment signature, per-HTLC digests, per-HTLC
+   signatures, and HTLC identification data are *equations* to the derived
+   values.  `honestFull` is the derived record.
+4. Determinism/derivation theorems: any two records satisfying
+   `SighashProduces` for the same state and context agree on the digest,
+   signature, entries, and indeed are the same record.  Under C3 a produced
+   signature verifies for no digest other than the derived one, and a
+   per-HTLC signature verifies for no other second-stage digest.
+5. Connection to wave 4: `SighashProduces` plus `ProducedFrom` (and the two
+   BOLT 3 value equations) yields the wave-4 coverage theorem together with the
+   *computed* digest and the verified signature.  Conversely,
+   `SighashProduces` plus state/digest coherence implies `ProducedFrom`, so the
+   two relations compose.
+6. An honest-signer/key-binding construction for the funding contract: one
+   signing law serves both the funding and commitment domains
+   (`CommitmentSigningLaw.ofFunding`); under `Crypto.KeyBinding` a produced
+   funding signature is attributed to its key, and a funding signature cannot
+   be replayed as a commitment signature over the same message.
+7. Preserved legacy negatives: the wire record alone still determines neither
+   coverage nor the HTLC set.  A new negative shows that `ProducedFrom` alone
+   does *not* determine the digest: an explicit `SignedState` whose digest
+   field is empty satisfies `ProducedFrom`, and its honest full record cannot
+   satisfy `SighashProduces` for any model/context, because the derived digest
+   is 32 bytes.  This makes the serializer relation load-bearing rather than a
+   restatement.
+
+## Scope
+
+The serializer is a **structural** BOLT 3 model, not a bit-exact Bitcoin
+transaction encoder.  It orders the fields in the BOLT 3 commitment order and
+uses fixed-width little-endian naturals, one-byte tags, length-prefixed byte
+strings, and a recursive HTLC list.  Scripts are opaque byte strings supplied
+by the context; the model does not derive them from funding keys.  SHA-256
+collision resistance in the model is injectivity on **32-byte preimages** only,
+so two distinct preimages may share a digest; the module therefore proves
+signature binding at the digest level and states view-level injectivity as the
+remaining cryptographic gap rather than assuming it.  There is no secret-key
+type: the signing law is keyed by the public key, the same idealization as
+`LnLean.Protocol.Handshake.FundingSigningLaw`.
+
+## Anchors
+
+* BOLT 3 §"Commitment Transaction" (`03-transactions.md:83-353`): funding
+  outpoint/value, `to_local`, `to_remote`, HTLC outputs, anchors, obscured
+  commitment number, and the `nSequence`/`nLockTime` encoding.
+* BOLT 3 §"Fees" (`:464-576`): commitment weight, feerate, floored fee.
+* BOLT 2 §"Committing Updates So Far" (type 132): one commitment signature
+  plus one signature per untrimmed HTLC output.
+* Model: `LnLean/Protocol/Messages.lean` (`SignedHtlcEntry`,
+  `CommitmentSignedFull`), `LnLean/Proofs/ProtocolWireTargets.lean`
+  (`SignedHtlc`, `SignedState`, `ProducedFrom`, `commitment_signed_full_covers`),
+  `LnLean/Crypto/Sig.lean` (`commitmentTag`, `verifyCommitment`,
+  `verifyFunding_not_verifyCommitment`), `LnLean/Channel/Commitment.lean`
+  (`commitmentOutputs`, `commitmentFee`),
+  `LnLean/Proofs/ProtocolSigningTargets.lean` (`FundingSigningLaw`,
+  `funding_signed_signing_contract`).
+-/
+
+import LnLean.Protocol.Messages
+import LnLean.Channel.Commitment
+import LnLean.Channel.Fee
+import LnLean.Crypto.Sig
+import LnLean.Proofs.Channel.CommitmentTxProps
+import LnLean.Proofs.Conservation
+import LnLean.Proofs.ProtocolCoverageTargets
+import LnLean.Proofs.ProtocolWireTargets
+import LnLean.Proofs.ProtocolSigningTargets
+
+namespace LnLean.Proofs.Channel.SighashTargets
+
+set_option autoImplicit false
+
+open LnLean
+open LnLean.Protocol
+open LnLean.Channel
+open LnLean.Crypto
+open LnLean.Proofs
+open LnLean.Proofs.ProtocolWireTargets
+open LnLean.Proofs.ProtocolCoverageTargets
+open LnLean.Proofs.WaveE.E20
+
+/-! ## 1. Serializer primitives -/
+
+/-- Fixed-width eight-byte little-endian encoding of a natural number.  This
+is the model's fixed-width integer encoding; it is deliberately simple and
+total. -/
+def natBytes (n : Nat) : ByteArray :=
+  ByteArray.mk ((List.range 8).map
+    (fun i => ((n / 256 ^ i) % 256).toUInt8)).toArray
+
+/-- Length-prefixed byte string. -/
+def bytesField (b : ByteArray) : ByteArray :=
+  natBytes b.size ++ b
+
+/-- Domain tag for a `to_local` output. -/
+def outputTagToLocal : UInt8 := 0x01
+/-- Domain tag for a `to_remote` output. -/
+def outputTagToRemote : UInt8 := 0x02
+/-- Domain tag for an HTLC output. -/
+def outputTagHtlc : UInt8 := 0x03
+/-- Domain tag for a local anchor output. -/
+def outputTagLocalAnchor : UInt8 := 0x04
+/-- Domain tag for a remote anchor output. -/
+def outputTagRemoteAnchor : UInt8 := 0x05
+
+/-- Serialize one commitment output.  Values are satoshis; the HTLC case tags
+the direction so that offered and received outputs differ. -/
+def commitmentOutputBytes : CommitmentOutput → ByteArray
+  | .toLocal v => ByteArray.mk #[outputTagToLocal] ++ natBytes v
+  | .toRemote v => ByteArray.mk #[outputTagToRemote] ++ natBytes v
+  | .htlc d v =>
+      ByteArray.mk #[outputTagHtlc] ++
+        (match d with | .local => ByteArray.mk #[0x01] | .remote => ByteArray.mk #[0x02]) ++
+        natBytes v
+  | .localAnchor => ByteArray.mk #[outputTagLocalAnchor]
+  | .remoteAnchor => ByteArray.mk #[outputTagRemoteAnchor]
+
+/-- Serialize a direction. -/
+def directionBytes : Direction → ByteArray
+  | .local => ByteArray.mk #[0x01]
+  | .remote => ByteArray.mk #[0x02]
+
+/-- Serialize an HTLC lifecycle tag. -/
+def htlcStateBytes : HTLCState → ByteArray
+  | .offered => ByteArray.mk #[0x01]
+  | .received => ByteArray.mk #[0x02]
+  | .fulfilled => ByteArray.mk #[0x03]
+  | .failed => ByteArray.mk #[0x04]
+  | .removed => ByteArray.mk #[0x05]
+
+/-- Serialize a boolean. -/
+def boolBytes : Bool → ByteArray
+  | true => ByteArray.mk #[0x01]
+  | false => ByteArray.mk #[0x00]
+
+/-- Concatenate a list of byte strings in order. -/
+def concatBytes : List ByteArray → ByteArray
+  | [] => ByteArray.empty
+  | b :: t => b ++ concatBytes t
+
+/-! ## 2. The commitment and HTLC sighash views -/
+
+/-- The per-HTLC second-stage preimage fields.  `parentCommitmentNumber`
+separates the same HTLC across commitment numbers; `htlcId` is a model-side
+identifier (BOLT 3 does not put the numeric id in the second-stage transaction,
+but the model needs it to distinguish two otherwise identical outputs). -/
+structure HtlcSighashView where
+  htlcId : Nat
+  parentCommitmentNumber : Nat
+  direction : Direction
+  htlcState : HTLCState
+  amountSat : Nat
+  paymentHash : PaymentHash
+  cltvExpiry : Height
+  secondStageFeeSat : Nat
+deriving Repr, BEq
+
+/-- The BOLT 3 commitment-transaction preimage fields this model serializes.
+`outputs` is the full commitment output list (`to_local`, `to_remote`, HTLCs,
+anchors); `htlcs` is the signed HTLC set; `feeSat` is the commitment fee;
+`holder` selects the local/remote transaction; `obscuredCommitmentNumber` is
+the BOLT 3 XOR-obscured value carried in `nSequence`/`nLockTime`. -/
+structure CommitmentSighashView where
+  commitmentNumber : Nat
+  obscuredCommitmentNumber : Nat
+  fundingTxid : ByteArray
+  fundingOutputIndex : Nat
+  fundingValueSat : Nat
+  fundingScript : ByteArray
+  holder : Direction
+  toLocalSat : Nat
+  toRemoteSat : Nat
+  outputs : List CommitmentOutput
+  feeSat : Nat
+  contestDelay : Nat
+  anchorOutputs : Bool
+  feeratePerKw : Nat
+  htlcs : List HtlcSighashView
+deriving Repr, BEq
+
+/-- Serialize one per-HTLC second-stage preimage.  Field order: domain tag,
+parent commitment number, HTLC id, direction, lifecycle tag, amount, payment
+hash, CLTV expiry, second-stage fee. -/
+def htlcPreimage (h : HtlcSighashView) : ByteArray :=
+  ByteArray.mk #[0x20] ++
+    natBytes h.parentCommitmentNumber ++
+    natBytes h.htlcId ++
+    directionBytes h.direction ++
+    htlcStateBytes h.htlcState ++
+    natBytes h.amountSat ++
+    bytesField h.paymentHash.bytes ++
+    natBytes h.cltvExpiry ++
+    natBytes h.secondStageFeeSat
+
+/-- Serialize the commitment preimage in BOLT 3 field order: version tag,
+commitment number, obscured number, funding outpoint and value, funding script,
+holder direction, balances, output set, fee, contest delay, anchor flag,
+feerate, and the HTLC set. -/
+def commitmentPreimage (v : CommitmentSighashView) : ByteArray :=
+  ByteArray.mk #[0x02] ++
+    natBytes v.commitmentNumber ++
+    natBytes v.obscuredCommitmentNumber ++
+    bytesField v.fundingTxid ++
+    natBytes v.fundingOutputIndex ++
+    natBytes v.fundingValueSat ++
+    bytesField v.fundingScript ++
+    directionBytes v.holder ++
+    natBytes v.toLocalSat ++
+    natBytes v.toRemoteSat ++
+    natBytes v.outputs.length ++
+    concatBytes (v.outputs.map commitmentOutputBytes) ++
+    natBytes v.feeSat ++
+    natBytes v.contestDelay ++
+    boolBytes v.anchorOutputs ++
+    natBytes v.feeratePerKw ++
+    natBytes v.htlcs.length ++
+    concatBytes (v.htlcs.map htlcPreimage)
+
+/-- The commitment sighash digest.  The existing commitment domain tag
+(`LnLean.Crypto.commitmentTag`) is prepended before hashing so that a
+commitment preimage cannot be confused with a funding or close preimage. -/
+def commitmentDigest (M : PrimitiveModel) (v : CommitmentSighashView) : ByteArray :=
+  M.sha256 (commitmentTag ++ commitmentPreimage v)
+
+/-- The per-HTLC second-stage sighash digest, in the same commitment domain and
+bound to the parent commitment preimage so that an HTLC signature cannot be
+moved to a different commitment number. -/
+def htlcDigest (M : PrimitiveModel) (v : CommitmentSighashView)
+    (h : HtlcSighashView) : ByteArray :=
+  M.sha256 (commitmentTag ++ commitmentPreimage v ++ htlcPreimage h)
+
+theorem commitmentDigest_size (M : PrimitiveModel) (v : CommitmentSighashView) :
+    (commitmentDigest M v).size = 32 :=
+  M.sha256_size _
+
+theorem htlcDigest_size (M : PrimitiveModel) (v : CommitmentSighashView)
+    (h : HtlcSighashView) : (htlcDigest M v h).size = 32 :=
+  M.sha256_size _
+
+/-! ## 3. `SignedBy` and the signing law -/
+
+/-- Explicit signature verification in a named protocol domain.  The message
+is prefixed with `domain`; for commitments the domain is
+`LnLean.Crypto.commitmentTag`, matching `LnLean.Crypto.verifyCommitment`. -/
+def SignedBy (M : PrimitiveModel) (pk : PubKey) (domain msg : ByteArray)
+    (s : EcdsaSig) : Prop :=
+  M.ecdsaVerify pk (domain ++ msg) s = true
+
+/-- A signature over a commitment sighash digest in the commitment domain. -/
+def CommitmentSignedBy (M : PrimitiveModel) (pk : PubKey)
+    (v : CommitmentSighashView) (s : EcdsaSig) : Prop :=
+  SignedBy M pk commitmentTag (commitmentDigest M v) s
+
+/-- A signature over a per-HTLC second-stage digest in the commitment domain. -/
+def HtlcSignedBy (M : PrimitiveModel) (pk : PubKey)
+    (v : CommitmentSighashView) (h : HtlcSighashView) (s : EcdsaSig) : Prop :=
+  SignedBy M pk commitmentTag (htlcDigest M v h) s
+
+/-- `SignedBy` in the commitment domain is exactly the existing
+`LnLean.Crypto.verifyCommitment` check on the message. -/
+theorem signedBy_commitmentTag_iff (M : PrimitiveModel) (pk : PubKey)
+    (msg : ByteArray) (s : EcdsaSig) :
+    SignedBy M pk commitmentTag msg s ↔ verifyCommitment M pk msg s = true :=
+  Iff.rfl
+
+/-- The signing interface absent from `PrimitiveModel`, packaged for the
+commitment domain.  `sign` is keyed by the public key because the model has no
+secret-key type; `verifies` is signing correctness; `wire` records BOLT 1's
+accepted signature shapes. -/
+structure CommitmentSigningLaw (M : PrimitiveModel) where
+  sign : PubKey → ByteArray → EcdsaSig
+  verifies : ∀ (pk : PubKey) (msg : ByteArray),
+    M.ecdsaVerify pk msg (sign pk msg) = true
+  wire : ∀ (pk : PubKey) (msg : ByteArray),
+    wireSigOK (sign pk msg).bytes = true
+
+/-- One honest signer can serve both the funding and commitment domains: the
+signing function is message-keyed, and the domain tags are part of the
+message.  This is the bridge used by the funding/commitment contract below. -/
+def CommitmentSigningLaw.ofFunding {M : PrimitiveModel}
+    (law : LnLean.Protocol.Handshake.FundingSigningLaw M) :
+    CommitmentSigningLaw M where
+  sign := law.sign
+  verifies := law.verifies
+  wire := law.wire
+
+/-! ## 4. Deriving a record from state and context -/
+
+/-- The external commitment context: the BOLT 3 data that the channel state
+does not carry.  `commitmentKey` is the signer key; the model has no
+secret-key type, so the key is used directly by the signing law. -/
+structure SighashContext where
+  fundingTxid : ByteArray
+  fundingOutputIndex : Nat
+  fundingScript : ByteArray
+  obscuredCommitmentNumber : Nat
+  secondStageFeeSat : Nat
+  commitmentKey : PubKey
+
+/-- The per-HTLC view of one state HTLC.  The state's explicit
+`signedDataDigest` is deliberately *not* read: that field is the data this
+module replaces by a derived digest. -/
+def htlcViewOfState (ctx : SighashContext) (st : SignedState)
+    (h : SignedHtlc) : HtlcSighashView where
+  htlcId := h.htlcId
+  parentCommitmentNumber := st.commitmentNumber
+  direction := h.direction
+  htlcState := h.htlcState
+  amountSat := h.amount.toSatFloor
+  paymentHash := h.paymentHash
+  cltvExpiry := h.cltvExpiry
+  secondStageFeeSat := ctx.secondStageFeeSat
+
+/-- The list of per-HTLC views of the state's HTLC set. -/
+def htlcViewsOfState (ctx : SighashContext) (st : SignedState) :
+    List HtlcSighashView :=
+  st.htlcs.map (htlcViewOfState ctx st)
+
+/-- The commitment sighash view determined by the state and context.  The
+state's explicit commitment digest and per-HTLC signed-data digests are not
+read; the outputs are the commitment's BOLT 3 output list. -/
+def viewOfState (ctx : SighashContext) (st : SignedState) :
+    CommitmentSighashView where
+  commitmentNumber := st.commitmentNumber
+  obscuredCommitmentNumber := ctx.obscuredCommitmentNumber
+  fundingTxid := ctx.fundingTxid
+  fundingOutputIndex := ctx.fundingOutputIndex
+  fundingValueSat := st.fundingValueSat
+  fundingScript := ctx.fundingScript
+  holder := st.holder
+  toLocalSat := st.toLocalSat
+  toRemoteSat := st.toRemoteSat
+  outputs := st.toCommitment.commitmentOutputs
+  feeSat := st.feeSat
+  contestDelay := st.contestDelay
+  anchorOutputs := st.anchorOutputs
+  feeratePerKw := st.feerate.msatPerKw
+  htlcs := htlcViewsOfState ctx st
+
+@[simp] theorem viewOfState_commitmentNumber (ctx : SighashContext)
+    (st : SignedState) :
+    (viewOfState ctx st).commitmentNumber = st.commitmentNumber := rfl
+
+@[simp] theorem viewOfState_feeSat (ctx : SighashContext) (st : SignedState) :
+    (viewOfState ctx st).feeSat = st.feeSat := rfl
+
+@[simp] theorem viewOfState_holder (ctx : SighashContext) (st : SignedState) :
+    (viewOfState ctx st).holder = st.holder := rfl
+
+@[simp] theorem viewOfState_outputs (ctx : SighashContext) (st : SignedState) :
+    (viewOfState ctx st).outputs = st.toCommitment.commitmentOutputs := rfl
+
+@[simp] theorem viewOfState_htlcs (ctx : SighashContext) (st : SignedState) :
+    (viewOfState ctx st).htlcs = htlcViewsOfState ctx st := rfl
+
+/-- One signed entry derived from a state HTLC: identification data from the
+state, digest and signature from the serializer and the signing law. -/
+def entryOfSighash (M : PrimitiveModel) (law : CommitmentSigningLaw M)
+    (ctx : SighashContext) (st : SignedState) (h : SignedHtlc) :
+    SignedHtlcEntry where
+  htlcId := h.htlcId
+  amount := h.amount
+  paymentHash := h.paymentHash
+  direction := h.direction
+  htlcState := h.htlcState
+  cltvExpiry := h.cltvExpiry
+  signedDataDigest := htlcDigest M (viewOfState ctx st) (htlcViewOfState ctx st h)
+  signature := law.sign ctx.commitmentKey
+    (commitmentTag ++ htlcDigest M (viewOfState ctx st) (htlcViewOfState ctx st h))
+
+@[simp] theorem entryOfSighash_htlcId (M : PrimitiveModel)
+    (law : CommitmentSigningLaw M) (ctx : SighashContext) (st : SignedState)
+    (h : SignedHtlc) : (entryOfSighash M law ctx st h).htlcId = h.htlcId := rfl
+
+@[simp] theorem entryOfSighash_digest (M : PrimitiveModel)
+    (law : CommitmentSigningLaw M) (ctx : SighashContext) (st : SignedState)
+    (h : SignedHtlc) :
+    (entryOfSighash M law ctx st h).signedDataDigest =
+      htlcDigest M (viewOfState ctx st) (htlcViewOfState ctx st h) := rfl
+
+@[simp] theorem entryOfSighash_signature (M : PrimitiveModel)
+    (law : CommitmentSigningLaw M) (ctx : SighashContext) (st : SignedState)
+    (h : SignedHtlc) :
+    (entryOfSighash M law ctx st h).signature =
+      law.sign ctx.commitmentKey
+        (commitmentTag ++
+          htlcDigest M (viewOfState ctx st) (htlcViewOfState ctx st h)) := rfl
+
+/-- The full record derived from a state and context.  Every field that the
+wave-4 record supplied explicitly is now computed. -/
+def honestFull (M : PrimitiveModel) (law : CommitmentSigningLaw M)
+    (ctx : SighashContext) (st : SignedState) : CommitmentSignedFull where
+  channelId := st.channelId
+  commitmentNumber := st.commitmentNumber
+  feePaid := ⟨st.feeSat⟩
+  commitmentDigest := commitmentDigest M (viewOfState ctx st)
+  commitmentSignature := law.sign ctx.commitmentKey
+    (commitmentTag ++ commitmentDigest M (viewOfState ctx st))
+  htlcEntries := st.htlcs.map (entryOfSighash M law ctx st)
+
+@[simp] theorem honestFull_commitmentDigest (M : PrimitiveModel)
+    (law : CommitmentSigningLaw M) (ctx : SighashContext) (st : SignedState) :
+    (honestFull M law ctx st).commitmentDigest =
+      commitmentDigest M (viewOfState ctx st) := rfl
+
+@[simp] theorem honestFull_commitmentSignature (M : PrimitiveModel)
+    (law : CommitmentSigningLaw M) (ctx : SighashContext) (st : SignedState) :
+    (honestFull M law ctx st).commitmentSignature =
+      law.sign ctx.commitmentKey
+        (commitmentTag ++ commitmentDigest M (viewOfState ctx st)) := rfl
+
+/-! ## 5. The explicit production relation -/
+
+/-- **`SighashProduces`.**  A full `commitment_signed` record was produced
+from the state under the serializer when:
+
+* its channel id, commitment number, and fee are the state's;
+* its commitment digest is the computed BOLT 3 sink digest;
+* its commitment signature is the honest signature over that digest in the
+  commitment domain;
+* its signed HTLC entries are exactly the state's HTLCs with derived
+  second-stage digests and derived signatures.
+
+The relation is *defined* by these equations; no digest or signature is left
+free. -/
+structure SighashProduces (M : PrimitiveModel) (law : CommitmentSigningLaw M)
+    (ctx : SighashContext) (st : SignedState) (f : CommitmentSignedFull) : Prop where
+  channelId_eq : f.channelId = st.channelId
+  commitmentNumber_eq : f.commitmentNumber = st.commitmentNumber
+  feePaid_eq : f.feePaid.val = st.feeSat
+  commitmentDigest_eq : f.commitmentDigest = commitmentDigest M (viewOfState ctx st)
+  commitmentSignature_eq : f.commitmentSignature =
+    law.sign ctx.commitmentKey
+      (commitmentTag ++ commitmentDigest M (viewOfState ctx st))
+  htlcEntries_eq : f.htlcEntries =
+    st.htlcs.map (entryOfSighash M law ctx st)
+
+/-- The derived record satisfies the production relation definitionally. -/
+theorem honestFull_produces (M : PrimitiveModel) (law : CommitmentSigningLaw M)
+    (ctx : SighashContext) (st : SignedState) :
+    SighashProduces M law ctx st (honestFull M law ctx st) :=
+  { channelId_eq := rfl
+    commitmentNumber_eq := rfl
+    feePaid_eq := rfl
+    commitmentDigest_eq := rfl
+    commitmentSignature_eq := rfl
+    htlcEntries_eq := rfl }
+
+/-- **Digests and signatures are derived, not arbitrary.**  Two full records
+produced from the same state/context/model/signing law agree on the commitment
+digest and on the commitment signature. -/
+theorem SighashProduces.digest_unique {M : PrimitiveModel}
+    {law : CommitmentSigningLaw M} {ctx : SighashContext} {st : SignedState}
+    {f g : CommitmentSignedFull} (hf : SighashProduces M law ctx st f)
+    (hg : SighashProduces M law ctx st g) :
+    f.commitmentDigest = g.commitmentDigest ∧
+      f.commitmentSignature = g.commitmentSignature := by
+  constructor
+  · rw [hf.commitmentDigest_eq, hg.commitmentDigest_eq]
+  · rw [hf.commitmentSignature_eq, hg.commitmentSignature_eq]
+
+/-- The signed HTLC entries are derived too: the entry list is a function of
+the state, context, model, and signing law. -/
+theorem SighashProduces.entries_unique {M : PrimitiveModel}
+    {law : CommitmentSigningLaw M} {ctx : SighashContext} {st : SignedState}
+    {f g : CommitmentSignedFull} (hf : SighashProduces M law ctx st f)
+    (hg : SighashProduces M law ctx st g) :
+    f.htlcEntries = g.htlcEntries := by
+  rw [hf.htlcEntries_eq, hg.htlcEntries_eq]
+
+/-- A produced record is the honest derived record: the relation determines
+every field. -/
+theorem SighashProduces.eq_honestFull {M : PrimitiveModel}
+    {law : CommitmentSigningLaw M} {ctx : SighashContext} {st : SignedState}
+    {f : CommitmentSignedFull} (h : SighashProduces M law ctx st f) :
+    f = honestFull M law ctx st := by
+  rcases f with ⟨cid, num, fee, dig, sig, entries⟩
+  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := h
+  have hfee : fee = ⟨st.feeSat⟩ := by
+    cases fee with
+    | mk v => exact congrArg Msat.mk h3
+  cases h1
+  cases h2
+  cases hfee
+  cases h4
+  cases h5
+  cases h6
+  rfl
+
+/-- The derived commitment digest has the state's commitment number and fee
+bound into it (by construction of the view). -/
+theorem commitmentDigest_derived (M : PrimitiveModel) (law : CommitmentSigningLaw M)
+    (ctx : SighashContext) (st : SignedState) :
+    (honestFull M law ctx st).commitmentDigest =
+        commitmentDigest M (viewOfState ctx st) ∧
+      (viewOfState ctx st).commitmentNumber = st.commitmentNumber ∧
+      (viewOfState ctx st).feeSat = st.feeSat ∧
+      (viewOfState ctx st).holder = st.holder :=
+  ⟨rfl, rfl, rfl, rfl⟩
+
+/-! ## 6. C3 binding and domain separation -/
+
+/-- **C3 binds the commitment signature to the derived digest.**  If the
+signature of a produced record validates under the producing key for any
+message `msg` in the commitment domain, that message is the derived digest.
+This is the formal sense in which the signature is not free data. -/
+theorem SighashProduces.signature_binds_digest {M : PrimitiveModel}
+    (hC3 : EufCma M.ecdsaVerify) {law : CommitmentSigningLaw M}
+    {ctx : SighashContext} {st : SignedState} {f : CommitmentSignedFull}
+    (h : SighashProduces M law ctx st f) {msg : ByteArray}
+    (hver : M.ecdsaVerify ctx.commitmentKey (commitmentTag ++ msg)
+      f.commitmentSignature = true) :
+    msg = commitmentDigest M (viewOfState ctx st) := by
+  have hder : M.ecdsaVerify ctx.commitmentKey
+      (commitmentTag ++ commitmentDigest M (viewOfState ctx st))
+      f.commitmentSignature = true := by
+    rw [h.commitmentSignature_eq]
+    exact law.verifies _ _
+  exact append_left_cancel (hC3 _ _ _ _ hver hder)
+
+/-- **C3 binds a per-HTLC signature to the derived second-stage digest.** -/
+theorem SighashProduces.htlc_signature_binds_digest {M : PrimitiveModel}
+    (hC3 : EufCma M.ecdsaVerify) {law : CommitmentSigningLaw M}
+    {ctx : SighashContext} {st : SignedState} {f : CommitmentSignedFull}
+    (_h : SighashProduces M law ctx st f) {hh : SignedHtlc}
+    (_hmem : hh ∈ st.htlcs) {msg : ByteArray}
+    (hver : M.ecdsaVerify ctx.commitmentKey (commitmentTag ++ msg)
+      (entryOfSighash M law ctx st hh).signature = true) :
+    msg = htlcDigest M (viewOfState ctx st) (htlcViewOfState ctx st hh) := by
+  have hder : M.ecdsaVerify ctx.commitmentKey
+      (commitmentTag ++
+        htlcDigest M (viewOfState ctx st) (htlcViewOfState ctx st hh))
+      (entryOfSighash M law ctx st hh).signature = true := by
+    exact law.verifies _ _
+  exact append_left_cancel (hC3 _ _ _ _ hver hder)
+
+/-- A produced commitment signature is a valid signature over the derived
+digest in the commitment domain. -/
+theorem SighashProduces.commitmentSignedBy {M : PrimitiveModel}
+    {law : CommitmentSigningLaw M} {ctx : SighashContext} {st : SignedState}
+    {f : CommitmentSignedFull} (h : SighashProduces M law ctx st f) :
+    CommitmentSignedBy M ctx.commitmentKey (viewOfState ctx st)
+      f.commitmentSignature := by
+  unfold CommitmentSignedBy SignedBy
+  rw [h.commitmentSignature_eq]
+  exact law.verifies _ _
+
+/-- Every derived HTLC entry's signature is valid over its derived digest. -/
+theorem SighashProduces.entrySignedBy {M : PrimitiveModel}
+    {law : CommitmentSigningLaw M} {ctx : SighashContext} {st : SignedState}
+    {f : CommitmentSignedFull} (_h : SighashProduces M law ctx st f)
+    (hh : SignedHtlc) (_hmem : hh ∈ st.htlcs) :
+    HtlcSignedBy M ctx.commitmentKey (viewOfState ctx st)
+      (htlcViewOfState ctx st hh)
+      (entryOfSighash M law ctx st hh).signature := by
+  unfold HtlcSignedBy SignedBy
+  exact law.verifies _ _
+
+/-- The digest list of the produced entries is exactly the derived list. -/
+theorem SighashProduces.entries_digest {M : PrimitiveModel}
+    {law : CommitmentSigningLaw M} {ctx : SighashContext} {st : SignedState}
+    {f : CommitmentSignedFull} (h : SighashProduces M law ctx st f) :
+    f.htlcEntries.map (fun e => e.signedDataDigest) =
+      st.htlcs.map
+        (fun hh => htlcDigest M (viewOfState ctx st) (htlcViewOfState ctx st hh)) := by
+  rw [h.htlcEntries_eq, List.map_map]
+  exact List.map_congr_left (fun hh _ => rfl)
+
+/-- The produced entry count is the state's HTLC count. -/
+theorem SighashProduces.entry_count {M : PrimitiveModel}
+    {law : CommitmentSigningLaw M} {ctx : SighashContext} {st : SignedState}
+    {f : CommitmentSignedFull} (h : SighashProduces M law ctx st f) :
+    f.htlcEntries.length = st.htlcs.length := by
+  rw [h.htlcEntries_eq, List.length_map]
+
+/-- **Domain separation.**  A signature valid in the funding domain cannot
+also validate as a commitment-domain signature over the same untagged
+message.  So an honest funding signature is not a commitment signature. -/
+theorem funding_signature_not_commitment_signature
+    (M : PrimitiveModel) (hC3 : EufCma M.ecdsaVerify)
+    {pk : PubKey} {msg : ByteArray} {sig : EcdsaSig}
+    (hf : verifyFunding M pk msg sig = true)
+    (hc : SignedBy M pk commitmentTag msg sig) : False := by
+  exact verifyFunding_not_verifyCommitment M hC3 hf hc
+
+/-! ## 7. Connection to `ProducedFrom` and the wave-4 coverage theorem -/
+
+/-- Under `SighashProduces` the signed entries project exactly onto the
+commitment's current HTLC outputs. -/
+theorem SighashProduces.entries_map_output {M : PrimitiveModel}
+    {law : CommitmentSigningLaw M} {ctx : SighashContext} {st : SignedState}
+    {f : CommitmentSignedFull} (h : SighashProduces M law ctx st f) :
+    f.htlcEntries.map SignedHtlcEntry.toCommitmentHtlcOutput =
+      st.toCommitment.htlcs := by
+  rw [h.htlcEntries_eq, List.map_map]
+  rfl
+
+/-- **Coverage derived from the serializer relation alone.**  A record
+produced under `SighashProduces` covers exactly the state's HTLC set, pays the
+BOLT 3 formula fee under the two value equations, carries the computed digest,
+and its commitment signature verifies over that digest.  This does not use
+`ProducedFrom`; the two relations are consistent and can be composed. -/
+theorem SighashProduces.coverage {M : PrimitiveModel}
+    {law : CommitmentSigningLaw M} {ctx : SighashContext} {st : SignedState}
+    {f : CommitmentSignedFull} (h : SighashProduces M law ctx st f)
+    (hcons : CommitmentConserved st.toCommitment)
+    (hres : FeeIsFundingResidual st.feerate st.toCommitment) :
+    f.htlcEntries.map SignedHtlcEntry.toCommitmentHtlcOutput =
+        st.toCommitment.htlcs ∧
+      f.toCommitmentSigned.htlcSignatures.length =
+        st.toCommitment.htlcs.length ∧
+      CoversHtlcOutputs f.toCommitmentSigned st.toCommitment ∧
+      f.feePaid.val = (commitmentFee st.feerate st.toCommitment).val ∧
+      f.commitmentNumber = st.toCommitment.commitmentNumber ∧
+      f.commitmentDigest = commitmentDigest M (viewOfState ctx st) ∧
+      CommitmentSignedBy M ctx.commitmentKey (viewOfState ctx st)
+        f.commitmentSignature := by
+  have hdesc : f.htlcEntries.map SignedHtlcEntry.toCommitmentHtlcOutput =
+      st.toCommitment.htlcs := h.entries_map_output
+  have hlen : f.toCommitmentSigned.htlcSignatures.length =
+      st.toCommitment.htlcs.length := by
+    rw [CommitmentSignedFull.toCommitmentSigned_htlcSignatures,
+      h.htlcEntries_eq, List.length_map, List.length_map]
+    simp
+  have hfee : f.feePaid.val =
+      (commitmentFee st.feerate st.toCommitment).val := by
+    unfold CommitmentConserved at hcons
+    unfold FeeIsFundingResidual at hres
+    simp only [SignedState.toCommitment_feeSat] at hcons ⊢
+    rw [h.feePaid_eq]
+    omega
+  have hcoversFee : waveE_e20_covers_fee st.feerate st.toCommitment := by
+    unfold waveE_e20_covers_fee
+    simp only [SignedState.toCommitment_feeSat]
+    rw [← h.feePaid_eq]
+    exact hfee
+  refine ⟨hdesc, hlen, ?_, hfee, ?_, h.commitmentDigest_eq,
+    h.commitmentSignedBy⟩
+  · unfold CoversHtlcOutputs
+    rw [hlen, Commitment.htlcOutputCount_commitmentOutputs]
+  · rw [h.commitmentNumber_eq]
+    rfl
+
+/-- `SighashProduces` plus state/digest coherence implies the wave-4
+`ProducedFrom` relation.  The per-HTLC signing family is the derived one.
+This is the bridge that lets the serializer result compose with the already
+proved coverage theorem instead of duplicating it. -/
+theorem producedFrom_of_sighashProduces {M : PrimitiveModel}
+    {law : CommitmentSigningLaw M} {ctx : SighashContext} {st : SignedState}
+    {f : CommitmentSignedFull} (h : SighashProduces M law ctx st f)
+    (hdig : st.commitmentDigest = commitmentDigest M (viewOfState ctx st))
+    (hhtlc : ∀ hh ∈ st.htlcs,
+      hh.signedDataDigest =
+        htlcDigest M (viewOfState ctx st) (htlcViewOfState ctx st hh)) :
+    ProducedFrom f st
+      (fun hh => law.sign ctx.commitmentKey
+        (commitmentTag ++
+          htlcDigest M (viewOfState ctx st) (htlcViewOfState ctx st hh))) := by
+  refine
+    { channelId_eq := h.channelId_eq
+      commitmentNumber_eq := h.commitmentNumber_eq
+      feePaid_eq := h.feePaid_eq
+      commitmentDigest_eq := ?_
+      htlcEntries_eq := ?_ }
+  · rw [h.commitmentDigest_eq, ← hdig]
+  · rw [h.htlcEntries_eq]
+    exact List.map_congr_left (fun hh hmem => by
+      simp [entryOfSighash, SignedHtlc.toEntry, hhtlc hh hmem])
+
+/-- **PR-02, positive direction with derived digests/signatures.**  If a full
+record was produced under the serializer *and* satisfies the wave-4 production
+relation (equivalently, under the coherence hypotheses of
+`producedFrom_of_sighashProduces`), and the two BOLT 3 value equations hold,
+then all wave-4 coverage conclusions hold, the commitment digest is the
+computed BOLT 3 sink digest, and the commitment signature is valid over that
+digest. -/
+theorem commitment_signed_full_covers_of_sighash
+    (M : PrimitiveModel) (law : CommitmentSigningLaw M)
+    (ctx : SighashContext) (f : CommitmentSignedFull) (st : SignedState)
+    (sigAt : SignedHtlc → EcdsaSig)
+    (hsh : SighashProduces M law ctx st f)
+    (hprod : ProducedFrom f st sigAt)
+    (hcons : CommitmentConserved st.toCommitment)
+    (hres : FeeIsFundingResidual st.feerate st.toCommitment) :
+    (f.htlcEntries.map SignedHtlcEntry.toCommitmentHtlcOutput =
+        st.toCommitment.htlcs ∧
+      f.toCommitmentSigned.htlcSignatures.length =
+        st.toCommitment.htlcs.length ∧
+      CoversHtlcOutputs f.toCommitmentSigned st.toCommitment ∧
+      f.feePaid.val = (commitmentFee st.feerate st.toCommitment).val ∧
+      f.commitmentNumber = st.toCommitment.commitmentNumber ∧
+      waveE_e20_commitment_signed_covers
+        f.toCommitmentSigned st.feerate st.toCommitment) ∧
+      f.commitmentDigest = commitmentDigest M (viewOfState ctx st) ∧
+      CommitmentSignedBy M ctx.commitmentKey (viewOfState ctx st)
+        f.commitmentSignature := by
+  have hcov := commitment_signed_full_covers f st sigAt hprod hcons hres
+  refine ⟨?_, hsh.commitmentDigest_eq, hsh.commitmentSignedBy⟩
+  exact ⟨hcov.1, hcov.2.1, hcov.2.2.1, hcov.2.2.2.1,
+    hcov.2.2.2.2.1, hcov.2.2.2.2.2.2.1⟩
+
+/-- The exact catalog-shaped corollary with derived digests: an honestly
+produced record covers the state's HTLC set, carries the computed digest, and
+its signature verifies in the commitment domain. -/
+theorem honest_commitment_signed_full_covers
+    (M : PrimitiveModel) (law : CommitmentSigningLaw M)
+    (ctx : SighashContext) (st : SignedState)
+    (hcons : CommitmentConserved st.toCommitment)
+    (hres : FeeIsFundingResidual st.feerate st.toCommitment) :
+    (honestFull M law ctx st).htlcEntries.map
+        SignedHtlcEntry.toCommitmentHtlcOutput = st.toCommitment.htlcs ∧
+      (honestFull M law ctx st).feePaid.val =
+        (commitmentFee st.feerate st.toCommitment).val ∧
+      (honestFull M law ctx st).commitmentDigest =
+        commitmentDigest M (viewOfState ctx st) ∧
+      CommitmentSignedBy M ctx.commitmentKey (viewOfState ctx st)
+        (honestFull M law ctx st).commitmentSignature := by
+  have hcov := (honestFull_produces M law ctx st).coverage hcons hres
+  exact ⟨hcov.1, hcov.2.2.2.1, rfl,
+    (honestFull_produces M law ctx st).commitmentSignedBy⟩
+
+/-! ## 8. Non-vacuity: the concrete wave-4 state -/
+
+/-- The wave-4 concrete one-HTLC conserving state also satisfies the
+serializer production relation: the honest record is derived from it. -/
+theorem exampleSignedState_produces (M : PrimitiveModel)
+    (law : CommitmentSigningLaw M) (ctx : SighashContext) :
+    SighashProduces M law ctx exampleSignedState
+      (honestFull M law ctx exampleSignedState) :=
+  honestFull_produces M law ctx exampleSignedState
+
+/-- The concrete state's derived digest is 32 bytes, and the honest record
+carries it. -/
+theorem exampleSignedState_honest_digest_size (M : PrimitiveModel)
+    (law : CommitmentSigningLaw M) (ctx : SighashContext) :
+    (honestFull M law ctx exampleSignedState).commitmentDigest.size = 32 :=
+  commitmentDigest_size M (viewOfState ctx exampleSignedState)
+
+/-! ## 9. The serializer relation is load-bearing; legacy negatives -/
+
+/-- **`ProducedFrom` alone does not determine the digest.**  The wave-4
+concrete state stores an empty `commitmentDigest`, and its honest wave-4
+record copies that field, so it satisfies `ProducedFrom`.  The derived digest
+is 32 bytes, so *no* `SighashProduces` relation can hold for that record.  Hence
+the serializer relation genuinely adds the derivation, rather than restating
+the wave-4 data relation. -/
+theorem producedFrom_not_sighashProduces (M : PrimitiveModel)
+    (law : CommitmentSigningLaw M) (ctx : SighashContext)
+    (commitSig : EcdsaSig) (sigAt : SignedHtlc → EcdsaSig) :
+    ¬ SighashProduces M law ctx exampleSignedState
+        (commitmentSignedFullOfState exampleSignedState commitSig sigAt) := by
+  intro h
+  have hsize :
+      (commitmentDigest M (viewOfState ctx exampleSignedState)).size = 32 :=
+    commitmentDigest_size M _
+  have hempty :
+      (commitmentSignedFullOfState exampleSignedState commitSig sigAt).commitmentDigest =
+        ByteArray.empty := rfl
+  have heq : ByteArray.empty =
+      commitmentDigest M (viewOfState ctx exampleSignedState) := by
+    rw [← hempty, h.commitmentDigest_eq]
+  have hsz := congrArg ByteArray.size heq
+  rw [hsize] at hsz
+  exact absurd hsz (by decide)
+
+/-- The legacy wire record alone still cannot determine coverage: the wave-4
+no-decoder theorem is preserved unchanged. -/
+theorem legacy_wire_cannot_determine_coverage :
+    ¬ ∃ g : CommitmentSigned → Commitment,
+        ∀ (m : CommitmentSigned) (r : FeeRate),
+          waveE_e20_commitment_signed_covers m r (g m) :=
+  LnLean.Proofs.ProtocolWireTargets.legacy_wire_cannot_determine_coverage
+
+/-- The legacy wire record alone still cannot select the HTLC set: the wave-4
+counterexample is preserved unchanged. -/
+theorem legacy_wire_cannot_select_htlc_set :
+    ¬ ∃ g : CommitmentSigned → List CommitmentHTLCOutput,
+        ∀ (m : CommitmentSigned) (c : Commitment),
+          waveE_e20_covers_htlcs m c → c.htlcs = g m :=
+  LnLean.Proofs.ProtocolWireTargets.legacy_wire_cannot_select_htlc_set
+
+/-- A full record can satisfy `ProducedFrom` and still carry a digest that is
+not the serialized one (the concrete empty-digest state).  This is the
+mechanized complement of `producedFrom_of_sighashProduces`: the coherence
+hypothesis there is not automatic. -/
+theorem producedFrom_without_serialized_digest :
+    ∃ (f : CommitmentSignedFull) (st : SignedState)
+      (sigAt : SignedHtlc → EcdsaSig),
+      ProducedFrom f st sigAt ∧ f.commitmentDigest = ByteArray.empty := by
+  exact ⟨commitmentSignedFullOfState exampleSignedState ⟨ByteArray.empty⟩
+      (fun _ => ⟨ByteArray.empty⟩), exampleSignedState,
+      (fun _ => ⟨ByteArray.empty⟩),
+      producedFrom_commitmentSignedFullOfState exampleSignedState
+        ⟨ByteArray.empty⟩ (fun _ => ⟨ByteArray.empty⟩), rfl⟩
+
+/-! ## 10. Funding contract: honest signer and key binding -/
+
+/-- **One signer for funding and commitment.**  Given the wave-3
+`FundingSigningLaw` and the independent `Crypto.KeyBinding` hypothesis:
+
+* the honest `funding_signed` record is valid, its key is attributed to the
+  producing key, and C3 fixes its funding transaction;
+* the honest full commitment record is derived by the BOLT 3 serializer and
+  its commitment signature verifies over the derived digest.
+
+The signing law is the same object in both domains
+(`CommitmentSigningLaw.ofFunding`); the domain tags keep the signatures apart.
+The remaining hypotheses are exactly the two fields the wave-A record lacks
+(the funding key and the funding transaction, supplied by the predicate) and
+the explicit commitment context. -/
+theorem funding_and_commitment_signing_contract
+    (M : PrimitiveModel)
+    (law : LnLean.Protocol.Handshake.FundingSigningLaw M)
+    (hkb : KeyBinding M.ecdsaVerify)
+    (channelId : ChannelId) (fundingKey : PubKey) (fundingTx : ByteArray)
+    (ctx : SighashContext) (st : SignedState) :
+    (let m := LnLean.Protocol.Handshake.honestFundingSigned law channelId
+        fundingKey fundingTx
+     wireSigOK m.signature.bytes = true ∧
+       LnLean.Proofs.WaveE.E19.fundingSignedValid M fundingKey fundingTx m ∧
+       (∀ fundingKey' : PubKey,
+         LnLean.Proofs.WaveE.E19.fundingSignedValid M fundingKey' fundingTx m →
+           fundingKey' = fundingKey) ∧
+       (∀ fundingTx' : ByteArray,
+         LnLean.Proofs.WaveE.E19.fundingSignedValid M fundingKey fundingTx' m →
+           fundingTx' = fundingTx)) ∧
+      SighashProduces M (CommitmentSigningLaw.ofFunding law) ctx st
+        (honestFull M (CommitmentSigningLaw.ofFunding law) ctx st) ∧
+      CommitmentSignedBy M ctx.commitmentKey (viewOfState ctx st)
+        (honestFull M (CommitmentSigningLaw.ofFunding law) ctx st).commitmentSignature :=
+  ⟨LnLean.Protocol.Handshake.funding_signed_signing_contract
+      law hkb channelId fundingKey fundingTx,
+    honestFull_produces M (CommitmentSigningLaw.ofFunding law) ctx st,
+    (honestFull_produces M (CommitmentSigningLaw.ofFunding law) ctx st).commitmentSignedBy⟩
+
+/-- C3 alone does not give signature-key attribution in a domain: the
+single-message verifier is EUF-CMA and accepts one fixed tagged message under
+two distinct keys.  This is the same separation that forces `KeyBinding` in
+the funding and commitment contracts above. -/
+theorem signedBy_attribution_not_from_eufCma (M₀ : PrimitiveModel)
+    (msg : ByteArray) :
+    ∃ (M : PrimitiveModel) (sig : EcdsaSig) (k₁ k₂ : PubKey),
+      k₁ ≠ k₂ ∧
+        EufCma M.ecdsaVerify ∧
+        SignedBy M k₁ commitmentTag msg sig ∧
+        SignedBy M k₂ commitmentTag msg sig := by
+  let d₀ : ByteArray := commitmentTag ++ msg
+  let M : PrimitiveModel :=
+    LnLean.Protocol.Handshake.singleMessageEcdsaModel M₀ d₀
+  let sig : EcdsaSig := ⟨ByteArray.empty⟩
+  refine ⟨M, sig, ⟨ByteArray.empty⟩, ⟨ByteArray.mk #[0x00]⟩, ?_,
+    M.ecdsa_eufCma, ?_, ?_⟩
+  · intro hEq
+    have hs : (⟨ByteArray.empty⟩ : PubKey).bytes.size =
+        (⟨ByteArray.mk #[0x00]⟩ : PubKey).bytes.size :=
+      congrArg (fun p : PubKey => p.bytes.size) hEq
+    exact absurd hs (by decide)
+  · unfold SignedBy
+    show M.ecdsaVerify ⟨ByteArray.empty⟩ (commitmentTag ++ msg) sig = true
+    simp [M, LnLean.Protocol.Handshake.singleMessageEcdsaModel,
+      singleMessageVerify, d₀]
+  · unfold SignedBy
+    show M.ecdsaVerify ⟨ByteArray.mk #[0x00]⟩ (commitmentTag ++ msg) sig = true
+    simp [M, LnLean.Protocol.Handshake.singleMessageEcdsaModel,
+      singleMessageVerify, d₀]
+
+/-! ## 11. Summary -/
+
+/-- Bundled faithful reading of the lane.
+
+1. The derived record always satisfies the serializer production relation.
+2. Two records produced from one state agree on digest, signature, and
+   entries; they are the same record.
+3. Under C3, a produced signature validates for no message other than the
+   derived digest.
+4. Under the state/digest coherence hypotheses, the serializer relation
+   implies the wave-4 `ProducedFrom` relation, so the coverage theorem applies.
+5. The legacy no-decoder and no-selector negatives are retained.
+6. `ProducedFrom` alone does not determine the digest. -/
+theorem sighash_summary :
+    (∀ (M : PrimitiveModel) (law : CommitmentSigningLaw M)
+        (ctx : SighashContext) (st : SignedState),
+        SighashProduces M law ctx st (honestFull M law ctx st)) ∧
+      (∀ (M : PrimitiveModel) (law : CommitmentSigningLaw M)
+        (ctx : SighashContext) (st : SignedState)
+        (f g : CommitmentSignedFull),
+        SighashProduces M law ctx st f →
+        SighashProduces M law ctx st g →
+        f.commitmentDigest = g.commitmentDigest ∧
+          f.commitmentSignature = g.commitmentSignature ∧
+          f.htlcEntries = g.htlcEntries) ∧
+      (∀ (M : PrimitiveModel), EufCma M.ecdsaVerify →
+        ∀ (law : CommitmentSigningLaw M) (ctx : SighashContext)
+          (st : SignedState) (f : CommitmentSignedFull),
+          SighashProduces M law ctx st f →
+          ∀ msg : ByteArray,
+            M.ecdsaVerify ctx.commitmentKey (commitmentTag ++ msg)
+              f.commitmentSignature = true →
+            msg = commitmentDigest M (viewOfState ctx st)) ∧
+      (∀ (M : PrimitiveModel) (law : CommitmentSigningLaw M)
+        (ctx : SighashContext) (st : SignedState) (f : CommitmentSignedFull),
+        SighashProduces M law ctx st f →
+        st.commitmentDigest = commitmentDigest M (viewOfState ctx st) →
+        (∀ hh ∈ st.htlcs,
+          hh.signedDataDigest =
+            htlcDigest M (viewOfState ctx st) (htlcViewOfState ctx st hh)) →
+        ProducedFrom f st
+          (fun hh => law.sign ctx.commitmentKey
+            (commitmentTag ++
+              htlcDigest M (viewOfState ctx st) (htlcViewOfState ctx st hh)))) ∧
+      (¬ ∃ g : CommitmentSigned → Commitment,
+          ∀ (m : CommitmentSigned) (r : FeeRate),
+            waveE_e20_commitment_signed_covers m r (g m)) ∧
+      (¬ ∃ g : CommitmentSigned → List CommitmentHTLCOutput,
+          ∀ (m : CommitmentSigned) (c : Commitment),
+            waveE_e20_covers_htlcs m c → c.htlcs = g m) ∧
+      (∃ (f : CommitmentSignedFull) (st : SignedState)
+          (sigAt : SignedHtlc → EcdsaSig),
+        ProducedFrom f st sigAt ∧ f.commitmentDigest = ByteArray.empty) :=
+  ⟨honestFull_produces,
+    fun _M _law _ctx _st _f _g hf hg =>
+      ⟨(SighashProduces.digest_unique hf hg).1,
+        (SighashProduces.digest_unique hf hg).2,
+        SighashProduces.entries_unique hf hg⟩,
+    fun _M hC3 _law _ctx _st _f h _msg hver =>
+      SighashProduces.signature_binds_digest hC3 h hver,
+    fun _M _law _ctx _st _f h hdig hhtlc =>
+      producedFrom_of_sighashProduces h hdig hhtlc,
+    legacy_wire_cannot_determine_coverage,
+    legacy_wire_cannot_select_htlc_set,
+    producedFrom_without_serialized_digest⟩
+
+end LnLean.Proofs.Channel.SighashTargets

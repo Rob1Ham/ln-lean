@@ -7,11 +7,12 @@ tag name, a merge strategy, or a tag signing method.
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Lane base:** `47189fe` (`[STATUS] define wave 4 open-issue lanes`)
-**Snapshot used for the original lane checks:** `f2123ef`; wave-4 integration
-later added six Lean modules and new gate commands. The current tree is
-**182 Lean files / 180 root imports / 188 build jobs / 61 catalog targets**;
-re-run every gate row before tagging.
+**Lane base:** `11a460c` (wave 5 launch; original checklist lane was
+`47189fe`)
+**Snapshot used for the original lane checks:** `f2123ef`; wave-4 and wave-5
+integration later added fourteen Lean modules and new gate commands. The
+current tree is **190 Lean files / 188 root imports / 204 build jobs / 67
+catalog targets**; re-run every gate row before tagging.
 **Target release type:** a **model/proof-tree** release, not an implementation
 release and not a complete verification of Lightning.
 
@@ -28,7 +29,7 @@ Evidence labels used below:
 
 | Item | State | Evidence |
 |---|---|---|
-| Branch tip | `26ced90` proof-wave 4 integration (status commits may advance) | `git rev-parse HEAD` |
+| Branch tip | proof-wave 5 checkpoint (status commits may advance) | `git rev-parse HEAD` |
 | `origin/main` | `b891a59`; **61 commits behind** `HEAD`; `main` is an ancestor of `HEAD` | `git rev-list --count origin/main..HEAD` = 61; `git merge-base --is-ancestor origin/main HEAD` |
 | Release tags | none | `git tag -l` empty; GitHub tags API empty |
 | GitHub releases | none | GitHub releases API empty |
@@ -36,12 +37,12 @@ Evidence labels used below:
 | Project version | **not declared** in `lakefile.lean` | `lake-manifest.json` `"version": "1.3.0"` is the Lake manifest schema version, not this project's version |
 | Vendor snapshot | 119 files, checksums OK locally; **gitignored and not tracked** | `./scripts/verify-vendor.sh`; `git check-ignore vendor/btc-lean-core/lakefile.lean` |
 | Vendor provenance | `vendor/btc-lean-core` at `f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb`, **not present in public `btc-lean` history** | `refs/PINNED.md` |
-| Catalog | 48 rows, 48 `proved`, 0 `statementOnly`, 0 unresolved, 0 proved failures | `python3 scripts/check-catalog.py --audit` — **Verified** |
-| Source policy check | `files=182 obligations=82 sorry_in_proofs=0` | `./scripts/check.sh` — **Verified** |
-| File/import check | 182 Lean files, 180 root imports, D=33 E=15 F=15 | `python3 scripts/check-final.py` — **Verified** |
+| Catalog | 48 rows, 48 `proved`, 0 `statementOnly`, 0 unresolved, 0 proved failures, 67 targets | `python3 scripts/check-catalog.py --audit` — **Verified** |
+| Source policy check | `files=190 obligations=82 sorry_in_proofs=0` | `./scripts/check.sh` — **Verified** |
+| File/import check | 190 Lean files, 188 root imports, D=33 E=15 F=15 | `python3 scripts/check-final.py` — **Verified** |
 | Vendor integrity | `OK (119 files)` | `./scripts/verify-vendor.sh` — **Verified** |
-| Anchors | 299 anchors, 0 bad, 2 unanchored rows | `python3 scripts/verify-anchors.py` — **Verified** |
-| Full build | **not run in this lane** (lane rule). Historical claim: 188 jobs, RC 0 at the wave-4 gate. | See build gate below |
+| Anchors | 305 anchors, 0 bad, 2 unanchored rows | `python3 scripts/verify-anchors.py` — **Verified** |
+| Full build | **not run in this release lane**. Historical claim: 204 jobs, RC 0 at the wave-5 gate. | See build gate below |
 | Public CI | 3 runs, all `success`; latest run #3 at `f2123ef`. The build job's `lake build` and `verify-vendor.sh` steps were **skipped**. | GitHub Actions API, run `39138200828` |
 
 The working tree at the snapshot was clean except for the pre-existing untracked
@@ -315,7 +316,7 @@ Therefore:
 
 - [ ] Update `README.md` counts and release status **after** integration, using
       the actual numbers at the release commit, not the wave-3 numbers
-      (currently 182 Lean files, 180 root imports, 48 catalog rows).
+      (currently 190 Lean files, 188 root imports, 48 catalog rows, 67 targets).
 - [ ] Update `docs/FINAL-STATUS.md` and `docs/WAVE-STATUS.md` with the release
       commit/tag and current gate evidence. Remove stale "Gate HEAD" references
       if they no longer identify the tagged commit.
@@ -470,6 +471,6 @@ would be false.
 | PR/merge strategy (`OPS-03`) | _pending_ | | | |
 | Tag name / version | _pending_ | | | |
 | Tag signing method | _pending_ | | | |
-| Full build at release commit | _not run in this lane_ | | | 188-job wave-4 historical claim only |
+| Full build at release commit | _not run in this lane_ | | | 204-job wave-5 historical claim only |
 | Public CI build actually executed | _pending `OPS-01`_ | | | Run #3 skipped build steps |
 | Release notes scope review | _pending_ | | | Must repeat open-issue caveats |

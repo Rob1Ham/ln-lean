@@ -1,0 +1,415 @@
+{
+  "schema": "lnlean.rust-lightning.differential.v1",
+  "lane": "S5-CONF-DIFF",
+  "issue": "CONF-02",
+  "pinned_commit": "fe4900930c6bd5786ec4203274d7cf312776a5a6",
+  "offline": true,
+  "scope": "Pinned rust-lightning differential fixtures for BigSize, a TLV reader stream, and the BOLT 8 wire length header. This is NOT a full implementation test: fixtures are finite, were transcribed from the pinned source/unit tests, and are validated offline against the same independent Python references used for the BOLT vectors. No Rust toolchain or network is required to run the checker.",
+  "provenance": [
+    {
+      "path": "lightning/src/util/ser.rs",
+      "sha256": "dbb5d75974be6de06d6e4da83157c93c87476fed1ef79fa60b228facb2a3101b",
+      "lines": "1857-1901",
+      "use": "BigSize encode/decode values and InvalidValue/ShortRead error classes (bigsize_encoding_decoding unit test)"
+    },
+    {
+      "path": "lightning/src/util/ser_macros.rs",
+      "sha256": "57bb7c0229f6f8142e7e10542a82fd0f6980f22d1263c1926cf741a24dc8fa12",
+      "lines": "2047-2071",
+      "use": "TLV reader accepted stream, unknown-even rejection, truncated ShortRead (retired_tlvs_skipped_on_read unit test)"
+    },
+    {
+      "path": "lightning/src/ln/peer_channel_encryptor.rs",
+      "sha256": "8e3eac2332669763104bf2da6c43aa44a429a4cb46b3fec41de56cdd2e9f28d9",
+      "lines": "36, 518-540, 564-580",
+      "use": "LN_MAX_MSG_LEN = 65535; length header is msgbuf.len() - 16 - 2 (type plus payload)"
+    },
+    {
+      "path": "lightning/src/ln/wire.rs",
+      "sha256": "01aa058e40a0186b6bc4862642c63b8f17f534572e96196f862959b75410531a",
+      "lines": "251-265",
+      "use": "a message is a 2-byte big-endian type plus a variable payload"
+    }
+  ],
+  "fixtures": {
+    "bigsize": [
+      {
+        "id": "rust_bigsize_encode_0",
+        "kind": "encode",
+        "value": 0,
+        "bytes": "00",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "lean": "bigsize_encode_zero",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_encode_252",
+        "kind": "encode",
+        "value": 252,
+        "bytes": "fc",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "lean": "diff_bigsize_encode_252",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_encode_253",
+        "kind": "encode",
+        "value": 253,
+        "bytes": "fd00fd",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "lean": "diff_bigsize_encode_253",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_encode_65535",
+        "kind": "encode",
+        "value": 65535,
+        "bytes": "fdffff",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "lean": "diff_bigsize_encode_65535",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_encode_65536",
+        "kind": "encode",
+        "value": 65536,
+        "bytes": "fe00010000",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "lean": "diff_bigsize_encode_65536",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_encode_4294967295",
+        "kind": "encode",
+        "value": 4294967295,
+        "bytes": "feffffffff",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "lean": "bigsize_encode_four_byte_high",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_encode_4294967296",
+        "kind": "encode",
+        "value": 4294967296,
+        "bytes": "ff0000000100000000",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "lean": "bigsize_encode_eight_byte_low",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_encode_max",
+        "kind": "encode",
+        "value": 18446744073709551615,
+        "bytes": "ffffffffffffffffff",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "lean": "bigsize_encode_eight_byte_high",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_decode_0",
+        "kind": "decode",
+        "bytes": "00",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "value": 0,
+        "consumed": 1,
+        "lean": "bigsize_decode_zero",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_decode_252",
+        "kind": "decode",
+        "bytes": "fc",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "value": 252,
+        "consumed": 1,
+        "lean": "diff_bigsize_decode_252",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_decode_253",
+        "kind": "decode",
+        "bytes": "fd00fd",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "value": 253,
+        "consumed": 3,
+        "lean": "diff_bigsize_decode_253",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_decode_65535",
+        "kind": "decode",
+        "bytes": "fdffff",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "value": 65535,
+        "consumed": 3,
+        "lean": "diff_bigsize_decode_65535",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_decode_65536",
+        "kind": "decode",
+        "bytes": "fe00010000",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "value": 65536,
+        "consumed": 5,
+        "lean": "diff_bigsize_decode_65536",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_decode_4294967295",
+        "kind": "decode",
+        "bytes": "feffffffff",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "value": 4294967295,
+        "consumed": 5,
+        "lean": "bigsize_decode_four_byte_high",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_decode_4294967296",
+        "kind": "decode",
+        "bytes": "ff0000000100000000",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "value": 4294967296,
+        "consumed": 9,
+        "lean": "bigsize_decode_eight_byte_low",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_decode_max",
+        "kind": "decode",
+        "bytes": "ffffffffffffffffff",
+        "rust_result": "ok",
+        "model_result": "ok",
+        "value": 18446744073709551615,
+        "consumed": 9,
+        "lean": "bigsize_decode_eight_byte_high",
+        "source": "ser.rs:1859-1875"
+      },
+      {
+        "id": "rust_bigsize_invalid_fd00fc",
+        "kind": "decode",
+        "bytes": "fd00fc",
+        "rust_result": "invalid-value",
+        "model_result": "reject",
+        "lean": "diff_bigsize_reject_noncanonical_253",
+        "source": "ser.rs:1877-1895"
+      },
+      {
+        "id": "rust_bigsize_invalid_fe0000ffff",
+        "kind": "decode",
+        "bytes": "fe0000ffff",
+        "rust_result": "invalid-value",
+        "model_result": "reject",
+        "lean": "bigsize_reject_noncanonical_four",
+        "source": "ser.rs:1877-1895"
+      },
+      {
+        "id": "rust_bigsize_invalid_ff00000000ffffffff",
+        "kind": "decode",
+        "bytes": "ff00000000ffffffff",
+        "rust_result": "invalid-value",
+        "model_result": "reject",
+        "lean": "bigsize_reject_noncanonical_eight",
+        "source": "ser.rs:1877-1895"
+      },
+      {
+        "id": "rust_bigsize_short_fd00",
+        "kind": "decode",
+        "bytes": "fd00",
+        "rust_result": "short-read",
+        "model_result": "reject",
+        "lean": "diff_bigsize_reject_short_253",
+        "source": "ser.rs:1889-1900"
+      },
+      {
+        "id": "rust_bigsize_short_feffff",
+        "kind": "decode",
+        "bytes": "feffff",
+        "rust_result": "short-read",
+        "model_result": "reject",
+        "lean": "bigsize_reject_short_four",
+        "source": "ser.rs:1889-1900"
+      },
+      {
+        "id": "rust_bigsize_short_ffffffffff",
+        "kind": "decode",
+        "bytes": "ffffffffff",
+        "rust_result": "short-read",
+        "model_result": "reject",
+        "lean": "bigsize_reject_short_eight",
+        "source": "ser.rs:1889-1900"
+      },
+      {
+        "id": "rust_bigsize_short_fd",
+        "kind": "decode",
+        "bytes": "fd",
+        "rust_result": "short-read",
+        "model_result": "reject",
+        "lean": "bigsize_reject_tag_only_two",
+        "source": "ser.rs:1889-1900"
+      },
+      {
+        "id": "rust_bigsize_short_fe",
+        "kind": "decode",
+        "bytes": "fe",
+        "rust_result": "short-read",
+        "model_result": "reject",
+        "lean": "bigsize_reject_tag_only_four",
+        "source": "ser.rs:1889-1900"
+      },
+      {
+        "id": "rust_bigsize_short_ff",
+        "kind": "decode",
+        "bytes": "ff",
+        "rust_result": "short-read",
+        "model_result": "reject",
+        "lean": "diff_bigsize_reject_tag_only_ff",
+        "source": "ser.rs:1889-1900"
+      },
+      {
+        "id": "rust_bigsize_short_empty",
+        "kind": "decode",
+        "bytes": "",
+        "rust_result": "short-read",
+        "model_result": "reject",
+        "lean": "bigsize_reject_empty",
+        "source": "ser.rs:1889-1900"
+      }
+    ],
+    "tlv": [
+      {
+        "id": "rust_tlv_retired_skipped",
+        "kind": "tlv",
+        "bytes": "0204ffffffff0308deadbeef1badbeef0502123407041bad1dea",
+        "rust_result": "accept",
+        "model_parser": "accept",
+        "model_admission": "accept",
+        "model_scope": "enforced",
+        "expected_records": [
+          {
+            "type": 2,
+            "value": "ffffffff"
+          },
+          {
+            "type": 3,
+            "value": "deadbeef1badbeef"
+          },
+          {
+            "type": 5,
+            "value": "1234"
+          },
+          {
+            "type": 7,
+            "value": "1bad1dea"
+          }
+        ],
+        "lean_decode": "diff_tlv_retired_skipped_decode",
+        "lean_admission": "diff_tlv_retired_skipped_admission",
+        "source": "ser_macros.rs:2047-2058",
+        "note": "rust-lightning's message-specific reader skips retired type 2; the model retains all four records, so only the accept decision is compared"
+      },
+      {
+        "id": "rust_tlv_unknown_even_2",
+        "kind": "tlv",
+        "bytes": "0204ffffffff",
+        "rust_result": "unknown-required-feature",
+        "model_parser": "accept",
+        "model_admission": "accept",
+        "model_scope": "not-modelled:namespace-policy",
+        "expected_records": [
+          {
+            "type": 2,
+            "value": "ffffffff"
+          }
+        ],
+        "lean_decode": "diff_tlv_unknown_even_2_decode",
+        "lean_admission": "diff_tlv_unknown_even_2_admission",
+        "source": "ser_macros.rs:2060-2064",
+        "note": "declared gap: the model has no even/odd namespace policy and accepts the unknown even type"
+      },
+      {
+        "id": "rust_tlv_truncated_2",
+        "kind": "tlv",
+        "bytes": "0204ffff",
+        "rust_result": "short-read",
+        "model_parser": "reject",
+        "model_admission": "reject",
+        "model_scope": "enforced",
+        "lean_decode": "diff_tlv_truncated_2_decode",
+        "lean_admission": "diff_tlv_truncated_2_admission",
+        "source": "ser_macros.rs:2066-2071"
+      }
+    ],
+    "wire": [
+      {
+        "id": "rust_wire_init_empty",
+        "kind": "wire",
+        "type": 16,
+        "payload": "",
+        "transport_length": 2,
+        "header": "0002",
+        "fits": true,
+        "rust_result": "accept",
+        "model_fits": true,
+        "lean": "diff_wire_init_empty_length",
+        "source": "peer_channel_encryptor.rs:518-540; wire.rs:251-265"
+      },
+      {
+        "id": "rust_wire_init_four",
+        "kind": "wire",
+        "type": 16,
+        "payload": "01020304",
+        "transport_length": 6,
+        "header": "0006",
+        "fits": true,
+        "rust_result": "accept",
+        "model_fits": true,
+        "lean": "diff_wire_init_four_length",
+        "source": "peer_channel_encryptor.rs:518-540; wire.rs:251-265"
+      },
+      {
+        "id": "rust_wire_max",
+        "kind": "wire",
+        "type": 16,
+        "payload_length": 65533,
+        "transport_length": 65535,
+        "header": "ffff",
+        "fits": true,
+        "rust_result": "accept",
+        "model_fits": true,
+        "lean": "diff_wire_max_length",
+        "source": "peer_channel_encryptor.rs:36, 518-523"
+      },
+      {
+        "id": "rust_wire_over_max",
+        "kind": "wire",
+        "type": 16,
+        "payload_length": 65534,
+        "transport_length": 65536,
+        "header": "0000",
+        "fits": false,
+        "rust_result": "reject",
+        "model_fits": false,
+        "lean": "diff_wire_over_max_length",
+        "source": "peer_channel_encryptor.rs:36, 518-523",
+        "note": "rust-lightning rejects msg_len > 65535; the fixed header would truncate 65536 to 0000"
+      }
+    ]
+  }
+}

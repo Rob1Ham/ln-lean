@@ -180,14 +180,42 @@ Five disjoint lanes extended the model and promoted eight more exact targets.
   182/82/0 RC 0, `check-final.py` 182/180 RC 0, conformance 61/86 RC 0,
   anchors 299/0 bad, vendor 119 OK.
 
-### Wave 5 and beyond
+### Proof-wave 5 — bridge and completeness attack
+
+- [x] `S5-L1-INTERP` — vendored interpreter bridge for the positive funding
+  2-of-2 and delayed `to_local` branches; serializer/wire equality; BIP 143,
+  locktime, and revocation boundaries explicit.
+- [x] `S5-CH-GROSSNET` — defaulted gross/net commitment fields, net output
+  path, arbitrary-dust canonical permutation, conservation/effective-fee
+  accounting; literal `Types.lean` patch recorded.
+- [x] `S5-PR-SIGHASH` — structural BOLT 3 serializer, `SighashProduces`,
+  C3-derived digests/signatures, honest signer, joint funding/commitment
+  contract; bit-exact and view-binding gaps retained.
+- [x] `S5-CONF-DIFF` — 16 framing cases, 33 pinned rust-lightning fixtures,
+  7 mutation controls, 146 Lean references; offline transcriptions documented.
+- [x] `S5-MODEL-STEP` — additive `UpdateStep` add/fail/fulfill layer,
+  affordability guard, ledger/reserve preservation, E37 refinement.
+- [x] `S5-L1-FUNDING` — handshake-constructed funding hash link, ordered P2WSH
+  output, handshake theorem; finite C1 admission retained.
+- [x] `S5-GOSSIP-ATTR2` — direction-keyed attribution, `NodeId → PubKey`
+  consistency, canonical dedup under explicit invariants.
+- [x] `S5-SEC-LIMITS` — `docs/CRYPTO-LIMITS.md` and deterministic
+  game/reduction interface; no reduction claimed.
+- [x] Eight new modules root-imported; five catalog rows strengthened to 67
+  targets; `AxiomAudit` extended to 133 theorems.
+- [x] Full gate: build 204 jobs, strict catalog 67 targets RC 0, `check.sh`
+  190/82/0 RC 0, `check-final.py` 190/188 RC 0, conformance 61+16/33/146 RC 0,
+  anchors 305/0 bad, vendor 119 OK.
+
+### Wave 6 and beyond
 
 The catalog is no longer the work queue. Open issues are tracked in
-`docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`. Wave 5
-candidates are the vendored interpreter bridge, commitment gross/net patch,
-BOLT 3 sighash, differential conformance, state-machine constructor, funding
-hash link, gossip dedup, and crypto limits. Human-gated release decisions
-remain outside agent lanes.
+`docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`. Wave 6
+candidates are BIP 143 sighash/locktime, the vendor revocation branch,
+literal gross/net `Types.lean` fields, bit-exact BOLT 3 preimages,
+digest-to-view binding, commitment dance, gossip invariant derivation, and live
+transport/fixture conformance. Human-gated release decisions remain outside
+agent lanes.
 
 ## Commands
 

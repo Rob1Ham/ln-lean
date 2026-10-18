@@ -251,6 +251,7 @@ MODIFIERS = ("private", "protected", "noncomputable", "partial", "unsafe", "loca
 NAME = r"[A-Za-z0-9_'.?!]+"
 NAMESPACE_RE = re.compile(r"^\s*namespace\s+(" + NAME + r")\s*$")
 SECTION_RE = re.compile(r"^\s*(?:noncomputable\s+)?section(?:\s+" + NAME + r")?\s*$")
+MUTUAL_RE = re.compile(r"^\s*mutual\s*$")
 END_RE = re.compile(r"^\s*end(?:\s+" + NAME + r")?\s*$")
 SORRY_RE = re.compile(r"\bsorry\b")
 
@@ -359,6 +360,9 @@ def build_declaration_map() -> tuple[dict[str, list[Declaration]], list[str]]:
                 continue
             if SECTION_RE.match(line):
                 block_stack.append(("section", 0))
+                continue
+            if MUTUAL_RE.match(line):
+                block_stack.append(("mutual", 0))
                 continue
             if END_RE.match(line):
                 if block_stack:

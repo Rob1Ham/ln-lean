@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Validate the S4-CONFORMANCE wire vectors.
+"""Validate the S5-CONF-DIFF wire, framing, and differential fixtures.
 
-This checker is deliberately small and dependency-free.  It does three things:
+This checker is deliberately small and dependency-free.  It does five things:
 
 1. Recomputes every BigSize encoding and decoding decision with an independent
    reference implementation and compares it to ``tests/conformance/vectors.json``.
@@ -9,18 +9,27 @@ This checker is deliberately small and dependency-free.  It does three things:
    parser and admission phases are kept separate because the Lean model's
    ``decodeTLV`` is structural only; BOLT 1 ordering is enforced by
    ``decodeAdmissible``.
-3. Cross-checks that every vector names a theorem that exists in
-   ``LnLean/Proofs/ConformanceTargets.lean`` and that the theorem statement
+3. Recomputes the BOLT 8 transport frame ``type || length || payload`` where
+   ``length = 2 + payload.size``, including malformed/truncated frames and the
+   maximum transport length.  This is deliberately separate from the model's
+   payload-only ``LnLean.Wire.frame``.
+4. Replays pinned rust-lightning differential fixtures from
+   ``tests/conformance/rust-lightning/fixtures.json`` (committed JSON only; no
+   network or Rust toolchain).
+5. Cross-checks that every vector names a theorem that exists in
+   ``LnLean/Proofs/ConformanceTargets.lean`` or
+   ``LnLean/Proofs/ConformanceDiffTargets.lean`` and that the theorem statement
    mentions the vector's input bytes (and, where applicable, its value).
 
-It does **not** run Lean.  The Lean module proves the same expectations by
-``decide`` and is checked by ``lake build LnLean.Proofs.ConformanceTargets``.
-This is vector conformance, not a full implementation test.
+It does **not** run Lean.  The Lean modules prove the same expectations by
+``decide``/the model's lemmas and are checked by ``lake build``.  This is
+vector/differential conformance, not a full implementation test.
 
 Usage:
     python3 scripts/check-conformance.py
     python3 scripts/check-conformance.py --no-lean
     python3 scripts/check-conformance.py --verbose
+    python3 scripts/check-conformance.py --no-self-test
 
 Exit status: 0 on success, 1 on a vector/Lean-sync mismatch, 2 on usage/IO.
 """
@@ -28,6 +37,7 @@ Exit status: 0 on success, 1 on a vector/Lean-sync mismatch, 2 on usage/IO.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import re
 import sys
@@ -37,6 +47,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_VECTORS = ROOT / "tests" / "conformance" / "vectors.json"
 DEFAULT_LEAN = ROOT / "LnLean" / "Proofs" / "ConformanceTargets.lean"
+DEFAULT_LEAN_DIFF = ROOT / "LnLean" / "Proofs" / "ConformanceDiffTargets.lean"
+DEFAULT_DIFF = ROOT / "tests" / "conformance" / "rust-lightning" / "fixtures.json"
 
 UINT64_MAX = 2**64 - 1
 
@@ -157,6 +169,27 @@ def admission(records: list[dict[str, Any]]) -> str:
     return "accept" if all(a < b for a, b in zip(types, types[1:])) else "reject"
 
 
+def ref_transport_parse(data: bytes) -> tuple[int, int, bytes]:
+    """Parse one BOLT 8 transport frame ``type || length || payload``.
+
+    ``length`` is the whole Lightning message size, i.e. ``2 + len(payload)``.
+    Rejects a header shorter than four bytes, a declared length below two (it
+    could not even contain the type), a truncated payload, and trailing bytes.
+    """
+    if len(data) < 4:
+        raise CheckError("missing-header")
+    message_type = int.from_bytes(data[0:2], "big")
+    declared = int.from_bytes(data[2:4], "big")
+    payload = data[4:]
+    if declared < 2:
+        raise CheckError("length-too-small")
+    if declared > len(payload) + 2:
+        raise CheckError("truncated")
+    if declared < len(payload) + 2:
+        raise CheckError("trailing-bytes")
+    return message_type, declared, payload
+
+
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise CheckError(message)
@@ -273,6 +306,268 @@ def check_tlv_case(entry: dict[str, Any], seen_ids: set[str]) -> str:
     return scope
 
 
+def check_framing_case(entry: dict[str, Any], seen_ids: set[str]) -> str:
+    where = f"framing.cases[{entry.get('id', '?')}]"
+    for key in ("id", "category", "decision", "source", "lean"):
+        require(key in entry, f"{where}: missing key {key!r}")
+    require(entry["id"] not in seen_ids, f"{where}: duplicate id {entry['id']!r}")
+    seen_ids.add(entry["id"])
+    decision = entry["decision"]
+    require(decision in ("accept", "reject"),
+            f"{where}: decision must be accept/reject")
+
+    if decision == "accept":
+        for key in ("type", "payload", "declared_length", "frame"):
+            require(key in entry, f"{where}: missing key {key!r}")
+        payload = parse_hex(entry["payload"], where)
+        raw = parse_hex(entry["frame"], where)
+        message_type = entry["type"]
+        require(isinstance(message_type, int) and 0 <= message_type <= 0xFFFF,
+                f"{where}: type must be in [0, 65535]")
+        declared = entry["declared_length"]
+        require(isinstance(declared, int) and 2 <= declared <= 0xFFFF,
+                f"{where}: declared_length must be in [2, 65535]")
+        require(declared == 2 + len(payload),
+                f"{where}: declared_length {declared} != 2 + {len(payload)}")
+        expected = (message_type.to_bytes(2, "big") +
+                    declared.to_bytes(2, "big") + payload)
+        require(raw == expected,
+                f"{where}: frame {raw.hex()} != reference {expected.hex()}")
+        got_type, got_declared, got_payload = ref_transport_parse(raw)
+        require((got_type, got_declared, got_payload) ==
+                (message_type, declared, payload),
+                f"{where}: parser result disagrees with the vector")
+        return "accept"
+
+    for key in ("bytes", "reason"):
+        require(key in entry, f"{where}: missing key {key!r}")
+    raw = parse_hex(entry["bytes"], where)
+    try:
+        ref_transport_parse(raw)
+    except CheckError as exc:
+        require(str(exc) == entry["reason"],
+                f"{where}: reference rejects ({exc}) but reason is "
+                f"{entry['reason']!r}")
+        return "reject"
+    raise CheckError(f"{where}: reference accepts but vector says reject")
+
+
+def check_framing_boundary(entry: dict[str, Any], seen_ids: set[str]) -> None:
+    where = f"framing.boundaries[{entry.get('id', '?')}]"
+    for key in ("id", "payload_length", "declared_length", "length_hex",
+                "frame_size", "fits", "header_truncated", "source", "lean"):
+        require(key in entry, f"{where}: missing key {key!r}")
+    require(entry["id"] not in seen_ids, f"{where}: duplicate id {entry['id']!r}")
+    seen_ids.add(entry["id"])
+    payload_length = entry["payload_length"]
+    declared = entry["declared_length"]
+    require(isinstance(payload_length, int) and payload_length >= 0,
+            f"{where}: payload_length must be a non-negative integer")
+    require(declared == 2 + payload_length,
+            f"{where}: declared_length {declared} != 2 + {payload_length}")
+    encoded = declared % 65536
+    require(entry["length_hex"] == f"{encoded:04x}",
+            f"{where}: length_hex {entry['length_hex']} != {encoded:04x} "
+            f"(fixed two-byte truncation)")
+    require(entry["frame_size"] == 4 + payload_length,
+            f"{where}: frame_size {entry['frame_size']} != 4 + {payload_length}")
+    fits = declared <= 0xFFFF
+    require(entry["fits"] is fits,
+            f"{where}: fits {entry['fits']} != {fits} for declared {declared}")
+    require(entry["header_truncated"] is (declared > 0xFFFF),
+            f"{where}: header_truncated is inconsistent with declared {declared}")
+
+
+def check_framing(doc: dict[str, Any], seen_ids: set[str]) -> tuple[int, int, int]:
+    framing = doc["framing"]
+    require(isinstance(framing, dict), "framing must be an object")
+    for key in ("layout", "length_semantics", "cases", "boundaries"):
+        require(key in framing, f"framing missing {key!r}")
+    require("2 + payload.size" in framing["length_semantics"],
+            "framing.length_semantics must say transport_length = 2 + payload.size")
+    cases = framing["cases"]
+    boundaries = framing["boundaries"]
+    accepted = rejected = 0
+    for entry in cases:
+        decision = check_framing_case(entry, seen_ids)
+        if decision == "accept":
+            accepted += 1
+        else:
+            rejected += 1
+    for entry in boundaries:
+        check_framing_boundary(entry, seen_ids)
+    return len(cases), accepted, len(boundaries)
+
+
+# ---------------------------------------------------------------------------
+# Pinned rust-lightning differential fixtures
+# ---------------------------------------------------------------------------
+
+def rust_bigsize_class(data: bytes) -> tuple[str, tuple[int, int] | None]:
+    """Map the model's Option decoder to rust-lightning's error classes.
+
+    rust-lightning returns ``InvalidValue`` for a non-minimal encoding and
+    ``ShortRead`` for every truncated/empty input.  The Lean model collapses
+    both to ``none``; the differential fixture keeps the Rust class explicit.
+    """
+    try:
+        return "ok", ref_bigsize_decode(data)
+    except CheckError as exc:
+        reason = str(exc)
+        if reason in ("empty-input", "bigsize-short-read"):
+            return "short-read", None
+        if reason == "non-canonical-bigsize":
+            return "invalid-value", None
+        raise
+
+
+def check_diff_bigsize(entry: dict[str, Any], seen_ids: set[str]) -> None:
+    where = f"differential.bigsize[{entry.get('id', '?')}]"
+    for key in ("id", "kind", "rust_result", "model_result", "lean", "source"):
+        require(key in entry, f"{where}: missing key {key!r}")
+    require(entry["id"] not in seen_ids, f"{where}: duplicate id {entry['id']!r}")
+    seen_ids.add(entry["id"])
+    if entry["kind"] == "encode":
+        for key in ("value", "bytes"):
+            require(key in entry, f"{where}: missing key {key!r}")
+        value = entry["value"]
+        require(isinstance(value, int) and 0 <= value <= UINT64_MAX,
+                f"{where}: value must be a uint64")
+        expected = ref_bigsize_encode(value)
+        raw = parse_hex(entry["bytes"], where)
+        require(raw == expected,
+                f"{where}: bytes {raw.hex()} != reference {expected.hex()}")
+        require(entry["rust_result"] == "ok" and entry["model_result"] == "ok",
+                f"{where}: an encoding cannot have a reject result")
+        return
+    require(entry["kind"] == "decode", f"{where}: unknown kind {entry['kind']!r}")
+    raw = parse_hex(entry["bytes"], where)
+    rust_class, result = rust_bigsize_class(raw)
+    require(entry["rust_result"] == rust_class,
+            f"{where}: rust_result {entry['rust_result']!r} != {rust_class!r}")
+    expected_model = "ok" if rust_class == "ok" else "reject"
+    require(entry["model_result"] == expected_model,
+            f"{where}: model_result {entry['model_result']!r} != {expected_model!r}")
+    if result is not None:
+        value, consumed = result
+        require(entry.get("value") == value,
+                f"{where}: value {entry.get('value')} != {value}")
+        require(entry.get("consumed") == consumed,
+                f"{where}: consumed {entry.get('consumed')} != {consumed}")
+
+
+def check_diff_tlv(entry: dict[str, Any], seen_ids: set[str]) -> str:
+    where = f"differential.tlv[{entry.get('id', '?')}]"
+    for key in ("id", "kind", "bytes", "rust_result", "model_parser",
+                "model_admission", "model_scope", "lean_decode",
+                "lean_admission", "source"):
+        require(key in entry, f"{where}: missing key {key!r}")
+    require(entry["id"] not in seen_ids, f"{where}: duplicate id {entry['id']!r}")
+    seen_ids.add(entry["id"])
+    raw = parse_hex(entry["bytes"], where)
+    try:
+        records = ref_tlv_parse(raw)
+        parsed = True
+    except CheckError:
+        records = []
+        parsed = False
+    require(entry["model_parser"] == ("accept" if parsed else "reject"),
+            f"{where}: model_parser disagrees with the reference parser")
+    if parsed:
+        require(entry.get("expected_records") == records,
+                f"{where}: expected_records {entry.get('expected_records')} != {records}")
+        require(entry["model_admission"] == admission(records),
+                f"{where}: model_admission disagrees with strict ordering")
+    else:
+        require(entry["model_admission"] == "reject",
+                f"{where}: a rejected parse cannot be admitted")
+
+    rust = entry["rust_result"]
+    scope = entry["model_scope"]
+    if rust == "accept":
+        require(parsed, f"{where}: rust accepts but the reference parser rejects")
+        require(scope == "enforced",
+                f"{where}: an agreeing accept must be scoped enforced")
+        require(entry["model_admission"] == "accept",
+                f"{where}: rust accepts but the model admission rejects")
+    elif rust == "unknown-required-feature":
+        require(parsed, f"{where}: the structural stream must still parse")
+        require(scope.startswith("not-modelled:"),
+                f"{where}: an unknown-even rejection is a declared model gap")
+        require(entry["model_admission"] == "accept",
+                f"{where}: the declared gap must be a model accept")
+    elif rust == "short-read":
+        require(not parsed, f"{where}: rust reports ShortRead but the parser accepts")
+        require(scope == "enforced",
+                f"{where}: a short read must be enforced")
+        require(entry["model_admission"] == "reject",
+                f"{where}: a short read must be rejected")
+    else:
+        raise CheckError(f"{where}: unknown rust_result {rust!r}")
+    return scope
+
+
+def check_diff_wire(entry: dict[str, Any], seen_ids: set[str]) -> None:
+    where = f"differential.wire[{entry.get('id', '?')}]"
+    for key in ("id", "kind", "type", "transport_length", "header", "fits",
+                "rust_result", "model_fits", "lean", "source"):
+        require(key in entry, f"{where}: missing key {key!r}")
+    require(entry["id"] not in seen_ids, f"{where}: duplicate id {entry['id']!r}")
+    seen_ids.add(entry["id"])
+    message_type = entry["type"]
+    require(isinstance(message_type, int) and 0 <= message_type <= 0xFFFF,
+            f"{where}: type must be in [0, 65535]")
+    if "payload" in entry:
+        payload_len = len(parse_hex(entry["payload"], where))
+        if "payload_length" in entry:
+            require(entry["payload_length"] == payload_len,
+                    f"{where}: payload_length disagrees with payload bytes")
+    else:
+        require("payload_length" in entry,
+                f"{where}: needs payload or payload_length")
+        payload_len = entry["payload_length"]
+    require(isinstance(payload_len, int) and payload_len >= 0,
+            f"{where}: payload length must be non-negative")
+    transport_length = 2 + payload_len
+    require(entry["transport_length"] == transport_length,
+            f"{where}: transport_length {entry['transport_length']} != "
+            f"2 + {payload_len}")
+    require(entry["header"] == f"{transport_length & 0xFFFF:04x}",
+            f"{where}: header {entry['header']} != "
+            f"{transport_length & 0xFFFF:04x}")
+    fits = transport_length <= 0xFFFF
+    require(entry["fits"] is fits,
+            f"{where}: fits {entry['fits']} != {fits}")
+    require(entry["model_fits"] is fits,
+            f"{where}: model_fits {entry['model_fits']} != {fits}")
+    require(entry["rust_result"] == ("accept" if fits else "reject"),
+            f"{where}: rust_result must be accept iff the message fits")
+
+
+def check_differential(doc: dict[str, Any], seen_ids: set[str]) -> tuple[int, int, int]:
+    require(doc.get("schema") == "lnlean.rust-lightning.differential.v1",
+            f"unexpected differential schema {doc.get('schema')!r}")
+    require(doc.get("pinned_commit") ==
+            "fe4900930c6bd5786ec4203274d7cf312776a5a6",
+            "differential fixtures are not pinned to fe49009")
+    require(doc.get("offline") is True,
+            "differential fixtures must be marked offline")
+    require(isinstance(doc.get("provenance"), list) and doc["provenance"],
+            "differential provenance is missing")
+    fixtures = doc.get("fixtures")
+    require(isinstance(fixtures, dict), "differential fixtures must be an object")
+    for key in ("bigsize", "tlv", "wire"):
+        require(isinstance(fixtures.get(key), list) and fixtures[key],
+                f"differential fixtures missing {key}")
+    for entry in fixtures["bigsize"]:
+        check_diff_bigsize(entry, seen_ids)
+    scopes = [check_diff_tlv(entry, seen_ids) for entry in fixtures["tlv"]]
+    for entry in fixtures["wire"]:
+        check_diff_wire(entry, seen_ids)
+    gaps = sum(1 for scope in scopes if scope.startswith("not-modelled:"))
+    return len(fixtures["bigsize"]), len(fixtures["tlv"]), len(fixtures["wire"])
+
+
 def check_bolt_anchors(doc: dict[str, Any]) -> int:
     """Assert the authoritative BOLT Appendix A subset is present exactly."""
     encode_by_value = {e["value"]: e for e in doc["bigsize"]["encode"]}
@@ -336,10 +631,18 @@ def byte_literals(block: str) -> list[bytes]:
     return out
 
 
-def check_lean_sync(doc: dict[str, Any], lean_path: Path) -> int:
-    require(lean_path.is_file(), f"Lean module not found: {lean_path}")
-    text = lean_path.read_text(encoding="utf-8")
-    theorems = lean_theorems(text)
+def load_lean_theorems(lean_paths: list[Path]) -> dict[str, str]:
+    merged: dict[str, str] = {}
+    for lean_path in lean_paths:
+        require(lean_path.is_file(), f"Lean module not found: {lean_path}")
+        for name, block in lean_theorems(lean_path.read_text(encoding="utf-8")).items():
+            require(name not in merged,
+                    f"duplicate theorem {name!r} in {lean_path}")
+            merged[name] = block
+    return merged
+
+
+def check_lean_sync(doc: dict[str, Any], theorems: dict[str, str]) -> int:
     checked = 0
 
     for entry in doc["bigsize"]["encode"]:
@@ -401,22 +704,205 @@ def check_lean_sync(doc: dict[str, Any], lean_path: Path) -> int:
     return checked
 
 
+def check_framing_lean_sync(doc: dict[str, Any], theorems: dict[str, str]) -> int:
+    checked = 0
+    for entry in doc["framing"]["cases"]:
+        name = entry["lean"]
+        where = f"lean[{name}]"
+        require(name in theorems, f"{where}: theorem not declared")
+        block = theorems[name]
+        literals = byte_literals(block)
+        if entry["decision"] == "accept":
+            require(parse_hex(entry["frame"], where) in literals,
+                    f"{where}: statement does not mention frame {entry['frame']}")
+            require(parse_hex(entry["payload"], where) in literals,
+                    f"{where}: statement does not mention payload {entry['payload']}")
+        else:
+            raw = parse_hex(entry["bytes"], where)
+            require(bool(literals) and literals[0] == raw,
+                    f"{where}: first byte literal is not input {entry['bytes']}")
+            require("= none" in block or "=none" in block,
+                    f"{where}: reject statement does not conclude none")
+        checked += 1
+
+    for entry in doc["framing"]["boundaries"]:
+        name = entry["lean"]
+        where = f"lean[{name}]"
+        require(name in theorems, f"{where}: theorem not declared")
+        block = theorems[name]
+        require(str(entry["payload_length"]) in block,
+                f"{where}: statement does not mention payload length "
+                f"{entry['payload_length']}")
+        require(str(entry["declared_length"]) in block,
+                f"{where}: statement does not mention transport length "
+                f"{entry['declared_length']}")
+        checked += 1
+    return checked
+
+
+def check_differential_lean_sync(doc: dict[str, Any],
+                                 theorems: dict[str, str]) -> int:
+    checked = 0
+    fixtures = doc["fixtures"]
+    for entry in fixtures["bigsize"]:
+        name = entry["lean"]
+        where = f"lean[{name}]"
+        require(name in theorems, f"{where}: theorem not declared")
+        block = theorems[name]
+        literals = byte_literals(block)
+        raw = parse_hex(entry["bytes"], where)
+        require(bool(literals) and raw in literals,
+                f"{where}: statement does not mention bytes {entry['bytes']}")
+        if entry["kind"] == "encode":
+            require(str(entry["value"]) in block,
+                    f"{where}: statement does not mention value {entry['value']}")
+        elif entry["rust_result"] == "ok":
+            value = entry["value"]
+            consumed = entry["consumed"]
+            require(re.search(rf"some\s*\(\s*{value}\s*,\s*{consumed}\s*\)", block),
+                    f"{where}: statement does not contain some ({value}, {consumed})")
+        else:
+            require("= none" in block or "=none" in block,
+                    f"{where}: reject statement does not conclude none")
+        checked += 1
+
+    for entry in fixtures["tlv"]:
+        name = entry["lean_decode"]
+        where = f"lean[{name}]"
+        require(name in theorems, f"{where}: theorem not declared")
+        block = theorems[name]
+        literals = byte_literals(block)
+        raw = parse_hex(entry["bytes"], where)
+        require(bool(literals) and literals[0] == raw,
+                f"{where}: first byte literal is not input {entry['bytes']}")
+        if entry["model_parser"] == "accept":
+            for record in entry["expected_records"]:
+                value = parse_hex(record["value"], where)
+                require(value in literals,
+                        f"{where}: record value {record['value']} absent")
+        else:
+            require("= none" in block or "=none" in block,
+                    f"{where}: reject statement does not conclude none")
+        checked += 1
+
+        adm_name = entry["lean_admission"]
+        adm_where = f"lean[{adm_name}]"
+        require(adm_name in theorems, f"{adm_where}: theorem not declared")
+        expected = "= true" if entry["model_admission"] == "accept" else "= false"
+        require(expected in theorems[adm_name],
+                f"{adm_where}: admission theorem does not conclude {expected.strip()}")
+        checked += 1
+
+    for entry in fixtures["wire"]:
+        name = entry["lean"]
+        where = f"lean[{name}]"
+        require(name in theorems, f"{where}: theorem not declared")
+        require(str(entry["transport_length"]) in theorems[name],
+                f"{where}: statement does not mention transport length "
+                f"{entry['transport_length']}")
+        checked += 1
+    return checked
+
+
+# ---------------------------------------------------------------------------
+# Mutation controls (the checker itself must not be vacuous)
+# ---------------------------------------------------------------------------
+
+def mutation_detected(validate: Any) -> bool:
+    try:
+        validate()
+    except CheckError:
+        return True
+    return False
+
+
+def check_mutations(doc: dict[str, Any], diff_doc: dict[str, Any] | None,
+                    theorems: dict[str, str] | None) -> tuple[int, int]:
+    caught = 0
+    total = 0
+
+    def control(label: str, validate: Any) -> None:
+        nonlocal caught, total
+        total += 1
+        if not mutation_detected(validate):
+            raise CheckError(f"mutation control not detected: {label}")
+        caught += 1
+
+    mutated = copy.deepcopy(doc)
+    valid = next(e for e in mutated["framing"]["cases"]
+                 if e["decision"] == "accept")
+    valid["declared_length"] += 1
+    control("framing declared length +1",
+            lambda: check_framing_case(valid, set()))
+
+    mutated = copy.deepcopy(doc)
+    bad = next(e for e in mutated["framing"]["cases"]
+               if e["decision"] == "reject")
+    bad["reason"] = "wrong-reason"
+    control("framing reject reason changed",
+            lambda: check_framing_case(bad, set()))
+
+    mutated = copy.deepcopy(doc)
+    boundary = mutated["framing"]["boundaries"][-1]
+    boundary["fits"] = not boundary["fits"]
+    control("framing boundary fits flipped",
+            lambda: check_framing_boundary(boundary, set()))
+
+    if diff_doc is not None:
+        mutated = copy.deepcopy(diff_doc)
+        decode = next(e for e in mutated["fixtures"]["bigsize"]
+                      if e["kind"] == "decode" and e["rust_result"] == "ok")
+        decode["bytes"] = "01" if decode["bytes"] == "00" else "00"
+        control("differential BigSize bytes changed",
+                lambda: check_diff_bigsize(decode, set()))
+
+        mutated = copy.deepcopy(diff_doc)
+        wire = mutated["fixtures"]["wire"][0]
+        wire["transport_length"] += 1
+        control("differential wire transport length +1",
+                lambda: check_diff_wire(wire, set()))
+
+        mutated = copy.deepcopy(diff_doc)
+        tlv = next(e for e in mutated["fixtures"]["tlv"]
+                   if e["model_parser"] == "accept")
+        tlv["expected_records"][0]["value"] = "00000000"
+        control("differential TLV record value changed",
+                lambda: check_diff_tlv(tlv, set()))
+
+    if theorems is not None:
+        mutated_theorems = dict(theorems)
+        name = doc["framing"]["cases"][0]["lean"]
+        mutated_theorems.pop(name, None)
+        control("framing Lean theorem reference removed",
+                lambda: check_framing_lean_sync(doc, mutated_theorems))
+
+    return caught, total
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
-def run(vectors: Path, lean_path: Path | None, verbose: bool) -> int:
+def run(vectors: Path, lean_paths: list[Path] | None, diff_path: Path | None,
+        verbose: bool, self_test: bool) -> int:
     try:
         doc = json.loads(vectors.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         print(f"FAIL: cannot read {vectors}: {exc}", file=sys.stderr)
         return 2
+    diff_doc: dict[str, Any] | None = None
+    if diff_path is not None:
+        try:
+            diff_doc = json.loads(diff_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"FAIL: cannot read {diff_path}: {exc}", file=sys.stderr)
+            return 2
 
     try:
         require(isinstance(doc, dict), "top level must be an object")
         require(doc.get("schema") == "lnlean.conformance.v1",
                 f"unexpected schema {doc.get('schema')!r}")
-        for key in ("scope", "sources", "bigsize", "tlv"):
+        for key in ("scope", "sources", "bigsize", "tlv", "framing"):
             require(key in doc, f"top level missing {key!r}")
         require("NOT a full implementation test" in doc["scope"],
                 "scope must state that this is not a full implementation test")
@@ -429,9 +915,29 @@ def run(vectors: Path, lean_path: Path | None, verbose: bool) -> int:
         scopes = [check_tlv_case(entry, seen_ids) for entry in doc["tlv"]["cases"]]
         check_required_categories(doc)
         anchors = check_bolt_anchors(doc)
+        framing_cases, framing_accept, framing_boundaries = check_framing(
+            doc, seen_ids)
+
+        diff_bigsize = diff_tlv = diff_wire = 0
+        diff_scopes: list[str] = []
+        if diff_doc is not None:
+            diff_bigsize, diff_tlv, diff_wire = check_differential(diff_doc, seen_ids)
+            diff_scopes = [entry["model_scope"]
+                           for entry in diff_doc["fixtures"]["tlv"]]
+
+        theorems: dict[str, str] | None = None
         lean_checks = 0
-        if lean_path is not None:
-            lean_checks = check_lean_sync(doc, lean_path)
+        if lean_paths is not None:
+            theorems = load_lean_theorems(lean_paths)
+            lean_checks += check_lean_sync(doc, theorems)
+            lean_checks += check_framing_lean_sync(doc, theorems)
+            if diff_doc is not None:
+                lean_checks += check_differential_lean_sync(diff_doc, theorems)
+
+        mutations_caught = mutations_total = 0
+        if self_test:
+            mutations_caught, mutations_total = check_mutations(
+                doc, diff_doc, theorems)
     except CheckError as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         return 1
@@ -441,6 +947,7 @@ def run(vectors: Path, lean_path: Path | None, verbose: bool) -> int:
     tlv_n = len(doc["tlv"]["cases"])
     gaps = sum(1 for scope in scopes if scope.startswith("not-modelled:"))
     enforced = tlv_n - gaps
+    diff_gaps = sum(1 for scope in diff_scopes if scope.startswith("not-modelled:"))
 
     if verbose:
         for entry in doc["bigsize"]["encode"]:
@@ -454,37 +961,79 @@ def run(vectors: Path, lean_path: Path | None, verbose: bool) -> int:
             print(f"  tlv            {entry['id']:<40} {entry['bytes']:<26} "
                   f"parser={entry['parser']['decision']:<6} "
                   f"admission={entry['admission']:<6} scope={entry['model_scope']}")
+        for entry in doc["framing"]["cases"]:
+            print(f"  framing        {entry['id']:<40} "
+                  f"{entry.get('frame', entry.get('bytes')):<26} "
+                  f"{entry['decision']}")
+        for entry in doc["framing"]["boundaries"]:
+            print(f"  boundary       {entry['id']:<40} "
+                  f"payload={entry['payload_length']:<7} "
+                  f"length={entry['declared_length']:<7} "
+                  f"fits={entry['fits']}")
+        if diff_doc is not None:
+            for group in ("bigsize", "tlv", "wire"):
+                for entry in diff_doc["fixtures"][group]:
+                    print(f"  rust.{group:<9} {entry['id']:<40} "
+                          f"rust={entry['rust_result']}")
 
     print(f"vectors: {encode_n} BigSize encode, {decode_n} BigSize decode, {tlv_n} TLV")
     print(f"checks:  {encode_n + decode_n + tlv_n} vector expectations validated")
     print(f"BOLT 1 Appendix A anchors: {anchors} published entries matched")
     print(f"TLV: {enforced} enforced cases, {gaps} declared not-modelled gaps")
-    if lean_path is not None:
-        try:
-            display_path = lean_path.relative_to(ROOT)
-        except ValueError:
-            display_path = lean_path
-        print(f"Lean sync: {lean_checks} theorem references checked in {display_path}")
+    print(f"framing: {framing_cases} cases ({framing_accept} accept, "
+          f"{framing_cases - framing_accept} reject), "
+          f"{framing_boundaries} length boundaries")
+    if diff_doc is not None:
+        print(f"differential: {diff_bigsize} rust-lightning BigSize, "
+              f"{diff_tlv} TLV, {diff_wire} wire fixtures "
+              f"(pinned {diff_doc['pinned_commit'][:7]}, offline)")
+        print(f"differential TLV: {diff_tlv - diff_gaps} enforced, "
+              f"{diff_gaps} declared not-modelled gaps")
+    if lean_paths is not None:
+        display = ", ".join(str(path.relative_to(ROOT))
+                            if path.is_relative_to(ROOT) else str(path)
+                            for path in lean_paths)
+        print(f"Lean sync: {lean_checks} theorem references checked in {display}")
     else:
         print("Lean sync: skipped (--no-lean)")
-    print("RESULT: PASS (vector conformance, not a full implementation test)")
+    if self_test:
+        print(f"mutation controls: {mutations_caught}/{mutations_total} detected")
+    else:
+        print("mutation controls: skipped (--no-self-test)")
+    print("RESULT: PASS (vector/differential conformance, "
+          "not a full implementation test)")
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Validate ln-lean BOLT 1 BigSize/TLV conformance vectors.")
+        description=("Validate ln-lean BOLT 1 BigSize/TLV, BOLT 8 transport "
+                     "framing, and pinned rust-lightning differential fixtures."))
     parser.add_argument("--vectors", type=Path, default=DEFAULT_VECTORS,
                         help=f"vector JSON (default: {DEFAULT_VECTORS})")
-    parser.add_argument("--lean-file", type=Path, default=DEFAULT_LEAN,
-                        help=f"Lean vector module (default: {DEFAULT_LEAN})")
+    parser.add_argument("--diff-fixtures", type=Path, default=DEFAULT_DIFF,
+                        help=f"rust-lightning fixture JSON (default: {DEFAULT_DIFF})")
+    parser.add_argument("--lean-file", type=Path, action="append", default=None,
+                        help="Lean theorem module (repeatable; defaults to both "
+                             "ConformanceTargets and ConformanceDiffTargets)")
+    parser.add_argument("--no-diff", action="store_true",
+                        help="skip the pinned rust-lightning differential fixtures")
     parser.add_argument("--no-lean", action="store_true",
                         help="skip the Lean theorem-name/byte-literal cross-check")
+    parser.add_argument("--no-self-test", action="store_true",
+                        help="skip the in-memory mutation controls")
     parser.add_argument("--verbose", action="store_true",
                         help="print every vector")
     args = parser.parse_args(argv)
-    lean_path = None if args.no_lean else args.lean_file
-    return run(args.vectors, lean_path, args.verbose)
+    if args.no_lean:
+        lean_paths = None
+    elif args.lean_file:
+        lean_paths = args.lean_file
+    else:
+        lean_paths = [DEFAULT_LEAN, DEFAULT_LEAN_DIFF]
+    diff_path = None if args.no_diff else args.diff_fixtures
+    return run(args.vectors, lean_paths, diff_path, args.verbose,
+               not args.no_self_test)
 
 
 if __name__ == "__main__":

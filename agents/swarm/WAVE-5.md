@@ -1,11 +1,14 @@
 # Wave 5 — bridge and completeness attack plan (launched)
 
-**Status:** eight lanes launched from `79a92ce`; parent integration pending.
+**Status:** complete — all eight lanes integrated in the proof-wave 5
+checkpoint.
 
-**Base commit:** `74d6475` (`[STATUS] record proof-wave 4 gate HEAD`)
+**Launch commit:** `11a460c` (`[STATUS] note wave 5 launch from 79a92ce`)
 **Branch:** `repair/integrated`
-**Catalog:** 48 proved / 0 statementOnly / 61 targets
-**Full build at base:** 188 jobs, RC 0
+**Catalog at launch:** 48 proved / 0 statementOnly / 61 targets
+**Full build at launch:** 188 jobs, RC 0
+**Result:** 48 proved / 0 statementOnly / 67 targets; 204-job build; 133
+audited theorems. Reports are under `agents/reports/swarm5/`.
 **Roadmap:** `docs/OPEN-ISSUES.md`
 **Protocol:** `docs/SWARM-LOOP.md`
 
@@ -46,3 +49,16 @@ or docs owned by another lane; the parent integrates and records the gate.
   `agents/reports/swarm5/S5-<LANE>.md`.
 - If a requested change would touch a forbidden shared file, implement the
   additive part in your owned module and report the exact integration patch.
+
+
+## Wave 5 result
+
+All eight lanes returned and were integrated without adding catalog rows. The
+catalog strengthened five existing rows (`LN-L1-001`, `LN-L1-004`,
+`LN-CH-003`, `LN-PR-003`, `LN-PR-004`) to 67 resolved targets. The exact lane
+results, scope boundaries, and files are recorded in
+`docs/OPEN-ISSUES.md` and `docs/WAVE-STATUS.md`. The residual gaps are the
+wave-6 candidates: BIP 143 sighash/locktime, revocation branch, literal
+`Types.lean` gross/net fields, bit-exact BOLT 3 preimages, digest-to-view
+binding, commitment dance, gossip invariant derivation, and live
+transport/fixture conformance.

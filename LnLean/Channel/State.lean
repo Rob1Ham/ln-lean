@@ -1,4 +1,5 @@
 import LnLean.Channel.Types
+import LnLean.Channel.HTLC
 
 /-!
 # LnLean.Channel.State
@@ -20,6 +21,9 @@ BOLT sections.
   `commitment_signed` (`02-peer-protocol.md:3097-3205`),
   `revoke_and_ack` (`:3206-3249`), `update_fee` (`:3250-3265`),
   `shutdown` (`:2136-2230`), `closing_signed` (`:2411-2460`).
+* BOLT 2 §3 HTLC messages, in the additive `UpdateStep` layer below:
+  `update_add_htlc` (`:2739-2831`), `update_fulfill_htlc` (`:2913-2930`),
+  `update_fail_htlc` (`:2944-2960`).
 
 rust-lightning anchors at `fe4900930c6bd5786ec4203274d7cf312776a5a6`.
 * `lightning/src/ln/channel.rs:799` (`enum ChannelState`), `:1552`
@@ -30,6 +34,10 @@ rust-lightning anchors at `fe4900930c6bd5786ec4203274d7cf312776a5a6`.
   `funding_signed`/`funding_created` handling around `channel.rs:1552-1700`).
 
 What is NOT modelled.
+* The HTLC update messages as constructors of `Step`.  They live in the
+  additive `UpdateStep` relation below, because the lifecycle relation is
+  deliberately balance- and HTLC-preserving (see the section comment).  The
+  commitment round that commits a pending update is still abstract.
 * Message retransmission, `channel_reestablish`, and the hold/release of
   `commitment_signed` while `AwaitingRemoteRevoke`: the model records which
   event is legal but not the queue of deferred updates.
@@ -224,5 +232,225 @@ theorem Reachable.remoteCommitmentNumber_le {a b : Channel} (h : Reachable a b) 
   induction h with
   | refl => exact Nat.le_refl _
   | step _ hs ih => exact Nat.le_trans ih (step_remoteCommitmentNumber_le hs)
+
+/-! ## Additive HTLC update layer (`MODEL-02`)
+
+`Step` is the *lifecycle* relation: every existing theorem about it (balance,
+HTLC-list, reserve, exposure, and ledger preservation, plus the negative
+counterexamples in `LnLean.Proofs.WaveD.D14` and
+`LnLean.Proofs.WaveE.E37`) depends on the fact that it changes only the phase,
+the commitment counters, and the feerate.  Adding `update_add_htlc` as a
+constructor of `Step` would therefore invalidate those results.
+
+The BOLT 2 HTLC messages are modelled here as a separate, additive relation
+`UpdateStep` over the same `Channel` record.  It embeds the lifecycle relation
+(`UpdateStep.lifecycle`) and adds `update_add_htlc`, `update_fulfill_htlc`, and
+`update_fail_htlc` with the ledger effects of the successor functions in
+`LnLean.Proofs.Channel.ReserveProps` and `LnLean.Proofs.WaveE.E37`.  The event
+type is separate (`UpdateEvent`, not `ProtocolEvent`) for the same reason: the
+executable schedule model in `LnLean.Proofs.Liveness` matches `ProtocolEvent`
+exhaustively.
+
+The distinctive guards are carried by `AffordableAdd` (positive amount,
+`cltv_expiry` bound, `htlc_minimum_msat`, offered-balance coverage, reserve,
+and `max_htlc_value_in_flight_msat`).  Settlement transitions take an index
+into the HTLC list and require that the entry is pending. -/
+
+/-- Pending HTLC value: the sum of the `offered` and `received` amounts, in
+millisatoshis.  This is the in-flight bucket of the channel ledger. -/
+def pendingHtlcValueOf (c : Channel) : Nat :=
+  ((c.htlcs.filter
+      (fun h => h.state = HTLCState.offered ∨ h.state = HTLCState.received)).map
+    (fun h => h.amount.val)).sum
+
+/-- The settled balance that funds an HTLC offered in direction `d`.  A local
+offer spends the local balance; a remote offer spends the remote balance. -/
+def offeredBalance (c : Channel) : Direction → Msat
+  | .local => c.balance.localBalance
+  | .remote => c.balance.remoteBalance
+
+/-- The reserve the offering side must keep after the add.  BOLT 2: the
+*receiver* advertises `channel_reserve_satoshis`, so a local offer must leave
+`localReserveSat` and a remote offer must leave `remoteReserveSat`. -/
+def offeringReserveSat (c : Channel) : Direction → Nat
+  | .local => c.remoteEndpoint.params.channelReserveSat
+  | .remote => c.localEndpoint.params.channelReserveSat
+
+/-- The parameters of the endpoint that receives the offered HTLC. -/
+def receiverParams (c : Channel) : Direction → ChannelParams
+  | .local => c.remoteEndpoint.params
+  | .remote => c.localEndpoint.params
+
+/-- BOLT 2 affordability of `update_add_htlc` in direction `dir`.
+
+* `positive`: the amount is non-zero (`02-peer-protocol.md:2824`).
+* `cltvBelowMaximum`: `cltv_expiry < 500000000` (`:2824`).
+* `atLeastHtlcMinimum`: the receiver's `htlc_minimum_msat` (`:2802`).
+* `fitsOffered`: the amount is covered by the offering side's settled balance,
+  so the committed balance drop does not truncate.
+* `leavesReserve`: the post-add balance still meets the receiver's reserve
+  (`:884-896`).
+* `withinInFlight`: the total in-flight value after the add stays within the
+  receiver's `max_htlc_value_in_flight_msat` (`:2829-2831`). -/
+structure AffordableAdd (c : Channel) (dir : Direction) (amount : Msat)
+    (cltvExpiry : Height) : Prop where
+  /-- The amount is strictly positive. -/
+  positive : 0 < amount.val
+  /-- BOLT 2's `cltv_expiry` bound. -/
+  cltvBelowMaximum : cltvExpiry < MAX_CLTV_EXPIRY
+  /-- The receiver's `htlc_minimum_msat` is respected. -/
+  atLeastHtlcMinimum : (receiverParams c dir).htlcMinimum.val ≤ amount.val
+  /-- The amount fits the offering side's settled balance. -/
+  fitsOffered : amount.val ≤ (offeredBalance c dir).val
+  /-- The offering side stays above its reserve. -/
+  leavesReserve :
+    offeringReserveSat c dir * Msat.MSAT_PER_SAT + amount.val ≤
+      (offeredBalance c dir).val
+  /-- The receiver's total in-flight bound is respected after the add. -/
+  withinInFlight :
+    pendingHtlcValueOf c + amount.val ≤ (receiverParams c dir).maxHtlcValue.val
+
+/-- The successor channel of `update_add_htlc`: debit the offering balance and
+append one pending HTLC (`offered` locally, `received` for a remote offer).
+This generalises `LnLean.Proofs.WaveE.E37.committedAdd` to both directions; the
+local case is proved definitionally equal in
+`LnLean.Proofs.Channel.StateTransitionTargets`. -/
+def updateAddHtlc (c : Channel) (dir : Direction) (amount : Msat)
+    (ph : PaymentHash) (cltv : Height) : Channel :=
+  { c with
+    balance :=
+      match dir with
+      | .local =>
+          { c.balance with
+            localBalance := ⟨c.balance.localBalance.val - amount.val⟩ }
+      | .remote =>
+          { c.balance with
+            remoteBalance := ⟨c.balance.remoteBalance.val - amount.val⟩ }
+    htlcs := c.htlcs ++
+      [{ direction := dir
+         amount := amount
+         paymentHash := ph
+         cltvExpiry := cltv
+         state := match dir with
+           | .local => HTLCState.offered
+           | .remote => HTLCState.received }] }
+
+/-- Replace the HTLC at index `i` by `f` applied to it; out-of-range indices
+leave the list unchanged. -/
+def mapHtlcAt (i : Nat) (f : HTLC → HTLC) (hs : List HTLC) : List HTLC :=
+  match hs, i with
+  | [], _ => []
+  | x :: xs, 0 => f x :: xs
+  | x :: xs, k + 1 => x :: mapHtlcAt k f xs
+
+/-- Mark the HTLC at index `i` as settled in state `st`. -/
+def setHtlcStateAt (hs : List HTLC) (i : Nat) (st : HTLCState) : List HTLC :=
+  mapHtlcAt i (fun h => { h with state := st }) hs
+
+/-- The successor of `update_fail_htlc` at index `i`: mark the pending HTLC
+`failed` and return its amount to the offering side.  Out-of-range indices
+leave the channel unchanged; the transition guard rules them out. -/
+def failHtlcAt (c : Channel) (i : Nat) : Channel :=
+  match c.htlcs[i]? with
+  | none => c
+  | some h =>
+      { c with
+        htlcs := setHtlcStateAt c.htlcs i HTLCState.failed
+        balance :=
+          match h.direction with
+          | .local =>
+              { c.balance with
+                localBalance :=
+                  ⟨c.balance.localBalance.val + h.amount.val⟩ }
+          | .remote =>
+              { c.balance with
+                remoteBalance :=
+                  ⟨c.balance.remoteBalance.val + h.amount.val⟩ } }
+
+/-- The successor of `update_fulfill_htlc` at index `i`: mark the pending HTLC
+`fulfilled` and credit its amount to the *receiving* side.  Out-of-range
+indices leave the channel unchanged; the transition guard rules them out. -/
+def fulfillHtlcAt (c : Channel) (i : Nat) : Channel :=
+  match c.htlcs[i]? with
+  | none => c
+  | some h =>
+      { c with
+        htlcs := setHtlcStateAt c.htlcs i HTLCState.fulfilled
+        balance :=
+          match h.direction with
+          | .local =>
+              { c.balance with
+                remoteBalance :=
+                  ⟨c.balance.remoteBalance.val + h.amount.val⟩ }
+          | .remote =>
+              { c.balance with
+                localBalance :=
+                  ⟨c.balance.localBalance.val + h.amount.val⟩ } }
+
+/-- Events of the additive HTLC update layer.  `lifecycle` embeds the
+`ProtocolEvent` vocabulary; the three update messages carry their BOLT 2
+payload so that a transition has a unique target. -/
+inductive UpdateEvent where
+  | lifecycle (e : ProtocolEvent)
+  | addHtlc (direction : Direction) (amount : Msat) (paymentHash : PaymentHash)
+      (cltvExpiry : Height)
+  | fulfillHtlc (index : Nat) (preimage : Preimage)
+  | failHtlc (index : Nat)
+deriving Repr
+
+/-- `UpdateStep hashFn c e c'`: the BOLT 2 update message `e` is legal in state
+`c` and produces `c'`.  `hashFn` is the caller-supplied SHA-256 used only by
+`update_fulfill_htlc`; as in `LnLean.Channel.HTLC.fulfillHTLC`, preimage
+soundness is conditional on `hashFn p.bytes = paymentHash`.
+
+`lifecycle` is the embedding of the unchanged `Step` relation, so every
+lifecycle transition remains available and every existing counterexample is
+untouched. -/
+inductive UpdateStep (hashFn : ByteArray → ByteArray) :
+    Channel → UpdateEvent → Channel → Prop where
+  /-- Every lifecycle step is an update-layer step. -/
+  | lifecycle {c c' : Channel} {e : ProtocolEvent} (h : Step c e c') :
+      UpdateStep hashFn c (.lifecycle e) c'
+  /-- BOLT 2 `update_add_htlc`.  Only legal in the `normal` phase and only for
+  an affordable amount. -/
+  | update_add_htlc (c : Channel) (hphase : c.phase = ChannelPhase.normal)
+      (dir : Direction) (amount : Msat) (ph : PaymentHash) (cltv : Height)
+      (haff : AffordableAdd c dir amount cltv) :
+      UpdateStep hashFn c (.addHtlc dir amount ph cltv)
+        (updateAddHtlc c dir amount ph cltv)
+  /-- BOLT 2 `update_fulfill_htlc`: a pending HTLC at index `i` is settled by a
+  32-byte preimage hashing to its payment hash. -/
+  | update_fulfill_htlc (c : Channel) (hphase : c.phase = ChannelPhase.normal)
+      (i : Nat) (h : HTLC) (p : Preimage)
+      (hi : c.htlcs[i]? = some h) (hpending : h.isPending)
+      (hpre : p.Valid ∧ hashFn p.bytes = h.paymentHash.bytes) :
+      UpdateStep hashFn c (.fulfillHtlc i p) (fulfillHtlcAt c i)
+  /-- BOLT 2 `update_fail_htlc`: a pending HTLC at index `i` is failed and its
+  amount returns to the offering side. -/
+  | update_fail_htlc (c : Channel) (hphase : c.phase = ChannelPhase.normal)
+      (i : Nat) (h : HTLC) (hi : c.htlcs[i]? = some h)
+      (hpending : h.isPending) :
+      UpdateStep hashFn c (.failHtlc i) (failHtlcAt c i)
+
+/-- Reflexive-transitive closure of `UpdateStep`. -/
+inductive UpdateReachable (hashFn : ByteArray → ByteArray) :
+    Channel → Channel → Prop where
+  | refl (c : Channel) : UpdateReachable hashFn c c
+  | step {a b c : Channel} {e : UpdateEvent} :
+      UpdateReachable hashFn a b → UpdateStep hashFn b e c →
+        UpdateReachable hashFn a c
+
+/-- Additive spelling of the requested constructor: `Step.update_add_htlc`
+builds the `update_add_htlc` transition of the update layer.  It is a
+definition, not a constructor of the lifecycle inductive `Step`, because a new
+`Step` constructor would invalidate the lifecycle-only preservation theorems
+and the executable `step?` model elsewhere in the tree. -/
+abbrev Step.update_add_htlc (hashFn : ByteArray → ByteArray) (c : Channel)
+    (hphase : c.phase = ChannelPhase.normal) (dir : Direction)
+    (amount : Msat) (ph : PaymentHash) (cltv : Height)
+    (haff : AffordableAdd c dir amount cltv) :
+    UpdateStep hashFn c (.addHtlc dir amount ph cltv)
+      (updateAddHtlc c dir amount ph cltv) :=
+  UpdateStep.update_add_htlc c hphase dir amount ph cltv haff
 
 end LnLean.Channel

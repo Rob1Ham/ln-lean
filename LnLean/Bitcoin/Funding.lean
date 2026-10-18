@@ -133,6 +133,238 @@ parameter, matching `LnLean.Bitcoin.fundingScriptPubKey`. -/
 def FundingParams.fundingScriptPubKey (p : FundingParams) : Script :=
   LnLean.Bitcoin.fundingScriptPubKey p.witnessScriptHash
 
+/-! ## The BOLT 3 witness script as a constructed object
+
+`FundingParams.witnessScript` is a computed field, and `witnessScriptHash` is
+an unconstrained stored field.  The structures below make the missing step
+explicit and constructive: a `FundingScript` carries the key pair it was built
+from together with the ordered pair and the script bytes, and a
+`FundingNegotiation` carries the handshake-negotiated fields and *derives* the
+P2WSH program as `H (witnessScript.bytes)`.  There is no way to build a
+`FundingNegotiation.toFundingParams` record with an unrelated hash, so the
+"hash link" of `LN-L1-001` becomes a definitional equality for constructed
+parameters instead of an arbitrary hypothesis. -/
+
+/-- The BOLT 3 2-of-2 funding witness script, carrying both the original
+(local, remote) key orientation and the ordered pair actually serialized into
+the script. -/
+structure FundingScript where
+  /-- The funding key contributed by this endpoint (`open_channel`). -/
+  localFundingKey : PubKey
+  /-- The funding key contributed by the peer (`accept_channel`). -/
+  remoteFundingKey : PubKey
+  /-- `pubkey1`: the lexicographically lesser of the two keys. -/
+  firstFundingKey : PubKey
+  /-- `pubkey2`: the lexicographically greater of the two keys. -/
+  secondFundingKey : PubKey
+  /-- `OP_2 <pubkey1> <pubkey2> OP_2 OP_CHECKMULTISIG`. -/
+  witnessScript : Script
+deriving Repr
+
+namespace FundingScript
+
+/-- Build the BOLT 3 funding witness script from an unordered key pair.  The
+serialized key order is chosen by `orderedFundingKeys`; the original
+orientation is retained so the record still identifies which endpoint
+contributed which key. -/
+def ofKeys (a b : PubKey) : FundingScript :=
+  let keys := orderedFundingKeys a b
+  { localFundingKey := a
+    remoteFundingKey := b
+    firstFundingKey := keys.1
+    secondFundingKey := keys.2
+    witnessScript :=
+      ⟨(ByteArray.empty.push 0x52)                       -- OP_2
+         ++ pushData keys.1.bytes
+         ++ pushData keys.2.bytes
+         ++ (ByteArray.empty.push 0x52)                  -- OP_2
+         ++ (ByteArray.empty.push OP_CHECKMULTISIG)⟩ }
+
+@[simp] theorem ofKeys_localFundingKey (a b : PubKey) :
+    (ofKeys a b).localFundingKey = a := rfl
+
+@[simp] theorem ofKeys_remoteFundingKey (a b : PubKey) :
+    (ofKeys a b).remoteFundingKey = b := rfl
+
+@[simp] theorem ofKeys_firstFundingKey (a b : PubKey) :
+    (ofKeys a b).firstFundingKey =
+      (orderedFundingKeys a b).1 := rfl
+
+@[simp] theorem ofKeys_secondFundingKey (a b : PubKey) :
+    (ofKeys a b).secondFundingKey =
+      (orderedFundingKeys a b).2 := rfl
+
+/-- The constructed script is exactly the BOLT 3 template over the ordered
+pair, with the exact bytes a BOLT 3 verifier sees. -/
+theorem ofKeys_witnessScript_bytes (a b : PubKey) :
+    (ofKeys a b).witnessScript.bytes =
+      (ByteArray.empty.push 0x52)
+        ++ pushData (orderedFundingKeys a b).1.bytes
+        ++ pushData (orderedFundingKeys a b).2.bytes
+        ++ (ByteArray.empty.push 0x52)
+        ++ (ByteArray.empty.push OP_CHECKMULTISIG) := rfl
+
+/-- The first key of the constructed script is the first element of
+`orderedFundingKeys`: the pair is ordered, not re-derived. -/
+theorem ofKeys_orderedFirst (a b : PubKey) :
+    (ofKeys a b).firstFundingKey = (orderedFundingKeys a b).1 := rfl
+
+/-- The constructed script is definitionally the script that
+`FundingParams.witnessScript` computes for the same key pair.  This is the
+bridge between the constructor and the pre-existing `FundingParams` model; it
+needs no hash assumption. -/
+theorem ofKeys_witnessScript_eq_witnessScript (p : FundingParams) :
+    (ofKeys p.localFundingKey p.remoteFundingKey).witnessScript =
+      p.witnessScript := rfl
+
+/-- The constructed script is a 2-of-2 multisig over exactly the two input
+keys: abstract form, without committing to which key is serialized first.
+The `TwoOfTwoScriptBytes` form of this statement lives in
+`LnLean.Proofs.Bitcoin.FundingLinkTargets`, which can import the proof module
+without creating a cycle. -/
+theorem ofKeys_witnessScript_eq_ordered_pair (a b : PubKey) :
+    (ofKeys a b).witnessScript.bytes =
+      (ByteArray.empty.push 0x52)
+        ++ pushData (ofKeys a b).firstFundingKey.bytes
+        ++ pushData (ofKeys a b).secondFundingKey.bytes
+        ++ (ByteArray.empty.push 0x52)
+        ++ (ByteArray.empty.push OP_CHECKMULTISIG) := rfl
+
+end FundingScript
+
+/-- The funding-relevant data negotiated during BOLT 2 channel establishment,
+from one endpoint's point of view.  `localFundingKey` is the `funding_pubkey`
+offered in `open_channel`; `remoteFundingKey` is the peer's `funding_pubkey`
+from `accept_channel`.  The P2WSH program is deliberately **not** a field: it
+is derived from the witness script by `toFundingParams`. -/
+structure FundingNegotiation where
+  /-- BOLT 2 `funding_satoshis` (the L1 output value). -/
+  fundingSatoshis : BtcAmount
+  /-- BOLT 2 `push_msat` (the funder's initial gift, a split of capacity). -/
+  pushMsat : Msat
+  /-- This endpoint's funding key (`open_channel`). -/
+  localFundingKey : PubKey
+  /-- The peer's funding key (`accept_channel.funding_pubkey`). -/
+  remoteFundingKey : PubKey
+  /-- The temporary channel id used until the funding txid is known. -/
+  temporaryChannelId : TemporaryChannelId
+  /-- The final channel id, once the funding outpoint is known. -/
+  finalChannelId? : Option FinalChannelId := none
+deriving Repr
+
+namespace FundingNegotiation
+
+/-- The BOLT 3 witness script determined by the negotiated key pair. -/
+def witnessScript (n : FundingNegotiation) : Script :=
+  (FundingScript.ofKeys n.localFundingKey n.remoteFundingKey).witnessScript
+
+/-- The ordered key pair actually serialized into the witness script. -/
+def firstFundingKey (n : FundingNegotiation) : PubKey :=
+  (orderedFundingKeys n.localFundingKey n.remoteFundingKey).1
+
+/-- The second key of the ordered pair actually serialized into the script. -/
+def secondFundingKey (n : FundingNegotiation) : PubKey :=
+  (orderedFundingKeys n.localFundingKey n.remoteFundingKey).2
+
+theorem witnessScript_eq_ofKeys (n : FundingNegotiation) :
+    n.witnessScript =
+      (FundingScript.ofKeys n.localFundingKey n.remoteFundingKey).witnessScript :=
+  rfl
+
+theorem firstFundingKey_pair (n : FundingNegotiation) :
+    orderedFundingKeys n.localFundingKey n.remoteFundingKey =
+      (n.firstFundingKey, n.secondFundingKey) := rfl
+
+/-- **The construction of the funding parameters.**  The P2WSH program is
+computed as `H (witnessScript.bytes)`; it is not accepted as an argument.
+Specializing `H` to `PrimitiveModel.sha256` gives the BOLT 3 SHA-256 rule. -/
+def toFundingParams (H : ByteArray → ByteArray) (n : FundingNegotiation) :
+    FundingParams :=
+  { fundingSatoshis := n.fundingSatoshis
+    pushMsat := n.pushMsat
+    localFundingKey := n.localFundingKey
+    remoteFundingKey := n.remoteFundingKey
+    witnessScriptHash := H n.witnessScript.bytes
+    temporaryChannelId := n.temporaryChannelId
+    finalChannelId? := n.finalChannelId? }
+
+@[simp] theorem toFundingParams_fundingSatoshis (H : ByteArray → ByteArray)
+    (n : FundingNegotiation) :
+    (n.toFundingParams H).fundingSatoshis = n.fundingSatoshis := rfl
+
+@[simp] theorem toFundingParams_pushMsat (H : ByteArray → ByteArray)
+    (n : FundingNegotiation) :
+    (n.toFundingParams H).pushMsat = n.pushMsat := rfl
+
+@[simp] theorem toFundingParams_localFundingKey (H : ByteArray → ByteArray)
+    (n : FundingNegotiation) :
+    (n.toFundingParams H).localFundingKey = n.localFundingKey := rfl
+
+@[simp] theorem toFundingParams_remoteFundingKey (H : ByteArray → ByteArray)
+    (n : FundingNegotiation) :
+    (n.toFundingParams H).remoteFundingKey = n.remoteFundingKey := rfl
+
+@[simp] theorem toFundingParams_temporaryChannelId (H : ByteArray → ByteArray)
+    (n : FundingNegotiation) :
+    (n.toFundingParams H).temporaryChannelId = n.temporaryChannelId := rfl
+
+@[simp] theorem toFundingParams_finalChannelId (H : ByteArray → ByteArray)
+    (n : FundingNegotiation) :
+    (n.toFundingParams H).finalChannelId? = n.finalChannelId? := rfl
+
+/-- The constructed parameters compute exactly the constructor's witness
+script.  This is the definitional equality that makes the hash link below
+meaningful rather than circular. -/
+@[simp] theorem toFundingParams_witnessScript (H : ByteArray → ByteArray)
+    (n : FundingNegotiation) :
+    (n.toFundingParams H).witnessScript = n.witnessScript := rfl
+
+/-- **The hash link, by construction.**  The stored program of the constructed
+parameters is `H` of the witness script bytes. -/
+theorem toFundingParams_witnessScriptHash (H : ByteArray → ByteArray)
+    (n : FundingNegotiation) :
+    (n.toFundingParams H).witnessScriptHash =
+      H (n.toFundingParams H).witnessScript.bytes :=
+  rfl
+
+/-- The constructed `scriptPubKey` is the P2WSH wrapper over the computed
+program. -/
+theorem toFundingParams_fundingScriptPubKey (H : ByteArray → ByteArray)
+    (n : FundingNegotiation) :
+    (n.toFundingParams H).fundingScriptPubKey =
+      p2wsh (H (n.toFundingParams H).witnessScript.bytes) :=
+  rfl
+
+/-- The computed program is 32 bytes whenever `H` has 32-byte output. -/
+theorem toFundingParams_witnessScriptHash_size (H : ByteArray → ByteArray)
+    (hH : ∀ b : ByteArray, (H b).size = 32) (n : FundingNegotiation) :
+    (n.toFundingParams H).witnessScriptHash.size = 32 := by
+  simp [toFundingParams, hH]
+
+/-- The constructed parameters are well formed whenever the negotiated
+value/push bounds and the two key widths hold.  This removes `WellFormed` from
+the construction boundary: it is derived from fields already present in the
+negotiation and the key-validity facts the wire decoder checks. -/
+theorem toFundingParams_wellFormed (H : ByteArray → ByteArray)
+    (hH : ∀ b : ByteArray, (H b).size = 32) (n : FundingNegotiation)
+    (hsat0 : 0 ≤ n.fundingSatoshis)
+    (hsatMax : n.fundingSatoshis ≤ Bitcoin.Data.MAX_MONEY)
+    (hlocal : n.localFundingKey.Valid)
+    (hremote : n.remoteFundingKey.Valid)
+    (hpush : (n.pushMsat.val : Int) ≤
+      n.fundingSatoshis * (Msat.MSAT_PER_SAT : Int)) :
+    (n.toFundingParams H).WellFormed := by
+  unfold FundingParams.WellFormed
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  · simpa using hsat0
+  · simpa using hsatMax
+  · simpa using hlocal
+  · simpa using hremote
+  · exact toFundingParams_witnessScriptHash_size H hH n
+  · simpa using hpush
+
+end FundingNegotiation
+
 /-- Build the L1 funding-output record from the parameters and the funding
 txid/output index. -/
 def FundingParams.toFundingOutput (p : FundingParams) (txid : ByteArray)

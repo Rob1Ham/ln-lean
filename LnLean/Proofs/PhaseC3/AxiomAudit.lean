@@ -50,6 +50,14 @@ import LnLean.Proofs.ConformanceTargets
 import LnLean.Proofs.ProtocolWireTargets
 import LnLean.Proofs.Routing.GossipAttributionTargets
 import LnLean.Proofs.Wire.TLVTargets
+import LnLean.Proofs.Bitcoin.InterpreterBridgeTargets
+import LnLean.Proofs.Channel.CommitmentGrossNetTargets
+import LnLean.Proofs.Channel.SighashTargets
+import LnLean.Proofs.ConformanceDiffTargets
+import LnLean.Proofs.Channel.StateTransitionTargets
+import LnLean.Proofs.Bitcoin.FundingLinkTargets
+import LnLean.Proofs.Routing.GossipKeyConsistencyTargets
+import LnLean.Proofs.Security.SecurityGameTargets
 
 set_option autoImplicit false
 
@@ -202,6 +210,41 @@ set_option autoImplicit false
 #print axioms LnLean.Proofs.Conformance.bigsize_decode_eight_byte_high
 #print axioms LnLean.Proofs.Conformance.tlv_unknown_even_12_admission
 
+/-! ## 18. Wave 5 bridge and completeness targets -/
+
+#print axioms LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.funding_interpreters_agree
+#print axioms LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.toLocal_delayed_interpreters_agree
+#print axioms LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.toLocal_serialize_eq
+#print axioms LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.funding_serialize_eq
+#print axioms LnLean.Channel.CommitmentTx.migratedFrom_outputsNet_perm_commitmentOutputs
+#print axioms LnLean.Channel.CommitmentTx.migratedFrom_conservation
+#print axioms LnLean.Channel.CommitmentTx.migratedFrom_effectiveFee_eq
+#print axioms LnLean.Proofs.Channel.CommitmentGrossNet.d12_output_ordering_fails
+#print axioms LnLean.Proofs.Channel.SighashTargets.SighashProduces.coverage
+#print axioms LnLean.Proofs.Channel.SighashTargets.sighash_summary
+#print axioms LnLean.Proofs.Channel.SighashTargets.funding_and_commitment_signing_contract
+#print axioms LnLean.Proofs.Channel.SighashTargets.producedFrom_not_sighashProduces
+#print axioms LnLean.Proofs.Conformance.Diff.Transport.transportFrame_size
+#print axioms LnLean.Proofs.Conformance.Diff.unframeTransport_transportFrame
+#print axioms LnLean.Proofs.Conformance.Diff.payload_decoder_rejects_transport_frame
+#print axioms LnLean.Proofs.Conformance.Diff.diff_bigsize_decode_65535
+#print axioms LnLean.Proofs.Channel.StateTransitionTargets.updateStep_preserves_ledger
+#print axioms LnLean.Proofs.Channel.StateTransitionTargets.updateStep_preserves_reserve
+#print axioms LnLean.Proofs.Channel.StateTransitionTargets.committedAdd_eq_updateAddHtlc
+#print axioms LnLean.Proofs.Channel.StateTransitionTargets.affordableAdd_implies_e37
+#print axioms LnLean.Proofs.Bitcoin.FundingLinkTargets.fundingScriptPubKey_eq_p2wsh_ordered
+#print axioms LnLean.Proofs.Bitcoin.FundingLinkTargets.acceptChannel_funding_link_ordered
+#print axioms LnLean.Proofs.Routing.GossipKeyConsistencyTargets.gossip_graph_edges_directional_key_endpoint
+#print axioms LnLean.Proofs.Routing.GossipKeyConsistencyTargets.canonical_directional_attribution_unique
+#print axioms LnLean.Proofs.Routing.GossipKeyConsistencyTargets.conflicting_announcements_ambiguous_without_canonical
+#print axioms LnLean.Proofs.Security.Limits.EventReduction.secure
+#print axioms LnLean.Proofs.Security.Limits.AdvantageReduction.bound
+#print axioms LnLean.Proofs.Security.Limits.composite_bound
+#print axioms LnLean.Proofs.Security.Limits.algebraic_c1_no_collision
+#print axioms LnLean.Proofs.Security.Limits.algebraic_c3_no_binding_failure
+#print axioms LnLean.Proofs.Security.Limits.algebraic_c8_no_tag_collision
+#print axioms LnLean.Proofs.Security.Limits.secure_game_unbounded_advantage
+
 /-! ## 15. Registry
 
   The registry is a plain list of fully-qualified names.  Keeping it in the
@@ -311,6 +354,39 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Proofs.Conformance.bigsize_encode_one_byte_high,
     `LnLean.Proofs.Conformance.bigsize_decode_eight_byte_high,
     `LnLean.Proofs.Conformance.tlv_unknown_even_12_admission,
+    `LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.funding_interpreters_agree,
+    `LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.toLocal_delayed_interpreters_agree,
+    `LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.toLocal_serialize_eq,
+    `LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.funding_serialize_eq,
+    `LnLean.Channel.CommitmentTx.migratedFrom_outputsNet_perm_commitmentOutputs,
+    `LnLean.Channel.CommitmentTx.migratedFrom_conservation,
+    `LnLean.Channel.CommitmentTx.migratedFrom_effectiveFee_eq,
+    `LnLean.Proofs.Channel.CommitmentGrossNet.d12_output_ordering_fails,
+    `LnLean.Proofs.Channel.SighashTargets.SighashProduces.coverage,
+    `LnLean.Proofs.Channel.SighashTargets.sighash_summary,
+    `LnLean.Proofs.Channel.SighashTargets.funding_and_commitment_signing_contract,
+    `LnLean.Proofs.Channel.SighashTargets.producedFrom_not_sighashProduces,
+    `LnLean.Proofs.Conformance.Diff.Transport.transportFrame_size,
+    `LnLean.Proofs.Conformance.Diff.unframeTransport_transportFrame,
+    `LnLean.Proofs.Conformance.Diff.payload_decoder_rejects_transport_frame,
+    `LnLean.Proofs.Conformance.Diff.diff_bigsize_decode_65535,
+    `LnLean.Proofs.Channel.StateTransitionTargets.updateStep_preserves_ledger,
+    `LnLean.Proofs.Channel.StateTransitionTargets.updateStep_preserves_reserve,
+    `LnLean.Proofs.Channel.StateTransitionTargets.committedAdd_eq_updateAddHtlc,
+    `LnLean.Proofs.Channel.StateTransitionTargets.affordableAdd_implies_e37,
+    `LnLean.Proofs.Bitcoin.FundingLinkTargets.fundingScriptPubKey_eq_p2wsh_ordered,
+    `LnLean.Proofs.Bitcoin.FundingLinkTargets.acceptChannel_funding_link_ordered,
+    `LnLean.Proofs.Routing.GossipKeyConsistencyTargets.gossip_graph_edges_directional_key_endpoint,
+    `LnLean.Proofs.Routing.GossipKeyConsistencyTargets.canonical_directional_attribution_unique,
+    `LnLean.Proofs.Routing.GossipKeyConsistencyTargets.conflicting_announcements_ambiguous_without_canonical,
+    `LnLean.Proofs.Security.Limits.EventReduction.secure,
+    `LnLean.Proofs.Security.Limits.AdvantageReduction.bound,
+    `LnLean.Proofs.Security.Limits.composite_bound,
+    `LnLean.Proofs.Security.Limits.algebraic_c1_no_collision,
+    `LnLean.Proofs.Security.Limits.algebraic_c3_no_binding_failure,
+    `LnLean.Proofs.Security.Limits.algebraic_c8_no_tag_collision,
+    `LnLean.Proofs.Security.Limits.secure_game_unbounded_advantage,
     ]
 
-theorem auditedTheorems_length : auditedTheorems.length = 101 := rfl
+set_option maxRecDepth 4000 in
+theorem auditedTheorems_length : auditedTheorems.length = 133 := rfl

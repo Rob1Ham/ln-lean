@@ -155,6 +155,74 @@ theorem Commitment.totalOutputValue_eq (c : Commitment) :
     c.totalOutputValue =
       c.toLocalSat + c.toRemoteSat + c.htlcOutputValue + c.anchorOutputValue := rfl
 
+/-! ## Gross/net values and the effective fee (CH-03 core patch)
+
+BOLT 3 distinguishes two satoshi values for every HTLC on a commitment
+transaction:
+
+* the **gross** value `amount_msat / 1000`, which is the value of the
+  commitment transaction output, and
+* the **net** value `gross - second_stage_fee`, which is what the
+  HTLC-timeout/HTLC-success transaction pays after its own fee.
+
+The dust test is on the net value: BOLT 3 trims an HTLC iff
+`gross - second_stage_fee < dust_limit_satoshis`, equivalently
+`gross < dust_limit_satoshis + second_stage_fee` (`03-transactions.md:330`).
+The commitment output itself is gross (`03-transactions.md:365`), and a trimmed
+output's whole gross value is added to the commitment transaction fee
+(`03-transactions.md:329`).
+
+The legacy `CommitmentHTLCOutput` record carries only `amountSat`; the rich
+`CommitmentTx` extension therefore carries the net projection
+(`netAmountSat`) and the recorded trimmed total (`trimmedSat`) as additive
+fields with identity/zero defaults, so every existing record literal is
+unchanged.  Adding the net projection to `CommitmentHTLCOutput` itself would
+require editing `LnLean/Channel/Types.lean`, which is outside this lane's
+ownership; the exact patch is recorded in
+`agents/reports/swarm5/S5-CH-GROSSNET.md`.
+
+`Commitment.trimmedSat` and `Commitment.effectiveFeeSat` are functions rather
+than stored fields, because the legacy `Commitment` has no dust limit and no
+net projection.  `trimmedSat` computes the gross value that a given dust limit
+and net view remove from a nominal record; the rich record stores the result in
+`CommitmentTx.trimmedSat`.  `effectiveFeeSat` is the actual commitment fee,
+`fundingValueSat - totalOutputValue`; when `totalOutputValue` is the emitted
+(survivor) value, it is exactly `feeSat + trimmedSat`. -/
+
+/-- The gross satoshi value that BOLT 3 trims from a nominal commitment record
+under an owner's dust limit and a net-value projection.  A trimmed
+`to_local`/`to_remote` contributes its whole value; a trimmed HTLC contributes
+its gross `amountSat`.  Anchors are never trimmed. -/
+def Commitment.trimmedSat (c : Commitment) (dustLimitSat : Nat)
+    (netAmountSat : CommitmentHTLCOutput → Nat) : Nat :=
+  (if dustLimitSat ≤ c.toLocalSat then 0 else c.toLocalSat) +
+  (if dustLimitSat ≤ c.toRemoteSat then 0 else c.toRemoteSat) +
+  (c.htlcs.map (fun h =>
+    if dustLimitSat ≤ netAmountSat h then 0 else h.amountSat)).sum
+
+/-- The **effective** commitment fee: everything in the funding value that the
+commitment transaction does not pay to an output.  With a BOLT-3-migrated
+record (only surviving outputs in `htlcs`, trimmed outputs zeroed), this is the
+base fee plus the gross value added by trimming. -/
+def Commitment.effectiveFeeSat (c : Commitment) : Nat :=
+  c.fundingValueSat - c.totalOutputValue
+
+/-- Under the BOLT 3 balance equation the effective fee is exactly the residual
+of the funding value. -/
+theorem Commitment.totalOutputValue_add_effectiveFeeSat (c : Commitment)
+    (h : c.totalOutputValue ≤ c.fundingValueSat) :
+    c.totalOutputValue + c.effectiveFeeSat = c.fundingValueSat := by
+  unfold Commitment.effectiveFeeSat
+  omega
+
+/-- The effective fee is the base fee when trimming removes nothing and the
+balance equation holds. -/
+theorem Commitment.effectiveFeeSat_eq_feeSat (c : Commitment)
+    (h : c.totalOutputValue + c.feeSat = c.fundingValueSat) :
+    c.effectiveFeeSat = c.feeSat := by
+  unfold Commitment.effectiveFeeSat
+  omega
+
 /-- The weight of a concrete commitment record. -/
 def Commitment.weight (c : Commitment) : Weight :=
   commitmentWeight c.anchorOutputs c.htlcs.length
@@ -690,6 +758,19 @@ structure CommitmentTx where
   localAnchorScript : ScriptPubKey
   remoteAnchorScript : ScriptPubKey
   htlcScript : CommitmentHTLCOutput → ScriptPubKey
+  /-- The **net** (second-stage) satoshi value of an HTLC output.  BOLT 3 runs
+  the dust test on `amount - second_stage_fee`
+  (`03-transactions.md:330-346`), while the commitment output itself carries
+  the **gross** `amountSat`.  The identity default preserves every existing
+  `CommitmentTx` literal and every legacy record whose `amountSat` is already
+  net of the second-stage fee. -/
+  netAmountSat : CommitmentHTLCOutput → Nat := fun h => h.amountSat
+  /-- Gross satoshi value removed by the BOLT 3 dust filter.  BOLT 3 adds a
+  trimmed output's value to the commitment transaction fee, so this is the
+  difference between the nominal output value and the value the commitment
+  transaction actually pays.  The default zero preserves every existing
+  `CommitmentTx` literal. -/
+  trimmedSat : Nat := 0
 
 def CommitmentTxOutput.toLocal (v : Nat) (script : ScriptPubKey) : CommitmentTxOutput :=
   { kind := .toLocal, valueSat := v, scriptPubKey := script, cltvExpiry := 0 }
@@ -756,6 +837,108 @@ value, then script, then CLTV.  This is the object of `outputs_spec` and of the
 catalog target `output_ordering`. -/
 def CommitmentTx.outputs (tx : CommitmentTx) : List CommitmentTxOutput :=
   sortOutputs tx.outputsUnsorted
+
+/-! ### Net-based BOLT 3 dust test (CH-03)
+
+`CommitmentTx.htlcOutput` above is retained unchanged for compatibility: it
+tests the gross `amountSat`, the pre-CH-03 convention in which a record's
+`amountSat` is already net of the second-stage fee.  The CH-03 path below is
+the BOLT-3-exact one: `CommitmentTxOutput.htlc` still carries the gross
+`amountSat`, while the dust test uses `netAmountSat`.  Under the BOLT 3 fee
+schedule the two forms are related by
+`gross = net + second_stage_fee`, so the net test is exactly
+`gross < dust_limit + second_stage_fee`.
+-/
+
+/-- BOLT 3's dust-trimmed HTLC output, testing the **net** (second-stage)
+value while emitting the **gross** `amountSat`. -/
+def CommitmentTx.htlcOutputNet (tx : CommitmentTx) (h : CommitmentHTLCOutput) :
+    Option CommitmentTxOutput :=
+  if tx.dustLimitSat ≤ tx.netAmountSat h then
+    some (CommitmentTxOutput.htlc h (tx.htlcScript h))
+  else none
+
+/-- The pre-sort output list of the net-based (BOLT-3-exact) construction. -/
+def CommitmentTx.outputsUnsortedNet (tx : CommitmentTx) : List CommitmentTxOutput :=
+  tx.toLocalOutput.toList ++
+    (tx.toRemoteOutput.toList ++
+      (tx.commitment.htlcs.filterMap tx.htlcOutputNet ++
+        (tx.localAnchorOutput.toList ++ tx.remoteAnchorOutput.toList)))
+
+/-- The sorted net-based output list.  This is the CH-03 replacement for
+`CommitmentTx.outputs` when `amountSat` is gross and `netAmountSat` is the
+second-stage value. -/
+def CommitmentTx.outputsNet (tx : CommitmentTx) : List CommitmentTxOutput :=
+  sortOutputs tx.outputsUnsortedNet
+
+/-- The gross value removed by the net-based BOLT 3 dust filter.  This is the
+computed counterpart of the recorded `CommitmentTx.trimmedSat` field. -/
+def CommitmentTx.trimmedValue (tx : CommitmentTx) : Nat :=
+  tx.commitment.trimmedSat tx.dustLimitSat tx.netAmountSat
+
+theorem CommitmentTx.trimmedValue_eq_trimmedSat (tx : CommitmentTx) :
+    tx.trimmedValue = tx.commitment.trimmedSat tx.dustLimitSat tx.netAmountSat := rfl
+
+theorem CommitmentTx.outputsNet_perm (tx : CommitmentTx) :
+    tx.outputsNet.Perm tx.outputsUnsortedNet :=
+  sortOutputs_perm tx.outputsUnsortedNet
+
+theorem CommitmentTx.mem_outputsNet_iff {tx : CommitmentTx} {o : CommitmentTxOutput} :
+    o ∈ tx.outputsNet ↔ o ∈ tx.outputsUnsortedNet :=
+  (sortOutputs_perm tx.outputsUnsortedNet).mem_iff
+
+theorem CommitmentTx.mem_outputsUnsortedNet_iff {tx : CommitmentTx}
+    {o : CommitmentTxOutput} :
+    o ∈ tx.outputsUnsortedNet ↔
+      o ∈ tx.toLocalOutput.toList ∨
+      o ∈ tx.toRemoteOutput.toList ∨
+      o ∈ tx.commitment.htlcs.filterMap tx.htlcOutputNet ∨
+      o ∈ tx.localAnchorOutput.toList ∨
+      o ∈ tx.remoteAnchorOutput.toList := by
+  simp [CommitmentTx.outputsUnsortedNet, List.mem_append]
+
+theorem CommitmentTx.mem_htlcOutputNet_iff {tx : CommitmentTx}
+    {h : CommitmentHTLCOutput} {o : CommitmentTxOutput} :
+    tx.htlcOutputNet h = some o ↔
+      tx.dustLimitSat ≤ tx.netAmountSat h ∧
+        o = CommitmentTxOutput.htlc h (tx.htlcScript h) := by
+  unfold CommitmentTx.htlcOutputNet
+  by_cases hd : tx.dustLimitSat ≤ tx.netAmountSat h <;> simp [hd, eq_comm]
+
+theorem CommitmentTx.htlcOutputNet_eq_none_of_dust (tx : CommitmentTx)
+    (h : CommitmentHTLCOutput) (hd : tx.netAmountSat h < tx.dustLimitSat) :
+    tx.htlcOutputNet h = none := by
+  unfold CommitmentTx.htlcOutputNet
+  simp [Nat.not_le.mpr hd]
+
+theorem CommitmentTx.htlcOutputNet_mem_outputsNet (tx : CommitmentTx)
+    (h : CommitmentHTLCOutput) (hmem : h ∈ tx.commitment.htlcs)
+    (hd : tx.dustLimitSat ≤ tx.netAmountSat h) :
+    CommitmentTxOutput.htlc h (tx.htlcScript h) ∈ tx.outputsNet := by
+  rw [CommitmentTx.mem_outputsNet_iff, CommitmentTx.mem_outputsUnsortedNet_iff]
+  right; right; left
+  rw [List.mem_filterMap]
+  exact ⟨h, hmem, (CommitmentTx.mem_htlcOutputNet_iff).2 ⟨hd, rfl⟩⟩
+
+theorem CommitmentTx.outputsNet_pairwise (tx : CommitmentTx) :
+    tx.outputsNet.Pairwise CommitmentTxOutput.le :=
+  sortOutputs_pairwise tx.outputsUnsortedNet
+
+theorem CommitmentTx.outputsNet_values_sorted (tx : CommitmentTx) :
+    (tx.outputsNet.map (fun o => o.valueSat)).Pairwise (· ≤ ·) := by
+  rw [List.pairwise_map]
+  exact sortOutputs_values tx.outputsUnsortedNet
+
+theorem CommitmentTx.outputsNet_scripts_sorted (tx : CommitmentTx) :
+    tx.outputsNet.Pairwise (fun a b =>
+      a.valueSat = b.valueSat → a.scriptPubKey.le b.scriptPubKey) :=
+  sortOutputs_scripts tx.outputsUnsortedNet
+
+theorem CommitmentTx.outputsNet_cltvs_sorted (tx : CommitmentTx) :
+    tx.outputsNet.Pairwise (fun a b =>
+      a.valueSat = b.valueSat → a.scriptPubKey = b.scriptPubKey →
+        a.cltvExpiry ≤ b.cltvExpiry) :=
+  sortOutputs_cltvs tx.outputsUnsortedNet
 
 theorem CommitmentTx.outputs_perm (tx : CommitmentTx) :
     tx.outputs.Perm tx.outputsUnsorted :=
