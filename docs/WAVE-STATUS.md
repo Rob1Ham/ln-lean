@@ -75,13 +75,13 @@ Wave 5 added eight proof modules, strengthened five catalog rows to 67
 resolved targets, extended the audit to 133 headline theorems, and did not add
 catalog rows or weaken the 48/0/0 gate.
 
-## Wave 6 candidate lanes
+## Wave 6 lanes (launched)
 
-Wave 6 attacks the residual wave-5 gaps: BIP 143 sighash/locktime, the
+Wave 6 launched from `86c1733` and attacks the residual wave-5 gaps: BIP 143 sighash/locktime, the
 revocation branch, literal gross/net `Types.lean` fields, bit-exact BOLT 3
 preimages, digest-to-view binding, commitment dance, gossip invariant
 derivation, and live transport/fixture conformance. See
-`docs/OPEN-ISSUES.md` for the owned-file table.
+`agents/swarm/WAVE-6.md` for the lane/owned-file table; integration is pending.
 
 ## Historical waves
 

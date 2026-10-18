@@ -1,6 +1,7 @@
 # Open Issues and Swarm Roadmap
 
-**Status:** living roadmap after proof-wave 5; wave 6 candidate lanes defined.
+**Status:** living roadmap after proof-wave 5; wave 6 lanes launched from
+`86c1733`.
 **Branch:** `repair/integrated`.
 **Base commit:** `11a460c` (wave 5 launch); proof-wave 5 code is `6389baa`\n(proof-wave 4 code at `26ced90`).
 **Catalog gate:** 48/48 rows `proved`, 0 `statement-only`, 0 unresolved,
