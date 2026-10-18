@@ -104,9 +104,12 @@ for path in sorted((ROOT / "LnLean").rglob("*.lean")):
         obligations[oid] = str(rel)
 
 # Every sorry in Proofs must have an obligation marker in the same file.
+# Search the comment-stripped text here too: the word "sorry" in a docstring
+# explaining a repaired/removed declaration is not an open proof obligation.
 for path in sorted((ROOT / "LnLean" / "Proofs").rglob("*.lean")):
     text = path.read_text(encoding="utf-8")
-    if SORRY.search(text) and not OBLIGATION.search(text):
+    code = strip_comments(text)
+    if SORRY.search(code) and not OBLIGATION.search(text):
         errors.append(f"{path.relative_to(ROOT)}: sorry without any OBLIGATION marker")
 
 for e in errors:

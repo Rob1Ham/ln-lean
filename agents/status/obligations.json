@@ -1,34 +1,27 @@
 {
-  "files": 96,
-  "obligations": 95,
+  "files": 128,
+  "obligations": 80,
   "catalog_obligations": 48,
-  "declarations": 3242,
-  "sorries": 15,
+  "declarations": 4135,
+  "sorries": 0,
   "by_domain": {
-    "Bitcoin": 4,
-    "Channel": 24,
-    "ModelHardening": 15,
-    "Routing": 4,
+    "Bitcoin": 3,
+    "Channel": 23,
+    "ModelHardening": 6,
+    "Routing": 1,
     "WaveD": 33,
-    "WaveE": 15
+    "WaveE": 14
   },
   "by_kind": {
-    "abbrev": 16,
-    "def": 769,
-    "inductive": 22,
-    "structure": 66,
-    "theorem": 2369
+    "abbrev": 18,
+    "def": 957,
+    "inductive": 34,
+    "structure": 98,
+    "theorem": 3028
   },
   "duplicate_ids": [],
   "catalog_duplicate_ids": [],
   "rows": [
-    {
-      "id": "LN-FUND-001",
-      "claim": "the stated claim is missing `p.WellFormed",
-      "domain": "Bitcoin",
-      "file": "LnLean/Proofs/Bitcoin/FundingProps.lean",
-      "line": 675
-    },
     {
       "id": "LN-SCRIPT-001",
       "claim": "The fixed-width four-byte little-endian push is injective on values below 2^32.",
@@ -212,13 +205,6 @@
       "line": 524
     },
     {
-      "id": "LN-CH-101",
-      "claim": "missing bridge: no `Step`/`update_add_htlc",
-      "domain": "Channel",
-      "file": "LnLean/Proofs/Channel/ReserveProps.lean",
-      "line": 601
-    },
-    {
       "id": "LN-WF-F01",
       "claim": "",
       "domain": "ModelHardening",
@@ -233,53 +219,11 @@
       "line": 19
     },
     {
-      "id": "LN-WF-F03",
-      "claim": "",
-      "domain": "ModelHardening",
-      "file": "LnLean/Proofs/ModelHardening/F03.lean",
-      "line": 447
-    },
-    {
-      "id": "LN-WF-F04",
-      "claim": "",
-      "domain": "ModelHardening",
-      "file": "LnLean/Proofs/ModelHardening/F04.lean",
-      "line": 136
-    },
-    {
-      "id": "LN-WF-F05",
-      "claim": "an accepted channel_update is signed by one of the two announced node ids of its channel (missing admission: the wave-A store never checks u.signingKey against the announcement for u.shortChannelId)",
-      "domain": "ModelHardening",
-      "file": "LnLean/Proofs/ModelHardening/F05.lean",
-      "line": 314
-    },
-    {
-      "id": "LN-WF-F06",
-      "claim": "",
-      "domain": "ModelHardening",
-      "file": "LnLean/Proofs/ModelHardening/F06.lean",
-      "line": 363
-    },
-    {
-      "id": "LN-WF-F07",
-      "claim": "every signature of an accepted gossip message is 64 bytes (missing admission: the abstract SigVerifier need not respect GossipSignature.Valid; see accepted_message_signatures_64_counterexample)",
-      "domain": "ModelHardening",
-      "file": "LnLean/Proofs/ModelHardening/F07.lean",
-      "line": 153
-    },
-    {
       "id": "LN-WF-F08",
       "claim": "",
       "domain": "ModelHardening",
       "file": "LnLean/Proofs/ModelHardening/F08.lean",
       "line": 88
-    },
-    {
-      "id": "LN-WF-F09",
-      "claim": "the model has no operation that adds the dust",
-      "domain": "ModelHardening",
-      "file": "LnLean/Proofs/ModelHardening/F09.lean",
-      "line": 470
     },
     {
       "id": "LN-WF-F11",
@@ -296,53 +240,11 @@
       "line": 90
     },
     {
-      "id": "LN-WF-F13",
-      "claim": "",
-      "domain": "ModelHardening",
-      "file": "LnLean/Proofs/ModelHardening/F13.lean",
-      "line": 264
-    },
-    {
-      "id": "LN-WF-F14",
-      "claim": "",
-      "domain": "ModelHardening",
-      "file": "LnLean/Proofs/ModelHardening/F14.lean",
-      "line": 179
-    },
-    {
-      "id": "LN-WF-F15",
-      "claim": "settlement reveals the stored preimage without",
-      "domain": "ModelHardening",
-      "file": "LnLean/Proofs/ModelHardening/F15.lean",
-      "line": 344
-    },
-    {
       "id": "LN-WF-F16",
       "claim": "",
       "domain": "ModelHardening",
       "file": "LnLean/Proofs/ModelHardening/F16.lean",
       "line": 308
-    },
-    {
-      "id": "LN-GOSSIP-001",
-      "claim": "an accepted channel_update is signed by one of the two announced node ids of its channel (missing admission: the store never checks u.signingKey against the announcement for u.shortChannelId)",
-      "domain": "Routing",
-      "file": "LnLean/Proofs/Routing/GossipProps.lean",
-      "line": 952
-    },
-    {
-      "id": "LN-GOSSIP-002",
-      "claim": "an accepted channel announcement has a positive capacity (missing admission: no check 0 < a.capacitySat before bindChannel returns some)",
-      "domain": "Routing",
-      "file": "LnLean/Proofs/Routing/GossipProps.lean",
-      "line": 1012
-    },
-    {
-      "id": "LN-GOSSIP-003",
-      "claim": "an accepted channel_update has a 64-byte signature (missing admission: SigVerifier may accept a signature whose bytes.size \u2260 64)",
-      "domain": "Routing",
-      "file": "LnLean/Proofs/Routing/GossipProps.lean",
-      "line": 1045
     },
     {
       "id": "LN-GRAPH-001",
@@ -384,14 +286,14 @@
       "claim": "",
       "domain": "WaveD",
       "file": "LnLean/Proofs/WaveD/D05.lean",
-      "line": 71
+      "line": 74
     },
     {
       "id": "LN-WD-D07",
       "claim": "",
       "domain": "WaveD",
       "file": "LnLean/Proofs/WaveD/D07.lean",
-      "line": 69
+      "line": 82
     },
     {
       "id": "LN-WD-D08",
@@ -552,7 +454,7 @@
       "claim": "",
       "domain": "WaveD",
       "file": "LnLean/Proofs/WaveD/D42.lean",
-      "line": 89
+      "line": 90
     },
     {
       "id": "LN-WD-D43",
@@ -601,7 +503,7 @@
       "claim": "",
       "domain": "WaveE",
       "file": "LnLean/Proofs/WaveE/E19.lean",
-      "line": 282
+      "line": 280
     },
     {
       "id": "LN-WE-E20",
@@ -665,13 +567,6 @@
       "domain": "WaveE",
       "file": "LnLean/Proofs/WaveE/E39.lean",
       "line": 58
-    },
-    {
-      "id": "LN-WE-E40",
-      "claim": "an accepted channel_update has a 64-byte signature (missing admission: SigVerifier may accept a signature whose bytes.size \u2260 64)",
-      "domain": "WaveE",
-      "file": "LnLean/Proofs/WaveE/E40.lean",
-      "line": 162
     },
     {
       "id": "LN-WE-E45",
@@ -773,16 +668,16 @@
     {
       "id": "LN-CR-004",
       "claim": "BigSize encoding and decoding are inverse on canonical encodings.",
-      "lean_target": "LnLean.Wire.BigSize.decode_encode",
+      "lean_target": "LnLean.Wire.decode_encode",
       "boltdoc": "BOLT 1 \u00a7Fundamental Types; BOLT 1 Appendix A",
       "anchor": "lightning/src/util/ser.rs:442",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "cryptoWire"
     },
     {
       "id": "LN-CR-005",
       "claim": "A TLV stream is strictly sorted by type and has no duplicate types.",
-      "lean_target": "LnLean.Wire.TLV.WellFormed",
+      "lean_target": "LnLean.Wire.TLVStream.WellFormed",
       "boltdoc": "BOLT 1 \u00a7Type-Length-Value Format",
       "anchor": "lightning/src/util/ser.rs:369",
       "status": "statementOnly",
@@ -848,7 +743,7 @@
       "lean_target": "LnLean.Channel.Reserve.bounds",
       "boltdoc": "BOLT 2 \u00a7Bounding exposure to trimmed in-flight HTLCs",
       "anchor": "lightning/src/ln/channel.rs:4223",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "channel"
     },
     {
@@ -920,7 +815,7 @@
       "lean_target": "LnLean.Protocol.Handshake.channel_ready_gate",
       "boltdoc": "BOLT 2 \u00a7The channel_ready Message",
       "anchor": "lightning/src/ln/channelmanager.rs:17614",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "protocol"
     },
     {
@@ -1037,7 +932,7 @@
       "lean_target": "LnLean.Payment.Invoice.payment_secret_match",
       "boltdoc": "BOLT 4 \u00a7Payload for the Last Node; BOLT 11 \u00a7Tagged Fields",
       "anchor": "lightning-invoice/src/lib.rs:1195; lightning/src/ln/onion_payment.rs:856",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "payment"
     },
     {
@@ -1064,7 +959,7 @@
       "lean_target": "LnLean.Payment.Keysend.preimage_binding",
       "boltdoc": "BOLT 4 \u00a7Payload for the Last Node (keysend extension)",
       "anchor": "lightning/src/ln/onion_payment.rs:454",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "payment"
     },
     {

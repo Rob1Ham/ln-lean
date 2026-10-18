@@ -24,35 +24,47 @@ declaration and its open marker, keeping the counterexample and conditional
 form. Do **not** turn a false claim into `True`, do not add axioms, and do not
 delete the negative result.
 
-- [ ] R01 — `LnLean/Proofs/WaveE/E40.lean` — `waveE_e40_accepted_update_signature_length`
-- [ ] R02 — `LnLean/Proofs/ModelHardening/F03.lean` — `committedUpdate_preserves_ledger_unconditional`
-- [ ] R03 — `LnLean/Proofs/ModelHardening/F04.lean` — `waveF_f04_legacy_unconditional_conservation`
-- [ ] R04 — `LnLean/Proofs/ModelHardening/F05.lean` — `waveF_f05_accepted_update_key_announced`
-- [ ] R05 — `LnLean/Proofs/ModelHardening/F06.lean` — `bindChannel_capacity_positive`
-- [ ] R06 — `LnLean/Proofs/ModelHardening/F07.lean` — `accepted_message_signatures_64`
-- [ ] R07 — `LnLean/Proofs/ModelHardening/F09.lean` — `dust_trim_preserves_conservation`
-- [ ] R08 — `LnLean/Proofs/ModelHardening/F13.lean` — `waveF_f13_unconditional_secret_match`
-- [ ] R09 — `LnLean/Proofs/ModelHardening/F14.lean` — `waveF_f14_running_total_bound`
-- [ ] R10 — `LnLean/Proofs/ModelHardening/F15.lean` — `unconditional_settle_reveals_committed`
+- [x] R01 — `LnLean/Proofs/WaveE/E40.lean` — `waveE_e40_accepted_update_signature_length`
+- [x] R02 — `LnLean/Proofs/ModelHardening/F03.lean` — `committedUpdate_preserves_ledger_unconditional`
+- [x] R03 — `LnLean/Proofs/ModelHardening/F04.lean` — `waveF_f04_legacy_unconditional_conservation`
+- [x] R04 — `LnLean/Proofs/ModelHardening/F05.lean` — `waveF_f05_accepted_update_key_announced`
+- [x] R05 — `LnLean/Proofs/ModelHardening/F06.lean` — `bindChannel_capacity_positive`
+- [x] R06 — `LnLean/Proofs/ModelHardening/F07.lean` — `accepted_message_signatures_64`
+- [x] R07 — `LnLean/Proofs/ModelHardening/F09.lean` — `dust_trim_preserves_conservation`
+- [x] R08 — `LnLean/Proofs/ModelHardening/F13.lean` — `waveF_f13_unconditional_secret_match`
+- [x] R09 — `LnLean/Proofs/ModelHardening/F14.lean` — `waveF_f14_running_total_bound`
+- [x] R10 — `LnLean/Proofs/ModelHardening/F15.lean` — `unconditional_settle_reveals_committed`
 
 ## R2 — Crypto model consistency
 
-- [ ] `M01` — remove the globally inconsistent `sha256_preimageResistant` field
+- [x] `M01` — remove the globally inconsistent `sha256_preimageResistant` field
   from `PrimitiveModel`; retain the 32-byte `CollisionResistant` assumption and
   the non-vacuous `preimageResistant_vacuous` negative theorem. Update
-  `rejectAllEcdsa` and all downstream uses. Result: `PrimitiveModel` is
-  inhabited, SHA-256 headlines are no longer vacuous, and no `sorry` is added.
+  `rejectAllEcdsa` and all downstream uses. Result: the contradictory field pair
+  is gone, `PrimitiveModel` is no longer forced uninhabited, SHA-256 headlines
+  are no longer vacuous, and no `sorry` is added.
+
+- [x] `M02` — remove the impossible global `hmac_prf` field from
+  `PrimitiveModel`; retain only `hmac_size`; prove `hmacPrf_vacuous`; replace
+  D07's global `HmacPrf` hypothesis with finite-message `HmacBindsOn`. Update
+  `rejectAllEcdsa`, `docs/HMAC-LIMITS.md`, and the C8 text in
+  `docs/ASSUMPTIONS.md`. No `sorry` or axiom is added.
+
+- [x] `CCR01` — remove the `CrossChannelRouting` elaboration blowup by
+  rewriting `lastAmount` as `(forwardAmounts path).getLastD 0` and proving
+  `backwardConserves_sender_eq_last_add_feeSum` by ordinary list induction.
+  Module RC 0 at ~1.7 GiB peak (previously 12–19 GiB / SIGKILL).
 
 ## R3 — Catalog mechanics
 
-- [ ] `K01` — add a source-level checker that resolves every catalog
+- [x] `K01` — add a source-level checker that resolves every catalog
   `leanTarget` exactly, rejects stale/missing names, and only marks a row
   `proved` when the exact declaration is a theorem/lemma with no `sorry` in its
   body. Keep `statementOnly` otherwise. Publish the candidate/decision table.
 
 ## R4 — Public `btc-lean` reference
 
-- [ ] `L01` — pin `refs/PINNED.md` and `docs/L1-PIN.md` to the public
+- [x] `L01` — pin `refs/PINNED.md` and `docs/L1-PIN.md` to the public
   `Rob1Ham/btc-lean` repository; record `main@4f5c4f8`; add
   `refs/btc-lean -> /home/ubuntu/btc-lean-public` as a read-only reference;
   audit the 87-file vendor/public diff and the public script model. Do not

@@ -20,15 +20,15 @@ currently needs that marker.
 | `LN-CR-001` | BOLT 2 §Adding an HTLC | `lightning/src/ln/channel.rs:8370` | `LnLean.Crypto.Hash.sha256` | statement-only |
 | `LN-CR-002` | BOLT 3 §Commitment Transaction Construction | `lightning/src/ln/chan_utils.rs:1450` | `LnLean.Crypto.Sig.ecdsaVerify` | statement-only |
 | `LN-CR-003` | BOLT 4 §Packet Structure | `lightning/src/ln/onion_payment.rs:505` | `LnLean.Crypto.Hash.hmacSha256` | statement-only |
-| `LN-CR-004` | BOLT 1 §Fundamental Types; BOLT 1 Appendix A | `lightning/src/util/ser.rs:442` | `LnLean.Wire.BigSize.decode_encode` | statement-only |
-| `LN-CR-005` | BOLT 1 §Type-Length-Value Format | `lightning/src/util/ser.rs:369` | `LnLean.Wire.TLV.WellFormed` | statement-only |
+| `LN-CR-004` | BOLT 1 §Fundamental Types; BOLT 1 Appendix A | `lightning/src/util/ser.rs:442` | `LnLean.Wire.decode_encode` | proved |
+| `LN-CR-005` | BOLT 1 §Type-Length-Value Format | `lightning/src/util/ser.rs:369` | `LnLean.Wire.TLVStream.WellFormed` | statement-only |
 | `LN-CR-006` | BOLT 1 §Lightning Message Format | `lightning/src/ln/peer_handler.rs:331` | `LnLean.Wire.Message.decode_length` | statement-only |
 | `LN-CH-001` | BOLT 3 §Commitment Transaction | `lightning/src/ln/chan_utils.rs:716` | `LnLean.Security.Ledger.step_conserves` | proved |
 | `LN-CH-002` | BOLT 3 §Commitment Transaction Outputs | `lightning/src/ln/chan_utils.rs:1908` | `LnLean.Channel.Commitment.outputs_nonnegative` | statement-only |
 | `LN-CH-003` | BOLT 3 §Transaction Output Ordering; BOLT 3 §Trimmed Outputs | `lightning/src/ln/chan_utils.rs:1985` | `LnLean.Channel.Commitment.output_ordering` | statement-only |
 | `LN-CH-004` | BOLT 2 §Committing Updates So Far | `lightning/src/ln/channel.rs:6270` | `LnLean.Security.advance_monotone` | proved |
 | `LN-CH-005` | BOLT 3 §Fees; BOLT 5 §Commitment Transaction | `lightning/src/ln/channel.rs:3721` | `LnLean.Channel.Fee.feeInsufficient` | statement-only |
-| `LN-CH-006` | BOLT 2 §Bounding exposure to trimmed in-flight HTLCs | `lightning/src/ln/channel.rs:4223` | `LnLean.Channel.Reserve.bounds` | statement-only |
+| `LN-CH-006` | BOLT 2 §Bounding exposure to trimmed in-flight HTLCs | `lightning/src/ln/channel.rs:4223` | `LnLean.Channel.Reserve.bounds` | proved |
 | `LN-HT-001` | BOLT 2 §Removing an HTLC | `lightning/src/ln/channel.rs:8640; lightning/src/ln/chan_utils.rs:841` | `LnLean.Security.HtlcRecord.fulfill_sound` | proved |
 | `LN-HT-002` | BOLT 3 §HTLC-Timeout and HTLC-Success Transactions | `lightning/src/ln/chan_utils.rs:875; lightning/src/ln/channel.rs:8671` | `LnLean.Security.HtlcRecord.fail_only_after_expiry` | proved |
 | `LN-HT-003` | BOLT 2 §Adding an HTLC | `lightning/src/ln/chan_utils.rs:716` | `LnLean.Channel.HTLC.amount_conservation` | statement-only |
@@ -36,7 +36,7 @@ currently needs that marker.
 | `LN-HT-005` | BOLT 3 §Per-commitment Secret Requirements | `lightning/src/ln/chan_utils.rs:518` | `LnLean.Security.revoked_commitment_is_old` | proved |
 | `LN-HT-006` | BOLT 5 §Revoked Transaction Close Handling | `lightning/src/ln/channel.rs:9471; lightning/src/chain/channelmonitor.rs:5079` | `LnLean.Security.breach_penalty_spends_both` | proved |
 | `LN-PR-001` | BOLT 2 §The open_channel Message | `lightning/src/ln/channelmanager.rs:17521` | `LnLean.Protocol.Handshake.open_bounds` | statement-only |
-| `LN-PR-002` | BOLT 2 §The channel_ready Message | `lightning/src/ln/channelmanager.rs:17614` | `LnLean.Protocol.Handshake.channel_ready_gate` | statement-only |
+| `LN-PR-002` | BOLT 2 §The channel_ready Message | `lightning/src/ln/channelmanager.rs:17614` | `LnLean.Protocol.Handshake.channel_ready_gate` | proved |
 | `LN-PR-003` | BOLT 2 §The funding_signed Message | `lightning/src/ln/channel.rs:2107` | `LnLean.Protocol.Handshake.funding_signed_valid` | statement-only |
 | `LN-PR-004` | BOLT 2 §Committing Updates So Far | `lightning/src/ln/channel.rs:2386; lightning/src/ln/channel.rs:6270` | `LnLean.Protocol.Messages.commitment_signed_covers` | statement-only |
 | `LN-PR-005` | BOLT 2 §Message Retransmission | `lightning/src/ln/channelmanager.rs:17831; lightning/src/ln/channel.rs:10826` | `LnLean.Protocol.Peer.reestablish_no_rollback` | statement-only |
@@ -49,10 +49,10 @@ currently needs that marker.
 | `LN-RT-006` | BOLT 7 §The channel_announcement Message | `lightning/src/routing/gossip.rs:515; lightning/src/routing/gossip.rs:1012` | `LnLean.Routing.Gossip.announcement_valid` | statement-only |
 | `LN-PM-001` | BOLT 11 §Tagged Fields | `lightning-invoice/src/lib.rs:1662; lightning-invoice/src/lib.rs:1473` | `LnLean.Security.Invoice.consistent_hash; LnLean.Security.Invoice.consistent_amount` | proved |
 | `LN-PM-002` | BOLT 11 §Data Part; BOLT 11 §Payer / Payee Interactions | `lightning-invoice/src/lib.rs:272; lightning-invoice/src/lib.rs:588` | `LnLean.Payment.Invoice.signature_valid` | statement-only |
-| `LN-PM-003` | BOLT 4 §Payload for the Last Node; BOLT 11 §Tagged Fields | `lightning-invoice/src/lib.rs:1195; lightning/src/ln/onion_payment.rs:856` | `LnLean.Payment.Invoice.payment_secret_match` | statement-only |
+| `LN-PM-003` | BOLT 4 §Payload for the Last Node; BOLT 11 §Tagged Fields | `lightning-invoice/src/lib.rs:1195; lightning/src/ln/onion_payment.rs:856` | `LnLean.Payment.Invoice.payment_secret_match` | proved |
 | `LN-PM-004` | BOLT 4 §Basic Multi-Part Payments | `lightning/src/ln/onion_payment.rs:856` | `LnLean.Security.MppPayment.settle_requires_sum` | proved |
 | `LN-PM-005` | BOLT 4 §Basic Multi-Part Payments | `lightning/src/ln/onion_payment.rs:857` | `LnLean.Payment.MPP.running_total_bound` | statement-only |
-| `LN-PM-006` | BOLT 4 §Payload for the Last Node (keysend extension) | `lightning/src/ln/onion_payment.rs:454` | `LnLean.Payment.Keysend.preimage_binding` | statement-only |
+| `LN-PM-006` | BOLT 4 §Payload for the Last Node (keysend extension) | `lightning/src/ln/onion_payment.rs:454` | `LnLean.Payment.Keysend.preimage_binding` | proved |
 | `LN-SEC-001` | BOLT 5 §Commitment Transaction | `lightning/src/chain/channelmonitor.rs:5079` | `LnLean.Security.L1Ledger.spend_preserves_noDoubleSpend` | proved |
 | `LN-SEC-002` | BOLT 3 §Commitment Transaction | `lightning/src/ln/chan_utils.rs:716` | `LnLean.Proofs.Conservation.global_conservation` | statement-only |
 | `LN-SEC-003` | BOLT 2 §Message Retransmission | `lightning/src/ln/channelmanager.rs:17831` | `LnLean.Proofs.Security.safety_async` | statement-only |

@@ -1,0 +1,2241 @@
+[0m
+> build · deepseek-v4.1-flash-1017
+I'll start by reading the protocol docs and understanding the current state.
+[0m→ [0mRead docs/AGENT-PROTOCOL.md 
+[0m→ [0mRead agents/TODO-REPAIR.md 
+> build · deepseek-v4.1-flash-1017
+[0m→ [0mRead docs/L1-PIN.md 
+[0m→ [0mRead docs/FINAL-STATUS.md 
+> build · deepseek-v4.1-flash-1017
+[0m→ [0mRead LnLean/Bitcoin/Funding.lean 
+[0m→ [0mRead LnLean/Bitcoin/Seam.lean 
+[0m→ [0mRead LnLean/Bitcoin/ScriptTemplates.lean 
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public && git log --oneline -1 && ls && ls spec/core && echo "---" && ls spec/core/Bitcoin
+4f5c4f8 btc-lean: Lean 4 model of Bitcoin consensus with row-level Core traceability
+CITATION.cff
+LICENSE
+Makefile
+README.md
+docs
+release
+research
+scripts
+spec
+Bitcoin
+Bitcoin.lean
+Main.lean
+Test
+lake-manifest.json
+lakefile.lean
+lean-toolchain
+---
+Activation
+Block
+Capstone
+Chain
+Consensus
+Conservation
+Crypto
+Data
+DataLaws
+Interpreter
+Invariants
+Ledger
+Numeric
+RuleAttr.lean
+Script
+Serialization
+SigHash
+TxValidation
+Wallet
+[0m$ [0mcd /home/ubuntu/ln-lean-pubbump && git status --short | head -20 && git log --oneline -3 && echo "---" && cat lakefile.lean && echo "---" && ls vendor/btc-lean-core && echo "---" && cat lean-toolchain
+?? agents/status/PUBBUMP.status
+a99fc09 [B01] start public btc-lean core compatibility spike
+07100f0 [LN-REPAIR] make agent-commit worktree-relative
+bf00d95 [R02] remove refuted committedUpdate_preserves_ledger_unconditional
+---
+import Lake
+open Lake DSL
+
+/-!
+# ln-lean — Lightning Network formal model and proof scaffold
+
+This workspace is intentionally split the same way as `btc-lean`:
+
+* `LnLean/`        — executable model, definitions, and theorem statements.
+* `vendor/btc-lean-core` — the existing Bitcoin L1 model, consumed as a
+  path dependency.  Lightning never re-defines Bitcoin transaction or
+  script primitives locally; it imports `Bitcoin.Data.*`.
+
+Dependency policy (see `docs/ASSUMPTIONS.md`):
+
+* No mathlib in the scaffold.  The model is plain Lean 4 so that a clean
+  `lake build` is fast and every agent can verify its own module.
+* `sorry` is permitted only in `LnLean/Proofs/**` and only alongside an
+  `-- OBLIGATION:` marker.  Model modules must be `sorry`-free.
+* No new `axiom` declarations, no `native_decide`, no `unsafe`.
+-/
+
+package «lnlean» where
+  description := "ln-lean: formal model and proof scaffold for the Lightning Network on top of btc-lean"
+
+require «core» from "vendor/btc-lean-core"
+
+@[default_target]
+lean_lib LnLean where
+  roots := #[`LnLean]
+---
+Bitcoin
+Bitcoin.lean
+Main.lean
+Test
+lake-manifest.json
+lakefile.lean
+lean-toolchain
+---
+leanprover/lean4:v4.35.0
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/ln-lean-pubbump && cat vendor/btc-lean-core/lakefile.lean && echo "=== lean-toolchain" && cat vendor/btc-lean-core/lean-toolchain && echo "=== manifest" && cat vendor/btc-lean-core/lake-manifest.json && echo "=== Bitcoin.lean head" && head -40 vendor/btc-lean-core/Bitcoin.lean
+import Lake
+open Lake DSL
+
+/-!
+# `core` package — the zero-dependency Bitcoin consensus specification
+
+Everything under namespace `Bitcoin.*` lives here. NO mathlib, NO FFI,
+`native_decide` only under `Test/`-scoped files (D2 ladder L1 gate).
+
+Ground truth: Bitcoin Core v32.99 @ `cce32b168` (traceability DB pin; B-track
+line anchors for B2–B5 were taken @ `cce32b168`, re-verify on rebase).
+-/
+
+package «core» where
+  description := "btc-lean core: executable, eventually-proven Bitcoin consensus rules"
+
+@[default_target]
+lean_lib Bitcoin where
+  -- Root module `Bitcoin.lean` transitively imports every submodule.
+
+@[default_target, test_driver]
+lean_exe btclean where
+  root := `Main
+
+/-- W17 capstone runner (compiled): the end-to-end anchor validation. -/
+lean_exe capstone where
+  root := `Test.Capstone.Run
+=== lean-toolchain
+leanprover/lean4:v4.35.0=== manifest
+{"version": "1.2.0",
+ "packagesDir": ".lake/packages",
+ "packages": [],
+ "name": "core",
+ "lakeDir": ".lake",
+ "fixedToolchain": false}
+=== Bitcoin.lean head
+import Bitcoin.RuleAttr
+import Bitcoin.Data.Basic
+import Bitcoin.Data.Script
+import Bitcoin.Data.Tx
+import Bitcoin.Script.Interp
+import Bitcoin.Consensus.TxCheck
+import Bitcoin.Chain.Basic
+import Bitcoin.Ledger.Utxo
+import Bitcoin.Serialization.Interface
+import Bitcoin.DataLaws.Interface
+import Bitcoin.Invariants.RC01
+import Bitcoin.Numeric.Interface
+import Bitcoin.Numeric.Tests
+import Bitcoin.Script.Parser.Interface
+import Bitcoin.Script.Tapscript.LeafVersion
+import Bitcoin.Activation.Interface
+import Bitcoin.Conservation.Interface
+import Bitcoin.Interpreter.Interface
+import Bitcoin.Interpreter.SigOps
+import Bitcoin.TxValidation.Interface
+import Bitcoin.SigHash.Interface
+import Bitcoin.Ledger.Interface
+import Bitcoin.Crypto.Schnorr.Interface
+import Bitcoin.Crypto.Seam.Interface
+import Bitcoin.Crypto.Seam.Der
+import Bitcoin.Crypto.Seam.Entry
+import Bitcoin.Crypto.Seam.Mock
+import Bitcoin.Crypto.Seam.Tests
+import Bitcoin.Crypto.Field.Interface
+import Bitcoin.Crypto.Curve.Mod
+import Bitcoin.Crypto.Curve.Secp
+import Bitcoin.Crypto.Curve.Interface
+import Bitcoin.Crypto.Ecdsa.Der
+import Bitcoin.Crypto.Ecdsa.Verify
+import Bitcoin.Crypto.Ecdsa.Interface
+import Bitcoin.Crypto.Taproot.TapTweak
+import Bitcoin.Crypto.Taproot.Sighash
+import Bitcoin.Crypto.Taproot.Tree
+import Bitcoin.Crypto.Taproot.Program
+import Bitcoin.Crypto.Taproot.Verify
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mexport PATH=/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/bin:$PATH; cd /home/ubuntu/ln-lean-pubbump/vendor/btc-lean-core && timeout 1800 lake build > /tmp/pubcore-build.log 2>&1; echo RC=$?; tail -30 /tmp/pubcore-build.log
+RC=0
+  String.m̵k̵o̲f̲L̲i̲s̲t̲
+warning: Bitcoin/Crypto/Seam/Tests.lean:164:11: `String.mk` has been deprecated: Use `String.ofList` instead
+
+Hint: Replace the deprecated name:
+  String.m̵k̵o̲f̲L̲i̲s̲t̲
+warning: Bitcoin/Crypto/Seam/Tests.lean:166:11: `String.mk` has been deprecated: Use `String.ofList` instead
+
+Hint: Replace the deprecated name:
+  String.m̵k̵o̲f̲L̲i̲s̲t̲
+warning: Bitcoin/Crypto/Seam/Tests.lean:167:37: `String.mk` has been deprecated: Use `String.ofList` instead
+
+Hint: Replace the deprecated name:
+  String.m̵k̵o̲f̲L̲i̲s̲t̲
+warning: Bitcoin/Crypto/Seam/Tests.lean:174:59: Variable name `ht` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _ht
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: Bitcoin/Crypto/Seam/Tests.lean:184:39: `String.mk` has been deprecated: Use `String.ofList` instead
+
+Hint: Replace the deprecated name:
+  String.m̵k̵o̲f̲L̲i̲s̲t̲
+✔ [139/145] Built Bitcoin.Crypto.Seam.Tests:c.o (111ms)
+✔ [140/145] Built Bitcoin (584ms)
+✔ [142/145] Built Bitcoin:c.o (62ms)
+✔ [143/145] Built Main (3.1s)
+✔ [144/145] Built Main:c.o (241ms)
+✔ [145/145] Built btclean:exe (459ms)
+Build completed successfully (145 jobs).
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mexport PATH=/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/bin:$PATH; cd /home/ubuntu/ln-lean-pubbump && flock -w 1800 /tmp/ln-build.lock lake build > /tmp/pubbump-build.log 2>&1; echo RC=$?; grep -n "error:" /tmp/pubbump-build.log | head -40
+RC=0
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/ln-lean-pubbump && tail -20 /tmp/pubbump-build.log && echo "===" && grep -c "Built" /tmp/pubbump-build.log; grep -n "Built LnLean.Bitcoin" /tmp/pubbump-build.log | head; echo "==="; ls -la .lake/build/lib/lean/LnLean/Bitcoin/ 2>/dev/null | head; ls -la .lake/build/lib/lean/Bitcoin/Data/ 2>/dev/null | head
+✔ [151/170] Built LnLean.Proofs.ModelHardening.F01 (713ms)
+✔ [152/170] Built LnLean.Proofs.PhaseC2.FundingBridge (719ms)
+✔ [153/170] Built LnLean.Proofs.WaveD.D36 (4.3s)
+✔ [154/170] Built LnLean.Proofs.ModelHardening.F02 (14s)
+✔ [155/170] Built LnLean.Proofs.Common (612ms)
+✔ [156/170] Built LnLean.Proofs.PhaseC2.PenaltyBridge (733ms)
+✔ [157/170] Built LnLean.Proofs.PhaseC3.ConformanceVectors (774ms)
+✔ [158/170] Built LnLean.Proofs.PhaseC3.EndToEndConservation (846ms)
+✔ [159/170] Built LnLean.Proofs.PhaseC3.OnionError (860ms)
+✔ [160/170] Built LnLean.Proofs.PhaseC3.WatchtowerBreach (795ms)
+✔ [161/170] Built LnLean.Proofs.PhaseC2.HTLCBridge (934ms)
+✔ [162/170] Built LnLean.Proofs.PhaseC3.CloseConservation (943ms)
+✔ [163/170] Built LnLean.Proofs.PhaseC3.SecurityGame (946ms)
+✔ [164/170] Built LnLean.Proofs.PhaseC3.FeeWeightDust (970ms)
+✔ [165/170] Built LnLean.Proofs.PhaseC3.PersistenceRecovery (970ms)
+✔ [166/170] Built LnLean.Proofs.PhaseC3.InvoiceParser (1.1s)
+✔ [167/170] Built LnLean.Proofs.PhaseC3.WatchtowerLiveness (748ms)
+✔ [168/170] Built LnLean.Proofs.PhaseC3.CrossChannelRouting (106s)
+✔ [169/170] Built LnLean (624ms)
+Build completed successfully (170 jobs).
+===
+163
+2:✔ [8/170] Built LnLean.Bitcoin.Seam (735ms)
+8:✔ [14/170] Built LnLean.Bitcoin.Funding (832ms)
+15:✔ [21/170] Built LnLean.Bitcoin.ScriptTemplates (981ms)
+28:✔ [34/170] Built LnLean.Bitcoin.Laws (1.1s)
+===
+total 1492
+drwxrwxr-x  2 ubuntu ubuntu   4096 Oct 18 01:57 .
+drwxrwxr-x 12 ubuntu ubuntu   4096 Oct 18 01:57 ..
+-rw-rw-r--  1 ubuntu ubuntu  22299 Oct 18 01:57 Funding.ilean
+-rw-rw-r--  1 ubuntu ubuntu     16 Oct 18 01:57 Funding.ilean.hash
+-rw-rw-r--  1 ubuntu ubuntu 337608 Oct 18 01:57 Funding.olean
+-rw-rw-r--  1 ubuntu ubuntu     16 Oct 18 01:57 Funding.olean.hash
+-rw-rw-r--  1 ubuntu ubuntu   2292 Oct 18 01:57 Funding.trace
+-rw-rw-r--  1 ubuntu ubuntu  13906 Oct 18 01:57 Laws.ilean
+-rw-rw-r--  1 ubuntu ubuntu     16 Oct 18 01:57 Laws.ilean.hash
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/ln-lean-pubbump && ls .lake/build/lib/lean/Bitcoin/Interpreter/ 2>/dev/null | head && echo "===" && ls .lake/build/lib/lean/Bitcoin/Data/ | head -20 && echo "=== config" && cat .lake/lakefile.olean.hash 2>/dev/null; ls .lake/build/lib/lean/Bitcoin/Data/Script.olean 2>/dev/null && echo present
+===
+ls: cannot access '.lake/build/lib/lean/Bitcoin/Data/': No such file or directory
+=== config
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && wc -l Bitcoin/Data/Script.lean Bitcoin/Interpreter/Defs.lean Bitcoin/Interpreter/Rules.lean Bitcoin/Interpreter/SigOps.lean Bitcoin/Interpreter/Hashes.lean Bitcoin/Interpreter/Interface.lean Bitcoin/TxValidation/*.lean Bitcoin/SigHash/*.lean
+90 Bitcoin/Data/Script.lean
+  1729 Bitcoin/Interpreter/Defs.lean
+   775 Bitcoin/Interpreter/Rules.lean
+   272 Bitcoin/Interpreter/SigOps.lean
+   240 Bitcoin/Interpreter/Hashes.lean
+   127 Bitcoin/Interpreter/Interface.lean
+   655 Bitcoin/TxValidation/Full.lean
+  1399 Bitcoin/TxValidation/Interface.lean
+   622 Bitcoin/TxValidation/LocktimeSigOps.lean
+   658 Bitcoin/TxValidation/Mempool.lean
+   525 Bitcoin/TxValidation/ScriptExecCache.lean
+   562 Bitcoin/TxValidation/SigOpsCost.lean
+   341 Bitcoin/SigHash/Digest.lean
+   193 Bitcoin/SigHash/Interface.lean
+   709 Bitcoin/SigHash/Ops.lean
+   484 Bitcoin/SigHash/Theorems.lean
+  9381 total
+[0m$ [0mcd /home/ubuntu/ln-lean-pubbump && grep -rn "sorry" LnLean --include=*.lean | head -30; echo "count:"; grep -rn "\bsorry\b" LnLean --include=*.lean | wc -l
+LnLean/Routing/Laws.lean:28:Every theorem below is proved without `sorry`, axioms, `native_decide`,
+LnLean/Proofs/ModelHardening/F13.lean:257:rather than retained with an open `sorry`; matching is available only in the
+LnLean/Proofs/PhaseC2/HTLCBridge.lean:24:`HTLCSpendBridge` (obligation `PC2-HTLC-001`).  No `sorry` and no `axiom`
+LnLean/Proofs/WaveD/D38.lean:42:Every theorem is proved without `sorry`, `axiom`, `admit`, `native_decide`,
+LnLean/Proofs/WaveD/D43.lean:34:No `sorry`, no axiom, no `native_decide`.
+LnLean/Proofs/WaveD/D46.lean:19:in two forms, both proved here without `sorry`:
+LnLean/Proofs/WaveD/D27.lean:46:No `sorry`.
+LnLean/Proofs/WaveD/D23.lean:50:Everything here is proved without `sorry`, `axiom`, `admit`,
+LnLean/Proofs/WaveD/D36.lean:42:`sorry`.
+LnLean/Proofs/WaveD/D08.lean:39:No `sorry`, no new axioms, no Mathlib.
+LnLean/Proofs/WaveD/D44.lean:55:No `sorry`; the only added hypotheses are the wire-size hypotheses
+LnLean/Proofs/WaveE/E40.lean:167:  sorry
+LnLean/Proofs/WaveE/E48.lean:69:No `sorry`, no new axiom, no Mathlib.
+LnLean/Proofs/WaveE/E31.lean:168:hash.  This is a checked counterexample, not a `sorry`, and it is why
+LnLean/Proofs/WaveE/E33.lean:56:(`handle_channel_reestablish`).  No `sorry`, `axiom`, `admit`, `native_decide`,
+LnLean/Proofs/WaveE/E45.lean:38:No `sorry` is used.
+count:
+16
+> build · deepseek-v4.1-flash-1017
+[0m→ [0mRead /home/ubuntu/btc-lean-public/spec/core/Bitcoin/Interpreter/Interface.lean 
+[0m→ [0mRead /home/ubuntu/btc-lean-public/spec/core/Bitcoin/Data/Script.lean 
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -rn "def verifyScriptFull\|inductive VerifyResult\|def checkMultiSig\|CheckMultiSig\|checkmultisig\|opCheckMultiSig" Bitcoin/Interpreter/*.lean | head -40
+Bitcoin/Interpreter/Defs.lean:171:  | tapscriptCheckMultiSig -- SCRIPT_ERR_TAPSCRIPT_CHECKMULTISIG
+Bitcoin/Interpreter/Defs.lean:722:the `.tapscriptCheckMultiSig` path in `stepBody`, SCR-159/160 the
+Bitcoin/Interpreter/Defs.lean:1039:    if ctx.sv = .tapscript then .error .tapscriptCheckMultiSig
+Bitcoin/Interpreter/Defs.lean:1305:def verifyScriptFull (fuel : Nat) (flags : ScriptFlags) (pol : PolicyFlags)
+Bitcoin/Interpreter/SigOps.lean:57:def isCheckMultiSigWire (w : Nat) : Bool := w = 0xae ∨ w = 0xaf
+Bitcoin/Interpreter/SigOps.lean:71:  else if isCheckMultiSigWire op.wire then
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -n "checkMultiSig\|CheckMultiSig\|multisig\|MultiSig" Bitcoin/Interpreter/Defs.lean | head -40
+140:  | checkMultiSigVerify    -- SCRIPT_ERR_CHECKMULTISIGVERIFY
+171:  | tapscriptCheckMultiSig -- SCRIPT_ERR_TAPSCRIPT_CHECKMULTISIG
+722:the `.tapscriptCheckMultiSig` path in `stepBody`, SCR-159/160 the
+1028:      checkMultiSig ctx w st
+1038:  checkMultiSig (ctx : Ctx) (w : Nat) (st : State) : Except ExecError State :=
+1039:    if ctx.sv = .tapscript then .error .tapscriptCheckMultiSig
+1090:                            else .error .checkMultiSigVerify
+> build · deepseek-v4.1-flash-1017
+[0m→ [0mRead /home/ubuntu/btc-lean-public/spec/core/Bitcoin/Interpreter/Defs.lean [90m[offset=960, limit=420][0m
+> build · deepseek-v4.1-flash-1017
+[0m→ [0mRead /home/ubuntu/btc-lean-public/spec/core/Bitcoin/Interpreter/Defs.lean [90m[limit=120, offset=1380][0m
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && sed -n '1,120p' Bitcoin/Script/Parser/Defs.lean
+import Bitcoin.Data.Basic
+import Bitcoin.Data.Script
+import Bitcoin.RuleAttr
+
+/-!
+# Bitcoin.Script.Parser — definitions and proof core (W05)
+
+Total bytes→AST parser over the FULL 0x00–0xff opcode table (Core
+`GetScriptOp`, script.cpp:313-363 @ `cce32b168`), the roundtrip printer
+(canonical push encoding — the inverse of `CheckMinimalPush`'s
+canonical forms, script.cpp:373-396), and the parse-level
+opcode-counting hook for W09's 201-opcode budget
+(SCR-022/023/024/025).
+
+Design notes (C1 gotchas honored):
+
+* No `ByteArray.toList` anywhere in executable code; the parser walks
+  the `ByteArray` by index (`getOpt`) with explicit fuel, structural
+  on the fuel argument, so it kernel-reduces under `decide`.
+* Slicing uses `ByteArray.extract` (core lemmas `extract_append_eq_right`,
+  `extract_append_size_add`, `extract_zero_size` make the shift lemmas
+  one-liners).
+* All proofs are axiom-free; `Test/Script/Parser/Tests` pins the axiom
+  footprint with `#guard_msgs in #print axioms`.
+
+**`pushNum` encoding convention (AST frozen by W01, convention pinned
+here):** `pushNum n` for `1 ≤ n ≤ 16` is `OP_n` (wire `0x50+n`);
+`pushNum 0` is `OP_1NEGATE` (wire `0x4f`, pushes `0x81` = ScriptNum
+−1; `Nat` cannot carry −1). `OP_0` is `pushBytes ∅` per the interface
+comment. The parser only ever produces `pushNum n` with `n ≤ 16`
+(`opcodeWF` of every parsed opcode). `OP_RESERVED` (0x50) is
+`op ⟨0x50⟩`, not a push — matching `GetScriptOp` (0x50 > OP_PUSHDATA4
+reads no data).
+-/
+
+namespace Bitcoin.Script.Parser
+
+open Bitcoin.Data
+
+theorem UInt8_toNat_lt_256 (c : UInt8) : c.toNat < 256 := by
+  have := UInt8.toNat_lt c
+  exact Nat.lt_of_lt_of_le this (by decide)
+
+/-! ## The frozen opcode AST and constants -/
+
+/-- The full opcode model: pushes carry their payload; every non-push
+byte value 0x00-0xff (OP_0 and OP_1..OP_16 are push-shaped but kept as
+`pushNum` for interpreter ergonomics) is a `op` carrying its exact byte.
+W05 attaches the consensus semantics (enabled/disabled, flags) to this
+representation. -/
+inductive Opcode where
+  | pushBytes (data : ByteArray)   -- OP_0 (empty), OP_1..OP_75 direct, PUSHDATA1/2/4
+  | pushNum (n : Nat)              -- OP_1NEGATE (0x4f) → -1, OP_1..OP_16 (0x51..0x60) → 1..16
+  | op (code : Fin 256)            -- every other opcode, by its wire byte value
+deriving Repr, DecidableEq, BEq
+
+/-- The 15 disabled opcodes (B2: fail even in unexecuted IF branches;
+CVE-2010-5137): OP_CAT 0x7e, OP_SUBSTR 0x7f, OP_LEFT 0x80, OP_RIGHT 0x81,
+OP_INVERT 0x83, OP_AND 0x84, OP_OR 0x85, OP_XOR 0x86, OP_2MUL 0x8d,
+OP_2DIV 0x8e, OP_MUL 0x95, OP_DIV 0x96, OP_MOD 0x97, OP_LSHIFT 0x98,
+OP_RSHIFT 0x9a. -/
+def isDisabled (c : Fin 256) : Bool :=
+  c.toNat ∈ [0x7e, 0x7f, 0x80, 0x81, 0x83, 0x84, 0x85, 0x86,
+             0x8d, 0x8e, 0x95, 0x96, 0x97, 0x98, 0x9a]
+
+/-- MAX_SCRIPT_ELEMENT_SIZE (script.h): a single push payload ≤ 520. -/
+def MAX_SCRIPT_ELEMENT_SIZE : Nat := 520
+
+/-- Well-formedness for roundtripping: exactly the opcodes the printer
+can re-emit byte-faithfully. The parser emits `pushNum n` only with
+`n ≤ 16`, never emits `op` below 0x51 except OP_RESERVED (0x50), and
+its direct/PUSHDATA1 payloads are ≤ 75 / ≤ 255 bytes; the 520 bound is
+the consensus element limit (SCR-045), enforced by the interpreter, not
+the parser — so `opcodeWF` is a hypothesis of the roundtrip theorems,
+not a consequence of parsing. -/
+def opcodeWF (o : Opcode) : Prop :=
+  match o with
+  | .pushBytes d => d.size ≤ MAX_SCRIPT_ELEMENT_SIZE
+  | .pushNum n => n ≤ 16
+  | .op c => c.toNat = 0x50 ∨ 0x61 ≤ c.toNat
+
+/-! ## Bounded byte access -/
+
+/-- `b[i]?` spelled out so the proofs stay in `if`-form. Definitional
+to the `GetElem?` instance (`getOpt_eq_getElem?` is `rfl`). -/
+def getOpt (b : ByteArray) (i : Nat) : Option UInt8 :=
+  if h : i < b.size then some b[i] else none
+
+theorem getOpt_eq_getElem? (b : ByteArray) (i : Nat) : getOpt b i = b[i]? := rfl
+
+theorem getOpt_lt {b : ByteArray} {i : Nat} (h : i < b.size) :
+    getOpt b i = some b[i] := by
+  simp [getOpt, h]
+
+theorem getOpt_ge {b : ByteArray} {i : Nat} (h : b.size ≤ i) :
+    getOpt b i = none := by
+  simp [getOpt, h]
+
+theorem getOpt_some_lt {b : ByteArray} {i : Nat} {x : UInt8}
+    (h : getOpt b i = some x) : i < b.size := by
+  unfold getOpt at h
+  split at h
+  · simp only [Option.some.injEq] at h; omega
+  · simp at h
+
+theorem getOpt_some_eq {b : ByteArray} {i : Nat} {x : UInt8}
+    (h : getOpt b i = some x) : b[i]'(getOpt_some_lt h) = x := by
+  unfold getOpt at h
+  split at h
+  · simp only [Option.some.injEq] at h; exact h
+  · simp at h
+
+theorem getOpt_append_lt {pre q : ByteArray} {i : Nat} (h : i < pre.size) :
+    getOpt (pre ++ q) i = getOpt pre i := by
+  have hsz : i < (pre ++ q).size := by rw [ByteArray.size_append]; omega
+  rw [getOpt, getOpt, dif_pos hsz, dif_pos h, ByteArray.getElem_append_left h]
+
+theorem getOpt_append_ge {pre q : ByteArray} {i : Nat} (h : pre.size ≤ i) :
+    getOpt (pre ++ q) i = getOpt q (i - pre.size) := by
+  simp only [getOpt, ByteArray.size_append]
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -rn "def hashSha256\|def isWitnessProgram\|def parseWire\|def pushBytesWire\|def serializeOpcodes\|inductive Opcode\|structure WireOp\|def opSuccessScan" Bitcoin/Script Bitcoin/Interpreter | head -30
+Bitcoin/Script/Parser/Defs.lean:51:inductive Opcode where
+Bitcoin/Script/Parser/Defs.lean:377:def pushBytesWire (d : ByteArray) : ByteArray := (lenBytes d.size).toByteArray ++ d
+Bitcoin/Script/Parser/Defs.lean:389:def serializeOpcodes : List Opcode → ByteArray :=
+Bitcoin/Interpreter/Defs.lean:393:structure WireOp where
+Bitcoin/Interpreter/Defs.lean:402:def parseWireFrom : Nat → ByteArray → Nat → Option (List WireOp)
+Bitcoin/Interpreter/Defs.lean:412:def parseWire (b : ByteArray) : Option (List WireOp) := parseWireFrom (b.size + 1) b 0
+Bitcoin/Interpreter/Defs.lean:460:def opSuccessScanFrom : Nat → ByteArray → Nat → Bool
+Bitcoin/Interpreter/Defs.lean:473:def opSuccessScan (b : ByteArray) : Bool := opSuccessScanFrom (b.size + 1) b 0
+Bitcoin/Interpreter/Defs.lean:491:def isWitnessProgram (b : ByteArray) : Option (Nat × ByteArray) :=
+Bitcoin/Interpreter/Hashes.lean:125:def hashSha256 (data : ByteArray) : ByteArray :=
+Bitcoin/Interpreter/Hashes.lean:238:def hashSha256d (data : ByteArray) : ByteArray := hashSha256 (hashSha256 data)
+> build · deepseek-v4.1-flash-1017
+[0m→ [0mRead /home/ubuntu/btc-lean-public/spec/core/Bitcoin/Interpreter/Defs.lean [90m[limit=120, offset=380][0m
+[0m→ [0mRead /home/ubuntu/btc-lean-public/spec/core/Bitcoin/Interpreter/Hashes.lean [90m[limit=130, offset=110][0m
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -rn "theorem.*parseWire\|lemma.*parseWire\|@\[simp\].*parseWire\|parseWire_from\|parseWire_cons" Bitcoin Interpreter Test 2>/dev/null | head -40
+(no output)
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -rn "parseWire.*append\|getOp.*append\|parseWireFrom.*append\|isWitnessProgram.*p2wsh\|witnessProgram.*p2wsh\|verifyWitnessProgram.*hashSha256" Bitcoin | head -40
+Bitcoin/SigHash/Ops.lean:457:theorem getOpAt_append_some {b c : Bytes} {j v len : Nat}
+Bitcoin/SigHash/Ops.lean:469:theorem getOpAt_append_none {b c : Bytes} {j : Nat}
+Bitcoin/SigHash/Ops.lean:564:        (getOpAt_append_none hnone)
+Bitcoin/SigHash/Ops.lean:569:        (getOpAt_append_some hs) hop ?_
+Bitcoin/Script/Parser/Defs.lean:113:theorem getOpt_append_lt {pre q : ByteArray} {i : Nat} (h : i < pre.size) :
+Bitcoin/Script/Parser/Defs.lean:116:  rw [getOpt, getOpt, dif_pos hsz, dif_pos h, ByteArray.getElem_append_left h]
+Bitcoin/Script/Parser/Defs.lean:118:theorem getOpt_append_ge {pre q : ByteArray} {i : Nat} (h : pre.size ≤ i) :
+Bitcoin/Script/Parser/Defs.lean:120:  simp only [getOpt, ByteArray.size_append]
+Bitcoin/Script/Parser/Defs.lean:348:/-- `getOp` commutes with appending a prefix (all its reads shift). -/
+Bitcoin/Script/Parser/Defs.lean:353:  rw [getOpt_append_ge (show pre.size ≤ pre.size + j by omega)]
+Bitcoin/Script/Parser/Defs.lean:435:  rw [getOpt_lt (by rw [ByteArray.size_append, h1]; omega)]
+Bitcoin/Script/Parser/Defs.lean:449:  rw [h2, getOpt_lt (by rw [ByteArray.size_append, ByteArray.size_append, h1]; omega)]
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && sed -n '300,470p' Bitcoin/Script/Parser/Defs.lean
+theorem getOp_lt {b : ByteArray} {i : Nat} {o : Opcode} {i' : Nat}
+    (h : getOp b i = some (o, i')) : i < b.size := by
+  unfold getOp at h
+  split at h
+  · simp at h
+  · exact getOpt_some_lt (by assumption)
+
+theorem getOp_spec {b : ByteArray} {i : Nat} {o : Opcode} {i' : Nat}
+    (h : getOp b i = some (o, i')) :
+    i < i' ∧ i' ≤ b.size ∧ opcodeShape o := by
+  unfold getOp at h
+  split at h
+  · simp at h
+  · rename_i c hc
+    exact getOpAux_spec h (getOpt_some_lt hc)
+
+theorem getOpAux_none {b : ByteArray} {i : Nat} {c : UInt8}
+    (hc : getOpt b i = none) : getOp b i = none := by
+  unfold getOp; rw [hc]
+
+theorem getOpAux_some {b : ByteArray} {i : Nat} {c : UInt8}
+    (hc : getOpt b i = some c) : getOp b i = getOpAux b i c := by
+  unfold getOp; rw [hc]
+
+theorem mapIfDist {α β : Type} (f : α → β) (c : Prop) [inst : Decidable c]
+    (x y : Option α) :
+    Option.map f (if c then x else y) = if c then Option.map f x else Option.map f y := by
+  by_cases h : c <;> simp [h]
+
+theorem mapBindDist {α β γ : Type} (h : β → γ) (x : Option α) (g : α → Option β) :
+    @Option.map β γ h (@Option.bind α β x g)
+      = @Option.bind α γ x (fun a => @Option.map β γ h (g a)) := by
+  cases x <;> rfl
+
+theorem mapMapPair {α : Type} (s : Nat) (f : α → Opcode × Nat) (X : Option α) :
+    Option.map (fun p : Opcode × Nat => (p.1, s + p.2)) (Option.map f X)
+      = Option.map (fun a => ((f a).1, s + (f a).2)) X := by
+  cases X <;> simp
+
+/-- `getOpAux` under a prefix shift: same node, next index shifted by
+`pre.size`. -/
+theorem getOpAux_map_shift (pre q : ByteArray) (j : Nat) (c : UInt8) :
+    getOpAux (pre ++ q) (pre.size + j) c =
+      (getOpAux q j c).map (fun p => (p.1, pre.size + p.2)) := by
+  unfold getOpAux
+  simp only [Nat.add_assoc, sliceOpt_shift, readLE_shift, mapIfDist, mapBindDist,
+             mapMapPair, Option.map_some]
+
+/-- `getOp` commutes with appending a prefix (all its reads shift). -/
+theorem getOp_shift (pre q : ByteArray) (j : Nat) :
+    getOp (pre ++ q) (pre.size + j) =
+      (getOp q j).map (fun p => (p.1, pre.size + p.2)) := by
+  unfold getOp
+  rw [getOpt_append_ge (show pre.size ≤ pre.size + j by omega)]
+  simp only [Nat.add_sub_cancel_left]
+  cases h : getOpt q j with
+  | none => rfl
+  | some c => exact getOpAux_map_shift pre q j c
+
+/-! ## The printer (canonical push encoding, `CheckMinimalPush`) -/
+
+/-- Byte encodings of small naturals round-trip through `UInt8`. -/
+theorem toUInt8_toNat (n : Nat) : n.toUInt8.toNat = n % 256 := rfl
+
+/-- The length-prefix bytes of a push payload (minimal encoding:
+1 byte for ≤ 75, `OP_PUSHDATA1` + 1 for ≤ 255, `OP_PUSHDATA2` + 2 for
+≤ 65535, `OP_PUSHDATA4` + 4 beyond). -/
+def lenBytes : Nat → List UInt8
+  | 0 => [0x00]
+  | n+1 =>
+    if n + 1 ≤ 75 then [(n + 1).toUInt8]
+    else if n + 1 ≤ 0xff then [0x4c, (n + 1).toUInt8]
+    else if n + 1 ≤ 0xffff then [0x4d, ((n + 1) % 256).toUInt8, ((n + 1) / 256).toUInt8]
+    else [0x4e, ((n + 1) % 256).toUInt8, ((n + 1) / 256 % 256).toUInt8,
+             ((n + 1) / 65536 % 256).toUInt8, ((n + 1) / 16777216).toUInt8]
+
+/-- Serialize a push: length prefix then payload. -/
+def pushBytesWire (d : ByteArray) : ByteArray := (lenBytes d.size).toByteArray ++ d
+
+/-- Serialize one opcode (canonical minimal push encoding — the exact
+inverse of the canonical forms accepted by `CheckMinimalPush`,
+script.cpp:373-396). For `pushNum n > 16` the wire byte `0x50 + n`
+wraps modulo 256; only `n ≤ 16` (`opcodeWF`) round-trips. -/
+def serializeOpcode : Opcode → ByteArray
+  | .pushBytes d => pushBytesWire d
+  | .pushNum n => List.toByteArray [if n = 0 then 0x4f else (0x50 + n).toUInt8]
+  | .op c => List.toByteArray [c.toNat.toUInt8]
+
+/-- Serialize an opcode list; `foldr` so the head equation is `rfl`. -/
+def serializeOpcodes : List Opcode → ByteArray :=
+  fun ops => ops.foldr (fun o acc => serializeOpcode o ++ acc) ByteArray.empty
+
+theorem serializeOpcodes_cons (o : Opcode) (ops : List Opcode) :
+    serializeOpcodes (o :: ops) = serializeOpcode o ++ serializeOpcodes ops := rfl
+
+theorem serializeOpcode_pushNum (n : Nat) : serializeOpcode (.pushNum n) =
+    List.toByteArray [if n = 0 then 0x4f else (0x50 + n).toUInt8] := rfl
+
+theorem serializeOpcode_op (c : Fin 256) :
+    serializeOpcode (.op c) = List.toByteArray [c.toNat.toUInt8] := rfl
+
+theorem serializeOpcode_pushBytes (d : ByteArray) :
+    serializeOpcode (.pushBytes d) = (lenBytes d.size).toByteArray ++ d := rfl
+
+theorem lenBytes_pos (n : Nat) : 1 ≤ (lenBytes n).length := by
+  cases n with
+  | zero => simp [lenBytes]
+  | succ m =>
+    simp only [lenBytes]
+    split <;> (first | split | skip) <;> (first | split | skip) <;> simp
+
+theorem serializeOpcode_size (o : Opcode) : 1 ≤ (serializeOpcode o).size := by
+  cases o with
+  | pushBytes d =>
+    unfold serializeOpcode pushBytesWire
+    rw [ByteArray.size_append, List.size_toByteArray]
+    have h := lenBytes_pos d.size
+    omega
+  | pushNum n => simp [serializeOpcode, List.size_toByteArray]
+  | op c => simp [serializeOpcode, List.size_toByteArray]
+
+/-- The payload of `a ++ c` starts right after `a`. -/
+theorem extract_after_full (a c : ByteArray) :
+    (a ++ c).extract a.size (a.size + c.size) = c :=
+  ByteArray.extract_append_eq_right rfl rfl
+
+/-- First byte of `[x].toByteArray ++ r` is `x`. -/
+theorem getElem_append_toByteArray_cons {x : UInt8} {r : ByteArray}
+    (h : 0 < (List.toByteArray [x] ++ r).size) :
+    (List.toByteArray [x] ++ r)[0]'h = x := by
+  simp
+
+theorem getOpt_toByteArray_zero {x : UInt8} {r : ByteArray} :
+    getOpt (List.toByteArray [x] ++ r) 0 = some x := by
+  have h1 : (List.toByteArray [x]).size = 1 := by simp [List.size_toByteArray]
+  rw [getOpt_lt (by rw [ByteArray.size_append, h1]; omega)]
+  simp
+
+theorem getOp_toByteArray_zero {x : UInt8} {r : ByteArray} :
+    getOp (List.toByteArray [x] ++ r) 0 = getOpAux (List.toByteArray [x] ++ r) 0 x :=
+  getOpAux_some getOpt_toByteArray_zero
+
+/-- Head-byte access for a multi-byte `toByteArray` prefix: the first
+opcode byte of `(x :: l).toByteArray ++ r` is `x`. -/
+theorem getOpt_toByteArray_cons0 {x : UInt8} {l : List UInt8} {r : ByteArray} :
+    getOpt (List.toByteArray (x :: l) ++ r) 0 = some x := by
+  have h1 : (List.toByteArray [x]).size = 1 := by simp [List.size_toByteArray]
+  have h2 : List.toByteArray (x :: l) = List.toByteArray [x] ++ List.toByteArray l := by
+    rw [show x :: l = ([x] ++ l : List UInt8) from rfl, List.toByteArray_append]
+  rw [h2, getOpt_lt (by rw [ByteArray.size_append, ByteArray.size_append, h1]; omega)]
+  rw [ByteArray.getElem_append_left
+      (a := List.toByteArray [x] ++ List.toByteArray l)
+      (by rw [ByteArray.size_append, h1]; omega)]
+  rw [getElem_append_toByteArray_cons (by rw [ByteArray.size_append, h1]; omega)]
+
+theorem getOp_toByteArray_cons0 {x : UInt8} {l : List UInt8} {r : ByteArray} :
+    getOp (List.toByteArray (x :: l) ++ r) 0 =
+      getOpAux (List.toByteArray (x :: l) ++ r) 0 x :=
+  getOpAux_some getOpt_toByteArray_cons0
+
+/-- Dropping the first byte of a 2-byte `toByteArray`. -/
+theorem toByteArray_tail2 (x y : UInt8) :
+    (List.toByteArray [x, y]).extract 1 2 = List.toByteArray [y] := by
+  have h2 : List.toByteArray [x, y] = List.toByteArray [x] ++ List.toByteArray [y] := by
+    rw [show x :: [y] = ([x] ++ [y] : List UInt8) from rfl, List.toByteArray_append]
+  have h1 : (List.toByteArray [x]).size = 1 := by simp [List.size_toByteArray]
+  have hB : (List.toByteArray [y]).size = 1 := by simp [List.size_toByteArray]
+  rw [h2, ByteArray.extract_append,
+      show 1 - (List.toByteArray [x]).size = 0 from by rw [h1],
+      show 2 - (List.toByteArray [x]).size = 1 from by rw [h1],
+      show (List.toByteArray [x]).extract 1 2 = ByteArray.empty from by
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -rn "p2wsh\|P2WSH\|witnessProgram\|OP_0.*0x20\|0x00, 0x20\|0x00.*0x20" Bitcoin | head -40
+Bitcoin/Block/Sigops.lean:317:element (the P2WSH witness script), a v0 program of 20 bytes costs
+Bitcoin/SigHash/Digest.lean:328:/-- P2WSH scriptCode = the witness script itself (`pbegincodehash`
+Bitcoin/SigHash/Interface.lean:63:(not `opaque`) so S3 theorems unfold it. P2WPKH/P2WSH scriptCode
+Bitcoin/Capstone/RealChecker.lean:42:  already constructed the P2WPKH/P2WSH scriptCode.
+Bitcoin/Crypto/Seam/Interface.lean:126:  | witnessV0     -- WITNESS_V0 = 1 (P2WPKH and P2WSH); see BIP 141
+Bitcoin/Crypto/Taproot/LeafDispatch.lean:49:output key fails is a `witnessProgramMismatch` reject REGARDLESS of
+Bitcoin/Crypto/Taproot/LeafDispatch.lean:168:  | witnessProgramMismatch
+Bitcoin/Crypto/Taproot/LeafDispatch.lean:191:  | some (_tl, false, _ts), _ => .error .witnessProgramMismatch
+Bitcoin/Crypto/Taproot/LeafDispatch.lean:213:`witnessProgramMismatch` reject regardless of the leaf version: a
+Bitcoin/Crypto/Taproot/LeafDispatch.lean:221:      = .error .witnessProgramMismatch := by
+Bitcoin/Interpreter/Defs.lean:49:  `VerifyOutcome.unjudged`. Everything else — including P2WSH, P2WPKH,
+Bitcoin/Interpreter/Defs.lean:157:  | witnessProgramWrongLength -- SCRIPT_ERR_WITNESS_PROGRAM_WRONG_LENGTH
+Bitcoin/Interpreter/Defs.lean:158:  | witnessProgramWitnessEmpty -- SCRIPT_ERR_WITNESS_PROGRAM_WITNESS_EMPTY
+Bitcoin/Interpreter/Defs.lean:159:  | witnessProgramMismatch -- SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH
+Bitcoin/Interpreter/Defs.lean:1216:      -- P2WSH: Core `SpanPopBack`s the witness script (the LAST item)
+Bitcoin/Interpreter/Defs.lean:1217:      if witness.length = 0 then .fail .witnessProgramWitnessEmpty
+Bitcoin/Interpreter/Defs.lean:1221:        if hashSha256 script != program then .fail .witnessProgramMismatch
+Bitcoin/Interpreter/Defs.lean:1225:      if witness.length ≠ 2 then .fail .witnessProgramMismatch
+Bitcoin/Interpreter/Defs.lean:1231:    else .fail .witnessProgramWrongLength
+Bitcoin/Interpreter/Defs.lean:1236:      | [] => .fail .witnessProgramWitnessEmpty
+Bitcoin/Interpreter/Defs.lean:1663:witness v0 program whose length is neither 20 (P2WPKH) nor 32 (P2WSH)
+Bitcoin/Interpreter/Defs.lean:1672:      = .fail .witnessProgramWrongLength := by
+Bitcoin/Interpreter/Hashes.lean:10:  the P2WSH witness-program check);
+Bitcoin/Interpreter/SigOps.lean:263:theorem witnessSigOps_p2wsh (program : ByteArray) (witness : List ByteArray)
+Bitcoin/Interpreter/Rules.lean:231:(P2WPKH) = 1 sigop; program 32 (P2WSH) = the ACCURATE sigop count of
+Bitcoin/Interpreter/Interface.lean:53:  truth and no Backend pre-scan is needed (P2WSH/P2WPKH witness paths
+Bitcoin/Wallet/Encoding/Bech32.lean:466:     "1863143c14c5166804bd19203356da136c985678cd4d27a1b8c6329604903262", "BIP173 valid v0/P2WSH"),
+Bitcoin/Wallet/Encoding/Bech32.lean:468:     "000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433", "BIP350 valid v0/P2WSH"),
+Bitcoin/Wallet/Psbt/Model.lean:350:the only version-0 length is 32 (`P2WSH`), see BIP 141.  Version and
+Bitcoin/Wallet/Psbt/Model.lean:352:def witnessProgram (s : ByteArray) : Option (UInt8 × ByteArray) :=
+Bitcoin/Wallet/Psbt/Model.lean:499:                match witnessProgram s with
+Bitcoin/Wallet/Psbt/Model.lean:504:                    match witnessProgram rs with
+Bitcoin/Wallet/Psbt/Tests.lean:9:non-witness UTXO, P2SH-P2WPKH, native P2WPKH with a global xpub, P2WSH
+Bitcoin/Wallet/Psbt/Tests.lean:73:/-- p2wsh -/
+Bitcoin/Wallet/Psbt/Tests.lean:74:def p2wsh : String :=
+Bitcoin/Wallet/Psbt/Tests.lean:94:  ("p2wsh", p2wsh),
+Bitcoin/Wallet/Miniscript/Script.lean:14:the only context-dependent encodings are `multi` (P2WSH only) and
+Bitcoin/Wallet/Miniscript/Script.lean:75:`MAX_STANDARD_P2WSH_SCRIPT_SIZE` = 3600 for P2WSH
+Bitcoin/Wallet/Miniscript/Script.lean:81:  | .p2wsh => 3600
+Bitcoin/Wallet/Miniscript/Tests.lean:98:def ctxW : MiniscriptContext := .p2wsh
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -rn "parse.*serialize\|serialize.*parse\|parseWire.*serialize\|roundtrip" Bitcoin/Script/Parser Bitcoin/Interpreter | head -30
+Bitcoin/Script/Parser/Defs.lean:9:`GetScriptOp`, script.cpp:313-363 @ `cce32b168`), the roundtrip printer
+Bitcoin/Script/Parser/Defs.lean:69:/-- Well-formedness for roundtripping: exactly the opcodes the printer
+Bitcoin/Script/Parser/Defs.lean:74:the parser — so `opcodeWF` is a hypothesis of the roundtrip theorems,
+Bitcoin/Script/Parser/Defs.lean:626:/-! ## Single-opcode roundtrip: decoding the printed opcode -/
+Bitcoin/Script/Parser/Defs.lean:630:past its wire image. Crux of the roundtrip theorems. -/
+Bitcoin/Script/Parser/Defs.lean:868:theorem parseFrom_roundtrip : ∀ (ops : List Opcode), (∀ o ∈ ops, opcodeWF o) →
+Bitcoin/Script/Parser/Defs.lean:869:    parseFrom ((serializeOpcodes ops).size + 1) (serializeOpcodes ops) 0 = some ops := by
+Bitcoin/Script/Parser/Defs.lean:885:    have hrec : parseFrom ((serializeOpcodes (o :: ops')).size)
+Bitcoin/Script/Parser/Defs.lean:887:      rw [serializeOpcodes_cons, parseFrom_shift]
+Bitcoin/Script/Parser/Interface.lean:23:opcodes fail even in dead IF branches), roundtrip encode/decode for the
+Bitcoin/Script/Parser/Interface.lean:38:1. `parseScript`/`serializeOpcodes` placeholders were `opaque … := sorry`;
+Bitcoin/Script/Parser/Interface.lean:41:2. `parse_serialize_roundtrip`'s hypothesis: W01 wrote
+Bitcoin/Script/Parser/Interface.lean:45:   full printer-roundtrip predicate: `pushBytes` payload ≤ 520,
+Bitcoin/Script/Parser/Interface.lean:73:theorem parse_serialize_roundtrip (ops : List Opcode)
+Bitcoin/Script/Parser/Interface.lean:75:    parseScript ⟨serializeOpcodes ops⟩ = some ops := by
+Bitcoin/Script/Parser/Interface.lean:76:  have hb := parseFrom_roundtrip ops h
+Bitcoin/Script/Parser/Interface.lean:77:  show parseFrom ((serializeOpcodes ops).size + 1) (serializeOpcodes ops) 0 = some ops
+Bitcoin/Script/Parser/Interface.lean:84:    ∃ ops, parseScript ⟨serializeOpcodes [Opcode.pushBytes d]⟩ = some ops
+Bitcoin/Script/Parser/Interface.lean:87:  apply parse_serialize_roundtrip
+Bitcoin/Script/Parser/Interface.lean:107:theorem disabled_roundtrip (c : Fin 256) (h : isDisabled c = true) :
+Bitcoin/Script/Parser/Interface.lean:108:    parseScript ⟨serializeOpcodes [Opcode.op c]⟩ = some [Opcode.op c] := by
+Bitcoin/Script/Parser/Interface.lean:109:  exact parse_serialize_roundtrip _ (by
+Bitcoin/Script/Parser/Interface.lean:122:/-- info: 'Bitcoin.Script.Parser.parse_serialize_roundtrip' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+Bitcoin/Script/Parser/Interface.lean:123:#guard_msgs in #print axioms parse_serialize_roundtrip
+Bitcoin/Script/Parser/Interface.lean:128:/-- info: 'Bitcoin.Script.Parser.disabled_roundtrip' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+Bitcoin/Script/Parser/Interface.lean:129:#guard_msgs in #print axioms disabled_roundtrip
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -rn "indexOf\|getOpAt\|parseOp\|scriptCode\|ScriptCode" Bitcoin/SigHash/Digest.lean | head -30 && sed -n '300,341p' Bitcoin/SigHash/Digest.lean
+18:      scriptSig = ∅ for other inputs, else `SerializeScriptCode`
+31:  version ‖ hashPrevouts ‖ hashSequence ‖ outpoint ‖ scriptCode ‖ amount ‖
+33:  scriptCode enters RAW (CompactSize-prefixed, no FindAndDelete, no
+180:def legacyPreimageL (tx : Tx) (nIn : Nat) (scriptCode : Bytes) (ht : UInt32) : Bytes :=
+192:          else serializeScriptCodeL scriptCode)
+207:def legacyMsgL (tx : Tx) (nIn : Nat) (scriptCode : Bytes) (ht : UInt32) : Bytes :=
+208:  legacyPreimageL tx nIn scriptCode ht ++ serU32L ht
+214:def signatureHashLegacyImpl (tx : Tx) (nIn : Nat) (scriptCode : Bytes) (ht : UInt32) : ByteArray :=
+217:  else dshaL (legacyMsgL tx nIn scriptCode ht)
+225:    (scriptCode : Bytes) (ht : UInt32) :
+226:    signatureHashLegacyImpl tx nIn scriptCode ht =
+229:       else dshaL (legacyMsgL tx nIn scriptCode ht)) := rfl
+239:    (scriptCode : Bytes) (ht : UInt32)
+241:    signatureHashLegacyImpl tx nIn scriptCode ht = singleOverflowOneB := by
+249:    (scriptCode : Bytes) (ht : UInt32)
+252:    signatureHashLegacyImpl tx nIn scriptCode ht =
+253:      dshaL (legacyMsgL tx nIn scriptCode ht) := by
+288:def bip143MsgL (tx : Tx) (nIn : Nat) (scriptCode : Bytes) (ht : UInt32) (amount : Amount) : Bytes :=
+297:    ++ encCSL scriptCode.length ++ scriptCode
+308:preimage structure (version, 3 sub-hashes, outpoint, scriptCode, amount,
+311:def signatureHashBip143Impl (tx : Tx) (nIn : Nat) (scriptCode : Bytes) (ht : UInt32)
+314:  else dshaL (bip143MsgL tx nIn scriptCode ht amount)
+316:/-! ## Witness-v0 scriptCode construction (`interpreter.cpp:1949-1958`) -/
+318:/-- P2WPKH scriptCode re-derivation (:1952): from the 20-byte witness
+325:def p2wpkhScriptCodeL (pkh : Bytes) : Bytes :=
+328:/-- P2WSH scriptCode = the witness script itself (`pbegincodehash`
+333:there is no scriptCode size limit for hashing. -/
+339:  signatureHashBip143Impl tx nIn (p2wpkhScriptCodeL pkh) ht amount
+    ++ hashOutputsL tx nIn ht
+    ++ serU32L tx.locktime
+    ++ serU32L ht
+
+/-- BIP143 digest (SigVersion::WITNESS_V0). Out-of-range `nIn` totalizes to
+the zero hash (Core: `assert(nIn < txTo.vin.size())`); Core's `amount ≥ 0`
+missing-data assert is the caller's obligation (SWT-055; negative amounts
+serialize two's-complement, see `serAmountL`). SWT-042: the 10-field
+preimage structure (version, 3 sub-hashes, outpoint, scriptCode, amount,
+sequence, outputs-hash, locktime, hashtype). -/
+@[rule "SWT-042"]
+def signatureHashBip143Impl (tx : Tx) (nIn : Nat) (scriptCode : Bytes) (ht : UInt32)
+    (amount : Amount) : ByteArray :=
+  if tx.vin.length ≤ nIn then bytesOfList zeroHashL
+  else dshaL (bip143MsgL tx nIn scriptCode ht amount)
+
+/-! ## Witness-v0 scriptCode construction (`interpreter.cpp:1949-1958`) -/
+
+/-- P2WPKH scriptCode re-derivation (:1952): from the 20-byte witness
+program — `CScript() << OP_DUP << OP_HASH160 << program << OP_EQUALVERIFY
+<< OP_CHECKSIG`, i.e. `0x76 0xa9 0x14 {pkh} 0x88 0xac`. The hash comes from
+the scriptPubKey, not from the witness pubkey (the executed OP_EQUALVERIFY
+checks the witness pubkey against it). The CompactSize length prefix is
+added by the digest serialization itself (`bip143MsgL`), matching
+`CTxOut`-style script serialization. -/
+def p2wpkhScriptCodeL (pkh : Bytes) : Bytes :=
+  [0x76, 0xa9, 0x14] ++ pkh ++ [0x88, 0xac]
+
+/-- P2WSH scriptCode = the witness script itself (`pbegincodehash`
+subscript, BIP143:43-44) — **no** `FindAndDelete`, unexecuted
+OP_CODESEPARATORs retained. The only size rule: the 10,000-byte
+`MAX_SCRIPT_SIZE` applies to the witnessScript as EXECUTED
+(:438-440) — a `VerifyWitnessProgram` reject BEFORE any signature check;
+there is no scriptCode size limit for hashing. -/
+def witnessScriptSizeOk (script : Bytes) : Bool := script.length ≤ 10000
+
+/-- Convenience entry: BIP143 digest for a P2WPKH program (20-byte pkh). -/
+def signatureHashBip143P2wpkh (tx : Tx) (nIn : Nat) (pkh : Bytes) (ht : UInt32)
+    (amount : Amount) : ByteArray :=
+  signatureHashBip143Impl tx nIn (p2wpkhScriptCodeL pkh) ht amount
+
+end Bitcoin.SigHash
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && sed -n '150,272p' Bitcoin/Interpreter/SigOps.lean
+def blockSigOpCost (inputs : List InputSigOps) : Nat :=
+  inputs.foldl (fun acc s => acc + sigOpCost s) 0
+
+@[rule "INV-039"]
+def blockSigOpCostOk (inputs : List InputSigOps) : Bool :=
+  blockSigOpCost inputs ≤ MAX_BLOCK_SIGOP_COST
+
+/-! ## Structural laws (all rfl/omega-level; the proof-side pins with
+axiom fingerprints live in BitcoinProofs.Theorems.WitnessRulesCor) -/
+
+theorem sigOpCost_eq (s : InputSigOps) :
+    sigOpCost s = 4 * (s.legacy + s.p2sh) + s.witness := rfl
+
+/-- The witness term is NOT multiplied by 4: raising the witness count by
+1 raises the cost by exactly 1 (SWT-024). -/
+theorem sigOpCost_witness_scale_one (s : InputSigOps) :
+    sigOpCost { s with witness := s.witness + 1 } = sigOpCost s + 1 := by
+  simp [sigOpCost]
+  omega
+
+theorem blockSigOpCostOk_iff (inputs : List InputSigOps) :
+    blockSigOpCostOk inputs = true ↔ blockSigOpCost inputs ≤ MAX_BLOCK_SIGOP_COST := by
+  simp [blockSigOpCostOk]
+
+/-- INV-038 (tx_verify.cpp:151,158): the legacy count enters the cost
+multiplied by `WITNESS_SCALE_FACTOR = 4` — the same ×4 applies to the
+P2SH term, while the witness term is unscaled.  The coefficient is also
+pinned operationally: adding one legacy sigop adds exactly 4 cost units. -/
+@[rule "INV-038"] theorem sigOpCost_legacy_scaled (s : InputSigOps) :
+    sigOpCost s =
+      Bitcoin.Consensus.WITNESS_SCALE_FACTOR * s.legacy +
+      Bitcoin.Consensus.WITNESS_SCALE_FACTOR * s.p2sh + s.witness ∧
+    Bitcoin.Consensus.WITNESS_SCALE_FACTOR = 4 ∧
+    sigOpCost { s with legacy := s.legacy + 1 } = sigOpCost s + 4 := by
+  refine ⟨?_, rfl, ?_⟩
+  · rw [sigOpCost_eq]
+    simp only [Bitcoin.Consensus.WITNESS_SCALE_FACTOR, Nat.mul_add]
+  · have hlhs : sigOpCost { s with legacy := s.legacy + 1 }
+        = 4 * ((s.legacy + 1) + s.p2sh) + s.witness := rfl
+    have hrhs : sigOpCost s = 4 * (s.legacy + s.p2sh) + s.witness := rfl
+    rw [hlhs, hrhs]
+    have h : (s.legacy + 1) + s.p2sh = (s.legacy + s.p2sh) + 1 := by omega
+    rw [h, Nat.mul_add, Nat.mul_one, Nat.mul_add]
+    omega
+
+/-- `blockSigOpCost` is exactly the running sum of the per-input costs
+(the fold seeded at 0; `GetBlockSigOpCost` accumulates `nSigOpsCost` over
+the tx's inputs). -/
+private theorem foldl_sigop_eq_sum (l : List InputSigOps) (init : Nat) :
+    l.foldl (fun acc s => acc + sigOpCost s) init
+      = init + (l.map sigOpCost).sum := by
+  induction l generalizing init with
+  | nil => simp
+  | cons s rest ih =>
+    simp only [List.foldl_cons, List.map_cons, List.sum_cons]
+    rw [ih (init + sigOpCost s)]
+    omega
+
+/-- INV-039 (validation.cpp:ConnectBlock:2566-2570): the block sigop cost
+is the running sum of the per-input costs. -/
+@[rule "INV-039"] theorem blockSigOpCost_eq_sum (inputs : List InputSigOps) :
+    blockSigOpCost inputs = (inputs.map sigOpCost).sum := by
+  unfold blockSigOpCost
+  rw [foldl_sigop_eq_sum]
+  simp
+
+/-- INV-039 (validation.cpp:ConnectBlock:2566-2570): the block gate is the
+EXACT `nSigOpsCost > MAX_BLOCK_SIGOP_COST` test — accepted iff the running
+cost is at most 80,000, rejected iff it is strictly above. -/
+@[rule "INV-039"] theorem blockSigOpCost_gate (inputs : List InputSigOps) :
+    (blockSigOpCostOk inputs = true ↔ blockSigOpCost inputs ≤ 80000) ∧
+    (blockSigOpCostOk inputs = false ↔ 80000 < blockSigOpCost inputs) := by
+  constructor
+  · rw [blockSigOpCostOk_iff, MAX_BLOCK_SIGOP_COST]
+  · unfold blockSigOpCostOk MAX_BLOCK_SIGOP_COST
+    by_cases h : blockSigOpCost inputs ≤ 80000
+    · simp [h]
+    · simp [h]
+      omega
+
+private theorem foldl_sigop_add_init (l : List InputSigOps) (init : Nat) :
+    l.foldl (fun acc s => acc + sigOpCost s) init
+      = init + l.foldl (fun acc s => acc + sigOpCost s) 0 := by
+  induction l generalizing init with
+  | nil => simp
+  | cons s rest ih =>
+    simp only [List.foldl_cons]
+    rw [ih (init + sigOpCost s), Nat.zero_add, ih (sigOpCost s)]
+    omega
+
+/-- Cost is monotone under appending inputs (the block gate composes). -/
+theorem blockSigOpCost_append (a b : List InputSigOps) :
+    blockSigOpCost (a ++ b) = blockSigOpCost a + blockSigOpCost b := by
+  unfold blockSigOpCost
+  rw [List.foldl_append, foldl_sigop_add_init]
+
+/-- SWT-025 (definitional): a v0 20-byte program counts exactly 1. -/
+theorem witnessSigOps_p2wpkh (program : ByteArray) (witness : List ByteArray)
+    (h : program.size = 20) :
+    witnessSigOps 0 program witness = 1 := by
+  unfold witnessSigOps
+  rw [if_pos rfl, if_pos h]
+
+/-- SWT-028 (definitional): witness versions ≥ 1 contribute 0. -/
+theorem witnessSigOps_future_zero (v : Nat) (program : ByteArray)
+    (witness : List ByteArray) (hv : 1 ≤ v) :
+    witnessSigOps v program witness = 0 := by
+  unfold witnessSigOps
+  rw [if_neg (by omega)]
+
+/-- SWT-026 (definitional): v0-32 counts the last witness item; an empty
+witness stack counts 0 (Core's `witness.back()` on an empty stack is
+guarded upstream — here the model is total). -/
+theorem witnessSigOps_p2wsh (program : ByteArray) (witness : List ByteArray)
+    (h : program.size = 32) :
+    witnessSigOps 0 program witness =
+      (match witness.getLast? with
+       | some script => witnessScriptSigOps script
+       | none => 0) := by
+  unfold witnessSigOps
+  rw [if_pos rfl, if_neg (by intro hc; rw [h] at hc; simp at hc), if_pos h]
+
+end Bitcoin.Interpreter.SigOps
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -rn "parseWire" Bitcoin | head -40
+Bitcoin/Script/Tapscript/Delta.lean:357:      match parseWire b with
+Bitcoin/Interpreter/Defs.lean:402:def parseWireFrom : Nat → ByteArray → Nat → Option (List WireOp)
+Bitcoin/Interpreter/Defs.lean:408:      | some (o, i') => (parseWireFrom f b i').map
+Bitcoin/Interpreter/Defs.lean:411:/-- `parseWireFrom` with the canonical fuel. -/
+Bitcoin/Interpreter/Defs.lean:412:def parseWire (b : ByteArray) : Option (List WireOp) := parseWireFrom (b.size + 1) b 0
+Bitcoin/Interpreter/Defs.lean:456:or-nothing `parseWire` CANNOT model this ordering (X04 delta fix: the
+Bitcoin/Interpreter/Defs.lean:1134:  else match parseWire b with
+Bitcoin/Interpreter/Defs.lean:1273:  match parseWire ss with
+Bitcoin/Interpreter/Defs.lean:1311:      match parseWire ss with
+Bitcoin/Interpreter/Defs.lean:1359:                    match parseWire ss with
+Bitcoin/Interpreter/Defs.lean:1493:    cases hp : parseWire b with
+Bitcoin/Interpreter/Defs.lean:1518:    cases hp : parseWire b with
+Bitcoin/Interpreter/Defs.lean:1579:    (hparse : parseWire ss = some ops)
+Bitcoin/Interpreter/Defs.lean:1603:    (hparse : parseWire ss = some ops)
+Bitcoin/Interpreter/SigOps.lean:95:  match parseWire script with
+Bitcoin/Interpreter/SigOps.lean:121:  match parseWire scriptSig with
+Bitcoin/Interpreter/Rules.lean:220:  match parseWire scriptSig with
+Bitcoin/Interpreter/Rules.lean:227:      | .pushBytes d => sigOpCount ((parseWire (Bitcoin.Script.Parser.pushBytesWire d)).getD []) true
+Bitcoin/Interpreter/Rules.lean:241:        match parseWire script with
+Bitcoin/Interpreter/Rules.lean:272:      match parseWire ss with
+Bitcoin/Interpreter/Rules.lean:303:    acc + sigOpCount ((parseWire i.scriptSig.bytes).getD []) false) 0 +
+Bitcoin/Interpreter/Rules.lean:305:    acc + sigOpCount ((parseWire o.scriptPubKey.bytes).getD []) false) 0
+Bitcoin/TxValidation/SigOpsCost.lean:102:  match parseWire scriptSig with
+Bitcoin/TxValidation/SigOpsCost.lean:110:        match parseWire d with
+Bitcoin/TxValidation/SigOpsCost.lean:145:is `ops.all (·.wire ≤ 0x60)` over the PARSED stream, so `parseWire =
+Bitcoin/TxValidation/SigOpsCost.lean:152:      match parseWire ss with
+Bitcoin/TxValidation/SigOpsCost.lean:277:    (h : parseWire ss = none) :
+Bitcoin/TxValidation/SigOpsCost.lean:285:    (hp : parseWire ss = some ops) (last : WireOp)
+Bitcoin/TxValidation/SigOpsCost.lean:296:    (hp : parseWire ss = some ops) (last : WireOp) (d : ByteArray)
+Bitcoin/TxValidation/SigOpsCost.lean:298:    (hd : parseWire d = some rops) :
+Bitcoin/TxValidation/SigOpsCost.lean:306:    (hp : parseWire ss = some ops) (last : WireOp) (d : ByteArray)
+Bitcoin/TxValidation/SigOpsCost.lean:308:    (hd : parseWire d = none) :
+Bitcoin/TxValidation/SigOpsCost.lean:386:    (hp : parseWire ss = some ops)
+Bitcoin/TxValidation/SigOpsCost.lean:403:    (hp : parseWire ss = some ops)
+Bitcoin/TxValidation/SigOpsCost.lean:420:    (hp : parseWire ss = none) :
+Bitcoin/TxValidation/SigOpsCost.lean:435:    (hp : parseWire ss = some ops)
+Bitcoin/TxValidation/LocktimeSigOps.lean:45:  and scriptPubKeys. The model's `parseWire = none` lane contributes 0
+Bitcoin/TxValidation/LocktimeSigOps.lean:233:    (hs : parseWire i.scriptSig.bytes = some sOps)
+Bitcoin/TxValidation/LocktimeSigOps.lean:234:    (hp : parseWire o.scriptPubKey.bytes = some pOps) :
+Bitcoin/TxValidation/LocktimeSigOps.lean:258:        sigOpCount ((parseWire i.scriptSig.bytes).getD []) false)).sum +
+> build · deepseek-v4.1-flash-1017
+[0m→ [0mRead LnLean/Proofs/PhaseC2/FundingBridge.lean 
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && sed -n '120,300p' Bitcoin/Script/Parser/Defs.lean
+simp only [getOpt, ByteArray.size_append]
+  split
+  · rename_i hx
+    rw [dif_pos (show i - pre.size < q.size by omega), ByteArray.getElem_append_right h]
+  · rename_i hx
+    rw [dif_neg (show ¬ (i - pre.size < q.size) by omega)]
+
+/-! ## Slicing (`GetScriptOp` pointer arithmetic) -/
+
+/-- The `n` bytes of `b` starting at `i` (`b.extract i (i+n)`); shorter
+than `n` only if the script ends first. -/
+def slice (b : ByteArray) (i n : Nat) : ByteArray := b.extract i (i + n)
+
+theorem slice_size (b : ByteArray) (i n : Nat) (h : i + n ≤ b.size) :
+    (slice b i n).size = n := by
+  simp [slice, ByteArray.size_extract]; omega
+
+/-- Bounded read of `n` bytes: `some` iff the bytes are all there. -/
+def sliceOpt (b : ByteArray) (i n : Nat) : Option ByteArray :=
+  if i + n ≤ b.size then some (slice b i n) else none
+
+theorem sliceOpt_some {b : ByteArray} {i n : Nat} {d : ByteArray}
+    (h : sliceOpt b i n = some d) : i + n ≤ b.size ∧ d = slice b i n := by
+  unfold sliceOpt at h
+  split at h
+  · rename_i hc
+    simp only [Option.some.injEq] at h
+    exact ⟨hc, h.symm⟩
+  · simp at h
+
+theorem sliceOpt_some_of_le (b : ByteArray) (i n : Nat) (h : i + n ≤ b.size) :
+    sliceOpt b i n = some (slice b i n) := by
+  simp [sliceOpt, h]
+
+theorem sliceOpt_none_of_gt {b : ByteArray} {i n : Nat} (h : b.size < i + n) :
+    sliceOpt b i n = none := by
+  unfold sliceOpt
+  exact if_neg (by omega)
+
+/-- Slicing commutes with appending a prefix. -/
+theorem slice_shift (pre q : ByteArray) (j k : Nat) :
+    slice (pre ++ q) (pre.size + j) k = slice q j k := by
+  unfold slice
+  rw [ByteArray.extract_append]
+  have h1 : pre.extract (pre.size + j) (pre.size + j + k) = ByteArray.empty := by
+    rw [ByteArray.extract_eq_empty_iff]; omega
+  rw [h1, ByteArray.empty_append]
+  congr 2 <;> omega
+
+theorem sliceOpt_shift (pre q : ByteArray) (j k : Nat) :
+    sliceOpt (pre ++ q) (pre.size + j) k = sliceOpt q j k := by
+  unfold sliceOpt
+  simp only [ByteArray.size_append]
+  split
+  · rename_i hc
+    rw [if_pos (show j + k ≤ q.size by omega), slice_shift]
+  · rename_i hc
+    rw [if_neg (show ¬ j + k ≤ q.size by omega)]
+
+/-! ## Little-endian length reads (`ReadLE16`/`ReadLE32`, script.cpp) -/
+
+/-- Little-endian value of a byte string: `Σ d[j]·256^j`. -/
+def leOfBytes (d : ByteArray) : Nat :=
+  (List.range d.size).foldl (fun acc j => acc + (d.get! j).toNat * 256 ^ j) 0
+
+/-- Read a `k`-byte little-endian length at index `i`; succeeds iff all
+`k` length bytes are present (script.cpp `GetScriptOp` truncation
+rule). -/
+def readLE (b : ByteArray) (i k : Nat) : Option Nat :=
+  let d := slice b i k
+  if d.size = k then some (leOfBytes d) else none
+
+theorem readLE_shift (pre q : ByteArray) (j k : Nat) :
+    readLE (pre ++ q) (pre.size + j) k = readLE q j k := by
+  simp [readLE, slice_shift]
+
+/-! ## Single-opcode decode (`GetOp`, script.cpp:313-363) -/
+
+/-- Decode the opcode whose wire byte is `c`, reading push payloads from
+`b` at `i`; returns the AST node and the next index. Full 0x00–0xff
+table: 0x00 → `pushBytes ∅` (OP_0), 0x01–0x4b direct push,
+0x4c/0x4d/0x4e PUSHDATA1/2/4 with 1/2/4 little-endian length bytes,
+0x4f → `pushNum 0` (OP_1NEGATE), 0x50 → `op ⟨0x50⟩` (OP_RESERVED —
+not a push), 0x51–0x60 → `pushNum (n-0x50)` (OP_1..OP_16), ≥ 0x61 →
+`op` (incl. the 15 disabled opcodes; disabledness is interpreter
+policy, `EvalScript` checks `IsDisabled`). -/
+def getOpAux (b : ByteArray) (i : Nat) (c : UInt8) : Option (Opcode × Nat) :=
+  if c.toNat = 0 then some (Opcode.pushBytes ByteArray.empty, i + 1)
+  else if c.toNat ≤ 0x4b then
+    (sliceOpt b (i+1) c.toNat).map (fun d => (Opcode.pushBytes d, i + 1 + c.toNat))
+  else if c.toNat = 0x4c then
+    (readLE b (i+1) 1).bind
+      (fun k => (sliceOpt b (i+2) k).map (fun d => (Opcode.pushBytes d, i + 2 + k)))
+  else if c.toNat = 0x4d then
+    (readLE b (i+1) 2).bind
+      (fun k => (sliceOpt b (i+3) k).map (fun d => (Opcode.pushBytes d, i + 3 + k)))
+  else if c.toNat = 0x4e then
+    (readLE b (i+1) 4).bind
+      (fun k => (sliceOpt b (i+5) k).map (fun d => (Opcode.pushBytes d, i + 5 + k)))
+  else if c.toNat = 0x4f then some (Opcode.pushNum 0, i + 1)
+  else if c.toNat = 0x50 then some (Opcode.op ⟨0x50, by omega⟩, i + 1)
+  else if c.toNat ≤ 0x60 then some (Opcode.pushNum (c.toNat - 0x50), i + 1)
+  else some (Opcode.op ⟨c.toNat, UInt8_toNat_lt_256 c⟩, i + 1)
+
+/-- Decode one opcode at index `i` (`GetScriptOp` entry point). -/
+@[rule "SCR-045"]
+def getOp (b : ByteArray) (i : Nat) : Option (Opcode × Nat) :=
+  match getOpt b i with
+  | none => none
+  | some c => getOpAux b i c
+
+/-- The structural facts every parsed opcode satisfies. Weaker than
+`opcodeWF`: PUSHDATA2/4 payloads may exceed the 520 element limit
+(the parser accepts them; the interpreter rejects, SCR-046). -/
+def opcodeShape (o : Opcode) : Prop :=
+  match o with
+  | .pushBytes _ => True
+  | .pushNum n => n ≤ 16
+  | .op c => c.toNat = 0x50 ∨ 0x61 ≤ c.toNat
+
+/-- Every successful decode consumes at least one byte, stays inside
+the script, and produces a shape-well-formed node. -/
+theorem getOpAux_spec {b : ByteArray} {i : Nat} {c : UInt8} {o : Opcode} {i' : Nat}
+    (h : getOpAux b i c = some (o, i')) (hi : i < b.size) :
+    i < i' ∧ i' ≤ b.size ∧ opcodeShape o := by
+  unfold getOpAux at h
+  split at h
+  · rename_i h0
+    simp only [Option.some.injEq, Prod.mk.injEq] at h
+    obtain ⟨rfl, rfl⟩ := h
+    exact ⟨by omega, by omega, by simp [opcodeShape]⟩
+  · split at h
+    · rename_i h1
+      simp only [Option.map_eq_some_iff, Prod.mk.injEq] at h
+      obtain ⟨d, hd, rfl, rfl⟩ := h
+      have hle := (sliceOpt_some hd).1
+      exact ⟨by omega, by omega, by simp [opcodeShape]⟩
+    · split at h
+      · rename_i h1
+        simp only [Option.bind_eq_some_iff, Option.map_eq_some_iff, Prod.mk.injEq] at h
+        obtain ⟨k, hk, d, hd, rfl, rfl⟩ := h
+        have hle := (sliceOpt_some hd).1
+        exact ⟨by omega, by omega, by simp [opcodeShape]⟩
+      · split at h
+        · rename_i h1
+          simp only [Option.bind_eq_some_iff, Option.map_eq_some_iff, Prod.mk.injEq] at h
+          obtain ⟨k, hk, d, hd, rfl, rfl⟩ := h
+          have hle := (sliceOpt_some hd).1
+          exact ⟨by omega, by omega, by simp [opcodeShape]⟩
+        · split at h
+          · rename_i h1
+            simp only [Option.bind_eq_some_iff, Option.map_eq_some_iff, Prod.mk.injEq] at h
+            obtain ⟨k, hk, d, hd, rfl, rfl⟩ := h
+            have hle := (sliceOpt_some hd).1
+            exact ⟨by omega, by omega, by simp [opcodeShape]⟩
+          · split at h
+            · rename_i h1
+              simp only [Option.some.injEq, Prod.mk.injEq] at h
+              obtain ⟨rfl, rfl⟩ := h
+              exact ⟨by omega, by omega, by simp [opcodeShape]⟩
+            · split at h
+              · rename_i h1
+                simp only [Option.some.injEq, Prod.mk.injEq] at h
+                obtain ⟨rfl, rfl⟩ := h
+                exact ⟨by omega, by omega, by exact Or.inl rfl⟩
+              · split at h
+                · rename_i h1
+                  simp only [Option.some.injEq, Prod.mk.injEq] at h
+                  obtain ⟨rfl, rfl⟩ := h
+                  refine ⟨by omega, by omega, ?_⟩
+                  show c.toNat - 0x50 ≤ 16
+                  omega
+                · rename_i h1
+                  simp only [Option.some.injEq, Prod.mk.injEq] at h
+                  obtain ⟨rfl, rfl⟩ := h
+                  refine ⟨by omega, by omega, ?_⟩
+                  show c.toNat = 0x50 ∨ 0x61 ≤ c.toNat
+                  exact Or.inr (by omega)
+
+/-- If `getOp` succeeds at `i`, index `i` is in bounds. -/
+theorem getOp_lt {b : ByteArray} {i : Nat} {o : Opcode} {i' : Nat}
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -n "structure ScriptFlags\|structure PolicyFlags\|structure ScriptChecker\|structure BaseSignatureChecker\|def castToBool\|structure LocktimeEnv" -A 40 Bitcoin/Interpreter/Defs.lean | head -140
+185:structure PolicyFlags where
+186-  minimalData : Bool := false                 -- MINIMALDATA
+187-  minimalIf : Bool := false                   -- MINIMALIF
+188-  nullFail : Bool := false                    -- NULLFAIL
+189-  strictEnc : Bool := false                   -- STRICTENC
+190-  constScriptCode : Bool := false             -- CONST_SCRIPTCODE
+191-  cleanstack : Bool := false                  -- CLEANSTACK
+192-  sigPushOnly : Bool := false                 -- SIGPUSHONLY
+193-  lowS : Bool := false                        -- LOW_S
+194-  witnessPubkeyType : Bool := false           -- WITNESS_PUBKEYTYPE
+195-  discourageUpgradableNops : Bool := false    -- DISCOURAGE_UPGRADABLE_NOPS
+196-  discourageUpgradableWitnessProgram : Bool := false -- DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM
+197-  discourageUpgradablePubkeyType : Bool := false -- DISCOURAGE_UPGRADABLE_PUBKEYTYPE
+198-  discourageOpSuccess : Bool := false         -- DISCOURAGE_OP_SUCCESS
+199-  discourageUpgradableTaprootVersion : Bool := false -- DISCOURAGE_UPGRADABLE_TAPROOT_VERSION
+200-deriving Repr, DecidableEq, BEq, Inhabited
+201-
+202-/-- Membership test for a comma-separated flag string (the corpus
+203-`policyFlags` column, e.g. "MINIMALDATA,NULLFAIL").  Surrounding spaces
+204-are trimmed: `codegen.py` joins policy flags with `", "`, and Core's
+205-`script_tests.json` / `ParseScriptFlags` treats the whitespace as a
+206-separator, so `"MINIMALIF, MINIMALDATA"` must enable both flags. -/
+207-def polHas (s : String) (name : String) : Bool :=
+208-  (s.splitOn ",").any (fun t => t.trimAscii.toString == name)
+209-
+210-/-- Decode the corpus policy-flags string. -/
+211-def parsePolicyFlags (s : String) : PolicyFlags :=
+212-  { minimalData := polHas s "MINIMALDATA"
+213-    minimalIf := polHas s "MINIMALIF"
+214-    nullFail := polHas s "NULLFAIL"
+215-    strictEnc := polHas s "STRICTENC"
+216-    constScriptCode := polHas s "CONST_SCRIPTCODE"
+217-    cleanstack := polHas s "CLEANSTACK"
+218-    sigPushOnly := polHas s "SIGPUSHONLY"
+219-    lowS := polHas s "LOW_S"
+220-    witnessPubkeyType := polHas s "WITNESS_PUBKEYTYPE"
+221-    discourageUpgradableNops := polHas s "DISCOURAGE_UPGRADABLE_NOPS"
+222-    discourageUpgradableWitnessProgram := polHas s "DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM"
+223-    discourageUpgradablePubkeyType := polHas s "DISCOURAGE_UPGRADABLE_PUBKEYTYPE"
+224-    discourageOpSuccess := polHas s "DISCOURAGE_OP_SUCCESS"
+225-    discourageUpgradableTaprootVersion := polHas s "DISCOURAGE_UPGRADABLE_TAPROOT_VERSION" }
+--
+238:structure LocktimeEnv where
+239-  txVersion : Int32 := 1
+240-  txLockTime : UInt32 := 0
+241-  txSequence : UInt32 := 0xFFFFFFFF   -- CTxIn::SEQUENCE_FINAL
+242-deriving Repr, DecidableEq, BEq, Inhabited
+243-
+244:structure ScriptChecker where
+245-  base : BaseSignatureChecker
+246-  env : LocktimeEnv := default
+247-
+248-/-- `ScriptChecker` holds function fields, so the derivable-instances
+249-story stops at `Inhabited` (via the seam's stub checker). -/
+250-instance : Inhabited ScriptChecker := ⟨⟨stubChecker, default⟩⟩
+251-
+252-/-- `GenericTransactionSignatureChecker::CheckLockTime`
+253-(interpreter.cpp:1755-1788), as a pure function of the environment. -/
+254-@[rule "SCR-122", rule "SCR-123", rule "SCR-124", rule "SCR-125", rule "INV-022"]
+255-def checkLockTimeDef (env : LocktimeEnv) (n : ScriptNum) : Bool :=
+256-  let txlt : Int := env.txLockTime.toNat
+257-  if !((txlt < LOCKTIME_THRESHOLD ∧ n < LOCKTIME_THRESHOLD) ∨
+258-       (txlt ≥ LOCKTIME_THRESHOLD ∧ n ≥ LOCKTIME_THRESHOLD)) then false
+259-  else if n > txlt then false
+260-  else if env.txSequence.toNat = 0xFFFFFFFF then false  -- input final
+261-  else true
+262-
+263-/-- `GenericTransactionSignatureChecker::CheckSequence`
+264-(interpreter.cpp:1791-1848). The operand's disable-flag NOP lives in
+265-the CSV opcode; this is the transaction-side comparison. -/
+266-def checkSequenceDef (env : LocktimeEnv) (n : ScriptNum) : Bool :=
+267-  if env.txVersion < 2 then false
+268-  else
+269-    let txSeq := env.txSequence.toNat
+270-    if (txSeq &&& SEQUENCE_LOCKTIME_DISABLE_FLAG) ≠ 0 then false
+271-    else
+272-      let mask := SEQUENCE_LOCKTIME_TYPE_FLAG ||| SEQUENCE_LOCKTIME_MASK
+273-      let txMasked := txSeq &&& mask
+274-      let nMasked := n.toNat &&& mask   -- n ≥ 0 (caller checked)
+275-      if !((txMasked < SEQUENCE_LOCKTIME_TYPE_FLAG ∧ nMasked < SEQUENCE_LOCKTIME_TYPE_FLAG) ∨
+276-           (txMasked ≥ SEQUENCE_LOCKTIME_TYPE_FLAG ∧ nMasked ≥ SEQUENCE_LOCKTIME_TYPE_FLAG)) then false
+277-      else !(nMasked > txMasked)
+278-
+279-/-! ## Byte helpers -/
+280-
+281-/-- In-bounds read or 0x00. All of the encoding validators index with
+282-length-guarded offsets; `byteOr` keeps them total without panics. -/
+283-def byteOr (b : ByteArray) (i : Nat) : UInt8 :=
+284-  match getOpt b i with | some v => v | none => 0
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -n "structure ScriptFlags" -A 25 Bitcoin/Interpreter/Defs.lean; grep -n "structure BaseSignatureChecker" -A 30 Bitcoin/Crypto/Seam/Interface.lean; grep -rn "def castToBool" -A 15 Bitcoin/Interpreter/Defs.lean | head -30
+141:structure BaseSignatureChecker where
+142-  /-- `CheckECDSASignature(sig, pubKey, scriptCode, sigversion, execdata)`
+143-  (interpreter.cpp:1701-1724): DER range checks (BIP66) happen in the
+144-  interpreter; this entrypoint does the EC math. ECDSA-lax vs strict
+145-  timing for pre-SegWit anchors: see DECISIONS.md OPEN-002. NOTE: Core's
+146-  `GenericTransactionSignatureChecker::CheckECDSASignature` takes no
+147-  ScriptExecutionData (interpreter.cpp:1701-1706 @cce32b168) — the 5th
+148-  parameter here is consensus-inert for every faithful adapter, pinned by
+149-  `Entry.ecdsaEntry_execData_independent`. -/
+150-  checkECDSASignature :
+151-    ByteArray → ByteArray → ByteArray → SigVersion → ScriptExecutionData → Bool
+152-  /-- `CheckSchnorrSignature(sig, pubKey, sigversion, execdata)`
+153-  (interpreter.cpp:1726-1752): BIP340, 64/65-byte sigs, 32-byte keys;
+154-  execdata IS consumed here (TPR-072 plumbing). -/
+155-  checkSchnorrSignature :
+156-    ByteArray → ByteArray → SigVersion → ScriptExecutionData → Bool
+157-
+158-/-- The stub checker the bootstrap interpreter runs with: accepts any
+159-nonempty (sig, pubkey) pair. Review 2 may substitute pre-baked verdicts
+160-via a `List ((ByteArray × ByteArray) × Bool)` table — see `Seam/Mock.lean`. -/
+161-def stubChecker : BaseSignatureChecker :=
+162-  { checkECDSASignature := fun sig pk _ _ _ => sig.size ≠ 0 && pk.size ≠ 0
+163-    checkSchnorrSignature := fun sig pk _ _ => sig.size ≠ 0 && pk.size ≠ 0 }
+164-
+165-/-! ## Frozen laws -/
+166-
+167-/-- The stub checker is deterministic (a property the real checker must
+168-preserve: script evaluation is a pure function of (tx, input, flags)).
+169-Proven now — it also demonstrates the interface-file pattern of banking
+170-already-true facts. -/
+171-theorem stubChecker_deterministic (sig pk code : ByteArray) (v : SigVersion)
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -rn "structure ScriptFlags\|abbrev ScriptFlags\|def default.*ScriptFlags" Bitcoin | head -10 && grep -rn "ScriptFlags" Bitcoin/Crypto/Seam/Interface.lean Bitcoin/Activation/Interface.lean | head -20 && grep -rn "def castToBool\|castToBool" Bitcoin/Interpreter/Defs.lean | head -10
+Bitcoin/Activation/Interface.lean:75:structure ScriptFlags where
+Bitcoin/Activation/Interface.lean:13:Core counterpart files: src/validation.cpp (GetBlockScriptFlags:2249-2288),
+Bitcoin/Activation/Interface.lean:28:`getBlockScriptFlags` + buried heights + 2 named mainnet exception
+Bitcoin/Activation/Interface.lean:56:   exception list. The frozen `∀ f : ScriptFlags → Bool, f (flags h₁) →
+Bitcoin/Activation/Interface.lean:60:6. `getBlockScriptFlags` is a real `def` (was an `opaque` sorry stub).
+Bitcoin/Activation/Interface.lean:75:structure ScriptFlags where
+Bitcoin/Activation/Interface.lean:122:def mainnetBaseFlags : ScriptFlags :=
+Bitcoin/Activation/Interface.lean:125:/-- `GetBlockScriptFlags` restricted to its mainnet inputs (the frozen
+Bitcoin/Activation/Interface.lean:127:`Bitcoin.Activation.Flags.getBlockScriptFlagsP`, and
+Bitcoin/Activation/Interface.lean:137:def getBlockScriptFlags (height : UInt32) : ScriptFlags :=
+Bitcoin/Activation/Interface.lean:164:    getBlockScriptFlags height =
+Bitcoin/Activation/Interface.lean:170:  simp [getBlockScriptFlags, he1, he2, mainnetBaseFlags]
+Bitcoin/Activation/Interface.lean:179:    getBlockScriptFlags height =
+Bitcoin/Activation/Interface.lean:197:    getBlockScriptFlags BIP16_EXCEPTION_HEIGHT =
+Bitcoin/Activation/Interface.lean:206:    getBlockScriptFlags TAPROOT_EXCEPTION_HEIGHT =
+Bitcoin/Activation/Interface.lean:216:    (getBlockScriptFlags height).taproot = false := by
+Bitcoin/Activation/Interface.lean:219:  · rw [h]; exact congrArg ScriptFlags.taproot flags_bip16_exception
+Bitcoin/Activation/Interface.lean:220:  · rw [h]; exact congrArg ScriptFlags.taproot flags_taproot_exception
+Bitcoin/Activation/Interface.lean:224:per-field because the frozen `∀ f : ScriptFlags → Bool` form is
+Bitcoin/Activation/Interface.lean:228:    ((getBlockScriptFlags h₁).p2sh = true → (getBlockScriptFlags h₂).p2sh = true) ∧
+Bitcoin/Activation/Interface.lean:229:    ((getBlockScriptFlags h₁).dersig = true → (getBlockScriptFlags h₂).dersig = true) ∧
+856:            let fValue := if w = 0x64 then !(castToBool vch) else castToBool vch
+870:      else if castToBool (topAt st.stack 1) then .ok { st with stack := st.stack.tail }
+917:      else if castToBool (topAt st.stack 1) then .ok { st with stack := topAt st.stack 1 :: st.stack }
+983:            if castToBool r then .ok { st with stack := st.stack.drop 2 }
+1198:        else if castToBool st[0]! then .ok else .fail .evalFalse
+1286:          if stack = [] ∨ !castToBool stack[0]! then .fail .evalFalse
+1325:        if stack = [] ∨ !castToBool stack[0]! then .fail .evalFalse
+1585:           if stack = [] ∨ !castToBool stack[0]! then .fail .evalFalse
+1606:    (hne : stack ≠ []) (htrue : castToBool stack[0]! = true)
+1613:    have h' : castToBool a = true := by simpa using htrue
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && sed -n '70,130p' Bitcoin/Activation/Interface.lean && grep -rn "castToBool" Bitcoin/Interpreter/Defs.lean | head -3 && grep -rn "def castToBool" -A 12 Bitcoin/Interpreter/Defs.lean Bitcoin/Interpreter/*.lean | head -20
+/-- Consensus script flags. A Bool-record (not a UInt32 bitset): fields
+stay `decide`-able and self-documenting; the `→ UInt32` mapping is
+`Bitcoin.Activation.Flags.flagBits` (exact Core bit values). Policy-only
+flags are deliberately absent (catalogued in `Flags.PolicyFlag`). -/
+structure ScriptFlags where
+  p2sh : Bool := false          -- SCRIPT_VERIFY_P2SH (BIP16)
+  dersig : Bool := false        -- SCRIPT_VERIFY_DERSIG (BIP66)
+  cltv : Bool := false          -- SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY (BIP65)
+  csv : Bool := false           -- SCRIPT_VERIFY_CHECKSEQUENCEVERIFY (BIP112)
+  nullDummy : Bool := false     -- SCRIPT_VERIFY_NULLDUMMY (BIP147)
+  witness : Bool := false       -- SCRIPT_VERIFY_WITNESS (BIP141)
+  taproot : Bool := false       -- SCRIPT_VERIFY_TAPROOT (BIP341)
+deriving Repr, DecidableEq, BEq
+
+/-- Buried activation heights, mainnet (VERIFIED: kernel/chainparams.cpp
+CMainParams, lines 119-124 as fetched 2026-10-16; same values @cce32b168).
+`DeploymentActiveAt` for buried deployments is the plain height compare
+`height ≥ since` (deploymentstatus.h:27-31) — a block at exactly the
+buried height already carries the flag (BLK-072). -/
+def BIP34_HEIGHT : UInt32 := 227931
+def BIP66_HEIGHT : UInt32 := 363725   -- DERSIG
+def BIP65_HEIGHT : UInt32 := 388381   -- CLTV
+def CSV_HEIGHT : UInt32 := 419328     -- CSV (BIP68/112/113)
+def SEGWIT_HEIGHT : UInt32 := 481824  -- SegWit (BIP141/143/144)
+/-- BIP147 NULLDUMMY activates with segwit (validation.cpp:2280-2283:
+`DeploymentActiveAt(DEPLOYMENT_SEGWIT)` gates NULLDUMMY). W01's stub had
+419328 here, which is Core's CSVHeight — corrected per interface-change
+note 1. -/
+def BIP147_HEIGHT : UInt32 := 481824
+
+/-- The two named mainnet exception blocks, by height (interface-change
+note 2; hash-keyed map + exact hashes in `Bitcoin.Activation.Flags`).
+
+* `BIP16_EXCEPTION_HEIGHT` = block 00000000000002dc756eebf4f49723ed8d30
+  cc28a5f108eb94b1ba88ac4f9c22 (height 170060): validated with
+  SCRIPT_VERIFY_NONE (kernel/chainparams.cpp:115-116).
+* `TAPROOT_EXCEPTION_HEIGHT` = block 0000000000000000000f14c35b2d841e986
+  ab5441de8c585d5ffe55ea1e395ad (height 692261): validated with
+  P2SH|WITNESS only (kernel/chainparams.cpp:117-118). -/
+def BIP16_EXCEPTION_HEIGHT : UInt32 := 170060
+def TAPROOT_EXCEPTION_HEIGHT : UInt32 := 692261
+def EXCEPTION_HEIGHTS : List UInt32 := [170060, 692261]
+/-- Kept frozen name, corrected data (was [173805, 176360] — neither is a
+Core exception block; see interface-change note 2). -/
+def BIP16_EXCEPTION_BLOCKS : List UInt32 := [170060, 692261]
+
+/-- The always-on base flag set (validation.cpp:2256-2260):
+`SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS | SCRIPT_VERIFY_TAPROOT`,
+applied to every mainnet block from genesis except the two exception
+blocks, whose entry REPLACES this base before the buried flags are
+OR-ed back in (BLK-083). -/
+def mainnetBaseFlags : ScriptFlags :=
+  { p2sh := true, witness := true, taproot := true }
+
+/-- `GetBlockScriptFlags` restricted to its mainnet inputs (the frozen
+signature; the Core-faithful port over `ChainParams` + block hash is
+`Bitcoin.Activation.Flags.getBlockScriptFlagsP`, and
+`Flags.mainnet_height_hash_agree` proves the two agree).  Mainnet
+exception blocks are identified by height here — sound on mainnet, where
+each height has exactly one canonical block.
+856:            let fValue := if w = 0x64 then !(castToBool vch) else castToBool vch
+870:      else if castToBool (topAt st.stack 1) then .ok { st with stack := st.stack.tail }
+917:      else if castToBool (topAt st.stack 1) then .ok { st with stack := topAt st.stack 1 :: st.stack }
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -rn "castToBool" Bitcoin --include=*.lean | head -5; grep -rn "def castToBool" -A 12 Bitcoin | head -20
+Bitcoin/Interpreter/Defs.lean:856:            let fValue := if w = 0x64 then !(castToBool vch) else castToBool vch
+Bitcoin/Interpreter/Defs.lean:870:      else if castToBool (topAt st.stack 1) then .ok { st with stack := st.stack.tail }
+Bitcoin/Interpreter/Defs.lean:917:      else if castToBool (topAt st.stack 1) then .ok { st with stack := topAt st.stack 1 :: st.stack }
+Bitcoin/Interpreter/Defs.lean:983:            if castToBool r then .ok { st with stack := st.stack.drop 2 }
+Bitcoin/Interpreter/Defs.lean:1198:        else if castToBool st[0]! then .ok else .fail .evalFalse
+Bitcoin/Numeric/ScriptNum.lean:648:def castToBoolList (l : List Nat) : Bool :=
+Bitcoin/Numeric/ScriptNum.lean-649-  match l with
+Bitcoin/Numeric/ScriptNum.lean-650-  | [] => false
+Bitcoin/Numeric/ScriptNum.lean-651-  | d :: t => t.any (fun e => e ≠ 0) || decide (d ≠ 0 ∧ d ≠ 128)
+Bitcoin/Numeric/ScriptNum.lean-652-
+Bitcoin/Numeric/ScriptNum.lean-653-/-- `CastToBool` agrees with the numeric value being nonzero, on every
+Bitcoin/Numeric/ScriptNum.lean-654-byte vector with bytes `< 256` — including the negative-zero corner:
+Bitcoin/Numeric/ScriptNum.lean-655-`[0x80]` decodes to `0` and casts to `false` (SCR-057, SCR-083). -/
+Bitcoin/Numeric/ScriptNum.lean-656-theorem castToBoolList_iff : ∀ l : List Nat, (∀ d ∈ l, d < 256) →
+Bitcoin/Numeric/ScriptNum.lean-657-    (castToBoolList l = true ↔ setVchBE l ≠ 0) := by
+Bitcoin/Numeric/ScriptNum.lean-658-  intro l
+Bitcoin/Numeric/ScriptNum.lean-659-  induction l with
+Bitcoin/Numeric/ScriptNum.lean-660-  | nil => intro _; simp [castToBoolList, setVchBE]
+--
+Bitcoin/Numeric/Interface.lean:69:def castToBool : ByteArray → Bool :=
+Bitcoin/Numeric/Interface.lean-70-  fun b => castToBoolList (bytesOf b).reverse
+Bitcoin/Numeric/Interface.lean-71-
+Bitcoin/Numeric/Interface.lean-72-/-- Fee arithmetic helper: `fee = valueIn − valueOut` as computed by
+Bitcoin/Numeric/Interface.lean-73-`Consensus::CheckTxInputs` (tx_verify.cpp:186-193); negative fee ⇒
+Bitcoin/Numeric/Interface.lean-74-`bad-txns-in-belowout`. -/
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -n "cmsLoop\|cmsCleanup\|evalChecksigDispatch\|checkECDSASignature" -A 45 Bitcoin/Interpreter/Defs.lean | sed -n '1,180p'
+643:def cmsLoop (flags : ScriptFlags) (pol : PolicyFlags) (sv : SigVersion)
+644-    (chk : ScriptChecker) (ed : ScriptExecutionData) (scriptCode : ByteArray)
+645-    (st : Stack) (fuel nKeys nSigs isig ikey : Nat) : Except ExecError Bool :=
+646-  if nSigs = 0 then .ok true
+647-  else match fuel with
+648-    | 0 => .ok false   -- unreachable: each iteration consumes a signature
+649-    | f+1 =>
+650-      let sig := st[isig-1]!
+651-      let pk := st[ikey-1]!
+652-      match checkSigEncoding flags pol sig, checkPubKeyEncoding flags pol sv pk with
+653-      | some e, _ => .error e
+654-      | _, some e => .error e
+655-      | none, none =>
+656:        let fOk := chk.base.checkECDSASignature sig pk scriptCode sv ed
+657-        let isig' := if fOk then isig + 1 else isig
+658-        let nSigs' := if fOk then nSigs - 1 else nSigs
+659-        let ikey' := ikey + 1
+660-        let nKeys' := nKeys - 1
+661-        if nSigs' > nKeys' then .ok false
+662:        else cmsLoop flags pol sv chk ed scriptCode st f nKeys' nSigs' isig' ikey'
+663-
+664-/-- The CMS argument-cleanup pop loop (interpreter.cpp:1212-1221) with
+665-the NULLFAIL check; pops `i - 1` items. SWT-059: the NULLFAIL gate is
+666-`pol.nullFail` — the POLICY word (BIP146; consensus `ScriptFlags` has no
+667-NULLFAIL bit, so block validation with the consensus-default policy
+668-never raises sigNullFail). -/
+669-@[rule "SWT-059", rule "INV-051"]
+670:def cmsCleanup (pol : PolicyFlags) (st : Stack) (fSuccess : Bool)
+671-    (i ikey2 fuel : Nat) : Except ExecError Stack :=
+672-  if i ≤ 1 then .ok st
+673-  else match fuel with
+674-    | 0 => .ok st   -- unreachable
+675-    | f+1 =>
+676-      if !fSuccess ∧ pol.nullFail ∧ ikey2 = 0 ∧ st[0]!.size ≠ 0 then .error .sigNullFail
+677-      else
+678-        let ikey2' := if 0 < ikey2 then ikey2 - 1 else ikey2
+679:        cmsCleanup pol st.tail fSuccess (i - 1) ikey2' f
+680-
+681-/-- `EvalChecksigPreTapscript` (interpreter.cpp:328-368): returns
+682-`fSuccess` or an error. SWT-048: the scriptCode is the executed script
+683-from the last OP_CODESEPARATOR onward (`extract codeSep`). SWT-049:
+684-FindAndDelete applies only for SigVersion::BASE (BIP143 §No
+685-FindAndDelete — v0 keeps the signature in the scriptCode). -/
+686-@[rule "SCR-099", rule "SCR-100", rule "SCR-110", rule "SCR-112", rule "SCR-139",
+687-  rule "SWT-048", rule "SWT-049", rule "INV-051"]
+688-def evalChecksigPreTapscript (flags : ScriptFlags) (pol : PolicyFlags)
+689-    (chk : ScriptChecker) (ed : ScriptExecutionData) (sv : SigVersion)
+690-    (codeSep : Nat) (bytes : ByteArray) (sig pk : ByteArray) :
+691-    Except ExecError Bool :=
+692-  let scriptCode0 := bytes.extract codeSep bytes.size
+693-  let sc : Except ExecError ByteArray :=
+694-    if sv = .base then
+695-      let (found, sc') := findAndDelete scriptCode0 (pushBytesWire sig)
+696-      if 0 < found ∧ pol.constScriptCode then .error .sigFindAndDelete else .ok sc'
+697-    else .ok scriptCode0
+698-  match sc with
+699-  | .error e => .error e
+700-  | .ok scriptCode =>
+701-    match checkSigEncoding flags pol sig, checkPubKeyEncoding flags pol sv pk with
+702-    | some e, _ => .error e
+703-    | _, some e => .error e
+704-    | none, none =>
+705:      let fSuccess := chk.base.checkECDSASignature sig pk scriptCode sv ed
+706-      if !fSuccess ∧ pol.nullFail ∧ sig.size ≠ 0 then .error .sigNullFail
+707-      else .ok fSuccess
+708-
+709-/-- `EvalChecksigTapscript` (interpreter.cpp:370-410). `vw` threads
+710-BIP342's validation-weight budget (Core decrements
+711-`execdata.m_validation_weight_left` in place; here the budget rides the
+712-machine state, initialized from `ScriptExecutionData` by `evalScriptBytes`
+713-on the tapscript path). Consensus-critical validation sequence per the
+714-Core comment: budget check precedes the pubkey rules; a non-empty INVALID
+715-signature fails the script (`SCRIPT_ERR_SCHNORR_SIG` — the BIP342
+716-"Validation failure in this case immediately terminates script execution
+717-with failure"; NULLFAIL baked in as consensus, not flag-gated). X04 delta
+718-fix: the W09 draft returned `.ok (ok && success, …)`, which pushed `false`
+719-and continued on a failed 32-byte-key verification — legacy CHECKSIG
+720-semantics, NOT tapscript. (Tags restored by X05 after X04's U2 rewrite
+721-dropped the docstring-embedded attributes: SCR-121 tapscript-CMS ban via
+722-the `.tapscriptCheckMultiSig` path in `stepBody`, SCR-159/160 the
+723-empty-pubkey / empty-sig sequence below.) -/
+724-@[rule "SCR-121", rule "SCR-159", rule "SCR-160", rule "SCR-041", rule "SCR-042", rule "SCR-158", rule "SCR-168", rule "TPR-027"]
+725-def evalChecksigTapscript (pol : PolicyFlags) (chk : ScriptChecker)
+726-    (ed : ScriptExecutionData) (sig pk : ByteArray) (vw : Option Int) :
+727-    Except ExecError (Bool × Option Int) :=
+728-  let success := sig.size ≠ 0
+729-  if success then
+730-    let vw' := (vw.getD 0) - VALIDATION_WEIGHT_PER_SIGOP_PASSED
+731-    if vw' < 0 then .error .tapscriptValidationWeight
+732-    else if pk.size = 0 then .error .tapscriptEmptyPubkey
+733-    else if pk.size = 32 then
+734-      if !chk.base.checkSchnorrSignature sig pk .tapscript ed then .error .schnorrSig
+735-      else .ok (true, some vw')
+736-    else if pol.discourageUpgradablePubkeyType then .error .discourageUpgradablePubkeyType
+737-    else .ok (success, some vw')
+738-  else
+739-    if pk.size = 0 then .error .tapscriptEmptyPubkey
+740-    else if pk.size = 32 then .ok (false, vw)
+741-    else if pol.discourageUpgradablePubkeyType then .error .discourageUpgradablePubkeyType
+742-    else .ok (false, vw)
+743-
+744-/-- `EvalChecksig` (interpreter.cpp:402-415): the SigVersion mode
+745-dispatch for the signature opcodes — BASE/WITNESS_V0 →
+746-`EvalChecksigPreTapscript` (ECDSA, encoding validators, FindAndDelete),
+747-TAPSCRIPT → `EvalChecksigTapscript` (Schnorr-only, budget,
+748-empty-sig-false); TAPROOT is unreachable (key-path spending executes no
+749-script). The `vw` slot threads the validation-weight budget; the
+750-pre-tapscript arm passes it through untouched. -/
+751:def evalChecksigDispatch (flags : ScriptFlags) (pol : PolicyFlags)
+752-    (chk : ScriptChecker) (ed : ScriptExecutionData) (sv : SigVersion)
+753-    (codeSep : Nat) (bytes : ByteArray) (sig pk : ByteArray)
+754-    (vw : Option Int) : Except ExecError (Bool × Option Int) :=
+755-  if sv = .base ∨ sv = .witnessV0 then
+756-    match evalChecksigPreTapscript flags pol chk ed sv codeSep bytes sig pk with
+757-    | .error e => .error e
+758-    | .ok b => .ok (b, vw)
+759-  else if sv = .tapscript then
+760-    evalChecksigTapscript pol chk ed sig pk vw
+761-  else .error .badOpcode
+762-
+763-/-- OP_CHECKSIGADD's stack arithmetic (interpreter.cpp:1103-1112): the
+764-`num` operand decodes FIRST (4-byte `CScriptNum` ctor bound — BIP342:
+765-"If n is larger than 4 bytes, the script MUST fail"; minimal-encoding via
+766-the policy word exactly as for OP_ADD: BIP342 "All CScriptNum-related
+767-behaviours of OP_ADD are also applicable to OP_CHECKSIGADD"), then
+768-`EvalChecksig` runs; the result is `n + (success ? 1 : 0)`. -/
+769-@[rule "INV-060"]
+770-def checksigAddStep (pol : PolicyFlags) (chk : ScriptChecker)
+771-    (ed : ScriptExecutionData) (sig num pk : ByteArray) (vw : Option Int) :
+772-    Except ExecError (ScriptNum × Option Int) :=
+773-  match decodeNum pol num 4 with
+774-  | .error e => .error e
+775-  | .ok n =>
+776-    match evalChecksigTapscript pol chk ed sig pk vw with
+777-    | .error e => .error e
+778-    | .ok (success, vw') => .ok (n + (if success then 1 else 0), vw')
+779-
+780-/-- One opcode transition, `stepBody`: everything except the terminal
+781-STACK_SIZE guard (`stepChecked` wraps this). Check order mirrors
+782-interpreter.cpp:423-570 exactly. -/
+783-@[rule "SCR-046", rule "SCR-062", rule "SCR-064", rule "SCR-078", rule "SCR-156", rule "INV-042", rule "INV-043", rule "INV-045", rule "TPR-068"]
+784-def stepBody (ctx : Ctx) (op : WireOp) (st : State) : Except ExecError State :=
+785-  let w := op.wire
+786-  -- (1) element size limit — right after GetOp, executed or not
+787-  let sizeOk : Bool :=
+788-    match op.ast with
+789-    | .pushBytes d => d.size ≤ MAX_SCRIPT_ELEMENT_SIZE
+790-    | _ => true
+791-  if !sizeOk then .error .pushSize
+792-  else
+793-  -- (2) opcode budget (interpreter.cpp:459-463)
+794-  let counts := (ctx.sv = .base ∨ ctx.sv = .witnessV0) ∧ 0x60 < w
+795-  let opCount' := if counts then st.opCount + 1 else st.opCount
+796-  if counts ∧ MAX_OPS_PER_SCRIPT < opCount' then .error .opCount
+--
+1006:        match evalChecksigDispatch flags pol ctx.chk ctx.ed ctx.sv st.codeSep ctx.bytes
+1007-            sig pk st.vwLeft with
+1008-        | .error e => .error e
+1009-        | .ok (fSuccess, vw') =>
+1010-          let st₂ := { st with vwLeft := vw' }
+1011-          if w = 0xad then
+1012-            if fSuccess then .ok { st₂ with stack := st₂.stack.drop 2 }
+1013-            else .error .checkSigVerify
+1014-          else .ok { st₂ with stack := pushBoolV fSuccess :: st₂.stack.drop 2 }
+1015-    else if w = 0xba then                                   -- OP_CHECKSIGADD (BIP342)
+1016-      -- tapscript-only: BAD_OPCODE under base/witnessV0 (interpreter.cpp:1097)
+1017-      if ctx.sv = .base ∨ ctx.sv = .witnessV0 then .error .badOpcode
+1018-      else if st.stack.length < 3 then .error .stackUnderflow
+1019-      else
+1020-        -- (sig num pubkey -- num+{0,1}); num decodes before EvalChecksig
+1021-        match checksigAddStep ctx.pol ctx.chk ctx.ed
+1022-            (topAt st.stack 3) (topAt st.stack 2) (topAt st.stack 1) st.vwLeft with
+1023-        | .error e => .error e
+1024-        | .ok (r, vw') =>
+1025-          .ok { st with vwLeft := vw',
+1026-                        stack := encodeScriptNum r false :: st.stack.drop 3 }
+1027-    else if w = 0xae ∨ w = 0xaf then                        -- OP_CHECKMULTISIG / …VERIFY
+1028-      checkMultiSig ctx w st
+1029-    else if w = 0x50 ∨ w = 0x62 ∨ w = 0x89 ∨ w = 0x8a then .error .badOpcode
+1030-    else .error .badOpcode
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -n "def parseFrom\|theorem parseFrom_shift\|parseFrom_roundtrip" -A 18 Bitcoin/Script/Parser/Defs.lean | head -80
+777:def parseFrom : Nat → ByteArray → Nat → Option (List Opcode)
+778-  | 0, _, _ => none
+779-  | f+1, b, i =>
+780-    if b.size ≤ i then some []
+781-    else (getOp b i).bind
+782-      (fun p => (parseFrom f b p.2).map (fun ops => p.1 :: ops))
+783-
+784-/-- Head equation for the fuel parser (succ form). -/
+785-theorem parseFrom_succ (f : Nat) (b : ByteArray) (i : Nat) :
+786-    parseFrom (f+1) b i =
+787-      if b.size ≤ i then some []
+788-      else (getOp b i).bind
+789-        (fun p => (parseFrom f b p.2).map (fun ops => p.1 :: ops)) := rfl
+790-
+791-/-- Success survives extra fuel: the parse result does not depend on
+792-having more decodes available than needed. -/
+793-theorem parseFrom_mono : ∀ (f : Nat) (b : ByteArray) (ops : List Opcode) (i f' : Nat),
+794-    f ≤ f' → parseFrom f b i = some ops → parseFrom f' b i = some ops := by
+795-  intro f
+--
+824:theorem parseFrom_shift : ∀ (f : Nat) (pre q : ByteArray) (j : Nat),
+825-    parseFrom f (pre ++ q) (pre.size + j) = parseFrom f q j := by
+826-  intro f
+827-  induction f with
+828-  | zero => intro pre q j; rfl
+829-  | succ f ih =>
+830-    intro pre q j
+831-    rw [parseFrom_succ, parseFrom_succ]
+832-    by_cases hqj : q.size ≤ j
+833-    · rw [if_pos (show (pre ++ q).size ≤ pre.size + j from by
+834-        rw [ByteArray.size_append]; omega),
+835-          if_pos hqj]
+836-    · rw [if_neg (show ¬((pre ++ q).size ≤ pre.size + j) from by
+837-        rw [ByteArray.size_append]; omega),
+838-          if_neg hqj, getOp_shift]
+839-      cases hgo : getOp q j with
+840-      | none => simp
+841-      | some p =>
+842-        obtain ⟨o, j'⟩ := p
+--
+868:theorem parseFrom_roundtrip : ∀ (ops : List Opcode), (∀ o ∈ ops, opcodeWF o) →
+869-    parseFrom ((serializeOpcodes ops).size + 1) (serializeOpcodes ops) 0 = some ops := by
+870-  intro ops
+871-  induction ops with
+872-  | nil =>
+873-    intro _
+874-    show parseFrom (ByteArray.empty.size + 1) ByteArray.empty 0 = some []
+875-    rw [parseFrom_succ, if_pos (show ByteArray.empty.size ≤ 0 by simp)]
+876-  | cons o ops' ih =>
+877-    intro hall
+878-    have ho : opcodeWF o := hall o (by simp)
+879-    have hall' : ∀ o' ∈ ops', opcodeWF o' := fun o' hm => hall o' (by simp [hm])
+880-    rw [serializeOpcodes_cons]
+881-    rw [parseFrom_succ]
+882-    rw [if_neg (show ¬((serializeOpcode o ++ serializeOpcodes ops').size ≤ 0) from by
+883-      have := getOp_lt (getOp_serialize o (serializeOpcodes ops') ho); omega)]
+884-    rw [getOp_serialize o (serializeOpcodes ops') ho, Option.bind_some]
+885-    have hrec : parseFrom ((serializeOpcodes (o :: ops')).size)
+886-        (serializeOpcodes (o :: ops')) ((serializeOpcode o).size + 0) = some ops' := by
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -rn "wireOpsFrom\|wireOfAst\|parseWireFrom" Bitcoin | grep -v "Defs.lean:4[0-9][0-9]" | head -30
+(no output)
+> build · deepseek-v4.1-flash-1017
+[0m→ [0mRead /home/ubuntu/btc-lean-public/spec/core/Bitcoin/Interpreter/Defs.lean [90m[limit=170, offset=784][0m
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -n "def pushBoolV\|def encodeScriptNum\|def decodeNum\|def topAt\|def checkSigEncoding\|def checkPubKeyEncoding\|def getLast!\|def dropLast" -A 12 Bitcoin/Interpreter/Defs.lean Bitcoin/Numeric/Interface.lean | head -120
+Bitcoin/Interpreter/Defs.lean:291:def pushBoolV (v : Bool) : ByteArray := if v then vchTrue else vchFalse
+Bitcoin/Interpreter/Defs.lean-292-
+Bitcoin/Interpreter/Defs.lean-293-/-! ## Signature / pubkey encoding validators
+Bitcoin/Interpreter/Defs.lean-294-(CheckSignatureEncoding interpreter.cpp:120-160, CheckPubKeyEncoding
+Bitcoin/Interpreter/Defs.lean-295-interpreter.cpp:225-234, IsValidSignatureEncoding script.cpp,
+Bitcoin/Interpreter/Defs.lean-296-IsCompressedOrUncompressedPubKey interpreter.cpp:74, CheckLowS
+Bitcoin/Interpreter/Defs.lean-297-pubkey.h — DER-level S ≤ n/2 formulation, corpus-validated in W09.) -/
+Bitcoin/Interpreter/Defs.lean-298-
+Bitcoin/Interpreter/Defs.lean-299-/-- `IsValidSignatureEncoding` (BIP66, script.cpp:169-211). -/
+Bitcoin/Interpreter/Defs.lean-300-@[rule "SCR-102"]
+Bitcoin/Interpreter/Defs.lean-301-def isValidSigEncoding (sig : ByteArray) : Bool :=
+Bitcoin/Interpreter/Defs.lean-302-  if sig.size < 9 ∨ 73 < sig.size then false
+Bitcoin/Interpreter/Defs.lean-303-  else if byteOr sig 0 ≠ 0x30 then false
+--
+Bitcoin/Interpreter/Defs.lean:354:def checkSigEncoding (flags : ScriptFlags) (pol : PolicyFlags) (sig : ByteArray) :
+Bitcoin/Interpreter/Defs.lean-355-    Option ExecError :=
+Bitcoin/Interpreter/Defs.lean-356-  if sig.size = 0 then none
+Bitcoin/Interpreter/Defs.lean-357-  else if (flags.dersig ∨ pol.lowS ∨ pol.strictEnc) ∧ !isValidSigEncoding sig then some .sigDer
+Bitcoin/Interpreter/Defs.lean-358-  else if pol.lowS ∧ !checkLowS (sig.extract 0 (sig.size - 1)) then some .sigHighS
+Bitcoin/Interpreter/Defs.lean-359-  else if pol.strictEnc ∧ !isDefinedHashtype sig then some .sigHashType
+Bitcoin/Interpreter/Defs.lean-360-  else none
+Bitcoin/Interpreter/Defs.lean-361-
+Bitcoin/Interpreter/Defs.lean-362-/-- `IsCompressedOrUncompressedPubKey` (interpreter.cpp:74-92). -/
+Bitcoin/Interpreter/Defs.lean-363-def isCompressedOrUncompressedPubKey (pk : ByteArray) : Bool :=
+Bitcoin/Interpreter/Defs.lean-364-  if pk.size < 33 then false
+Bitcoin/Interpreter/Defs.lean-365-  else if byteOr pk 0 = 0x04 then pk.size = 65
+Bitcoin/Interpreter/Defs.lean-366-  else if byteOr pk 0 = 0x02 ∨ byteOr pk 0 = 0x03 then pk.size = 33
+--
+Bitcoin/Interpreter/Defs.lean:379:def checkPubKeyEncoding (_flags : ScriptFlags) (pol : PolicyFlags) (sv : SigVersion)
+Bitcoin/Interpreter/Defs.lean-380-    (pk : ByteArray) : Option ExecError :=
+Bitcoin/Interpreter/Defs.lean-381-  if pol.strictEnc ∧ !isCompressedOrUncompressedPubKey pk then some .pubKeyType
+Bitcoin/Interpreter/Defs.lean-382-  else if pol.witnessPubkeyType ∧ sv = .witnessV0 ∧ !isCompressedPubKey pk then
+Bitcoin/Interpreter/Defs.lean-383-    some .witnessPubkeyType
+Bitcoin/Interpreter/Defs.lean-384-  else none
+Bitcoin/Interpreter/Defs.lean-385-
+Bitcoin/Interpreter/Defs.lean-386-/-! ## The wire-op layer -/
+Bitcoin/Interpreter/Defs.lean-387-
+Bitcoin/Interpreter/Defs.lean-388-/-- An AST opcode annotated with the data the interpreter needs and the
+Bitcoin/Interpreter/Defs.lean-389-AST does not carry: the **wire byte** (`CheckMinimalPush`, the op
+Bitcoin/Interpreter/Defs.lean-390-budget, the disabled table — all keyed on the wire encoding) and the
+Bitcoin/Interpreter/Defs.lean-391-byte offset just past this opcode (OP_CODESEPARATOR's
+--
+Bitcoin/Interpreter/Defs.lean:592:def topAt (st : Stack) (k : Nat) : ByteArray := st[k-1]!
+Bitcoin/Interpreter/Defs.lean-593-
+Bitcoin/Interpreter/Defs.lean-594-/-- CScriptNum decode with the interpreter's error mapping
+Bitcoin/Interpreter/Defs.lean-595-(`scriptnum_error` → SCRIPT_ERR_SCRIPTNUM). -/
+Bitcoin/Interpreter/Defs.lean-596-@[rule "SCR-050", rule "SCR-051", rule "SCR-157", rule "INV-058"]
+Bitcoin/Interpreter/Defs.lean:597:def decodeNum (pol : PolicyFlags) (b : ByteArray) (maxSize : Nat) :
+Bitcoin/Interpreter/Defs.lean-598-    Except ExecError ScriptNum :=
+Bitcoin/Interpreter/Defs.lean-599-  match decodeScriptNum b pol.minimalData maxSize with
+Bitcoin/Interpreter/Defs.lean-600-  | some n => .ok n
+Bitcoin/Interpreter/Defs.lean-601-  | none => .error .scriptNum
+Bitcoin/Interpreter/Defs.lean-602-
+Bitcoin/Interpreter/Defs.lean-603-/-- The five hash opcodes (0xa6-0xaa) over the interpreter hash floor. -/
+Bitcoin/Interpreter/Defs.lean-604-@[rule "SCR-093", rule "SCR-094", rule "SCR-095"]
+Bitcoin/Interpreter/Defs.lean-605-def hashForOp (w : Nat) (d : ByteArray) : ByteArray :=
+Bitcoin/Interpreter/Defs.lean-606-  match w with
+Bitcoin/Interpreter/Defs.lean-607-  | 0xa6 => hashRipemd160 d
+Bitcoin/Interpreter/Defs.lean-608-  | 0xa7 => hashSha1 d
+Bitcoin/Interpreter/Defs.lean-609-  | 0xa8 => hashSha256 d
+--
+Bitcoin/Numeric/Interface.lean:60:def encodeScriptNum : ScriptNum → Bool → ByteArray :=
+Bitcoin/Numeric/Interface.lean-61-  fun n _minimal => bytesFromLE (scriptNumBE n).reverse
+Bitcoin/Numeric/Interface.lean-62-
+Bitcoin/Numeric/Interface.lean-63-/-- `CastToBool` (interpreter.cpp:437-444): false iff all bytes are 0x00,
+Bitcoin/Numeric/Interface.lean-64-or the only nonzero byte is a lone `0x80` sign byte in the most
+Bitcoin/Numeric/Interface.lean-65-significant (wire-last) position — the negative zero (SCR-057/083).
+Bitcoin/Numeric/Interface.lean-66-Truth table pinned against interpreter.cpp:46-59; see
+Bitcoin/Numeric/Interface.lean-67-`castToBool_iff_setVchBE` below. -/
+Bitcoin/Numeric/Interface.lean-68-@[rule "SCR-057"]
+Bitcoin/Numeric/Interface.lean-69-def castToBool : ByteArray → Bool :=
+Bitcoin/Numeric/Interface.lean-70-  fun b => castToBoolList (bytesOf b).reverse
+Bitcoin/Numeric/Interface.lean-71-
+Bitcoin/Numeric/Interface.lean-72-/-- Fee arithmetic helper: `fee = valueIn − valueOut` as computed by
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/ln-lean-pubbump && grep -n "Proofs.L1\|Proofs.PhaseC2.FundingBridge" LnLean.lean | head; ls LnLean/Proofs/L1 2>/dev/null; head -20 LnLean.lean; cat agents/status/PUBBUMP.status 2>/dev/null
+142:import LnLean.Proofs.PhaseC2.FundingBridge
+/-
+  ln-lean root module.  GENERATED by scripts/regen-root.sh.
+  Do not edit by hand.
+-/
+import LnLean.Basic.Core
+import LnLean.Proofs.Common
+import LnLean.Bitcoin.Funding
+import LnLean.Bitcoin.Laws
+import LnLean.Bitcoin.ScriptTemplates
+import LnLean.Bitcoin.Seam
+import LnLean.Channel.Commitment
+import LnLean.Channel.Fee
+import LnLean.Channel.HTLC
+import LnLean.Channel.HTLCLaws
+import LnLean.Channel.Laws
+import LnLean.Channel.Penalty
+import LnLean.Channel.Revocation
+import LnLean.Channel.State
+import LnLean.Channel.Types
+import LnLean.Crypto.Hash
+START pubbump 2026-10-18T01:57:05Z
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && head -40 Bitcoin/Interpreter/Defs.lean && head -20 Bitcoin/Script/Parser/Interface.lean
+import Bitcoin.Data.Basic
+import Bitcoin.Data.Script
+import Bitcoin.Data.Tx
+import Bitcoin.Script.Parser.Defs
+import Bitcoin.Numeric.Interface
+import Bitcoin.Activation.Interface
+import Bitcoin.Crypto.Seam.Interface
+import Bitcoin.Interpreter.Hashes
+
+/-!
+# Bitcoin.Interpreter.Defs — the script interpreter core (W09)
+
+A total, fuel-bounded transliteration of Core's `EvalScript` /
+`VerifyScript` / `VerifyWitnessProgram` / `ExecuteWitnessScript`
+(interpreter.cpp @ `cce32b168`) over the W05 `Opcode` AST.
+
+Ground truth and ordering: every check appears in the same order as
+interpreter.cpp; the W09 Python prototype (corpus-validated at 98.8%
+against the hash-pinned `script_tests.json`) is the semantic reference.
+
+Design notes:
+
+* Evaluation walks a `List WireOp` — the W05 AST annotated with the
+  **wire byte** (needed by `CheckMinimalPush`, the 201-opcode budget and
+  the disabled-opcode table, none of which are recoverable from the AST
+  alone: `pushBytes ∅` may be OP_0 or a PUSHDATA1 of length 0) and the
+  byte offset just past the opcode (OP_CODESEPARATOR's
+  `pbegincodehash`). The script bytes ride along in `Ctx`.
+* The stack is `List ByteArray` with the **head = top of stack**;
+  `topAt st k` is Core's `stacktop(-(k+1))`.
+* The 1,000-element STACK_SIZE check (and the terminal
+  UNBALANCED_CONDITIONAL check) are factored OUT of the opcode dispatch:
+  `stepChecked` wraps `stepBody` with the size guard, so the
+  stack-bounds theorem is a two-line consequence of the guard's shape —
+  no per-opcode length reasoning needed.
+* Numbers are `Bitcoin.Numeric.ScriptNum := Int`. Core's int64 wrap on
+  arithmetic overflow is NOT modeled (unbounded `Int`); the conformance
+  corpus never exercises int64 overflow (max magnitudes are 2^31-ish),
+  and the divergence window is documented in the W09 report.
+* Hashes come from `Bitcoin.Interpreter.Hashes` (the interpreter's own
+import Bitcoin.Data.Basic
+import Bitcoin.Data.Script
+import Bitcoin.Script.Parser.Defs
+
+/-!
+# Bitcoin.Script.Parser — FROZEN INTERFACE (W01, filled by W05)
+
+## Ownership block (do not edit outside an interface-change PR)
+
+Owning workstream     : W05 (Script parser)
+Dependent workstreams : W09 (interpreter consumes the AST),
+                        W07 (parse layer of script_tests dashboard),
+                        W11 (scriptCode re-serialization needs push data)
+Core counterpart files: src/script/script.h (GetOp, opcode enum 0x00-0xff,
+                        MAX_SCRIPT_ELEMENT_SIZE=520), src/script/
+                        interpreter.cpp (push-data limits)
+Status                : frozen 2026-10-16 by W01; bodies filled by W05.
+
+## Scope
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -rn "hashSha256.*size\|sha256.*size.*32\|theorem.*sha256" Bitcoin/Interpreter/Hashes.lean Bitcoin/Crypto | head -30
+Bitcoin/Crypto/Seam/Hash.lean:291:theorem sha256_size (m : ByteArray) : (Sha256.sha256 m).size = 32 := by
+Bitcoin/Crypto/Seam/Hash.lean:303:theorem sha256d_size (m : ByteArray) : (sha256d m).size = 32 := by
+Bitcoin/Crypto/Seam/Interface.lean:76:theorem sha256d_size (m : ByteArray) : (sha256d m).size = 32 := Hash.sha256d_size m
+Bitcoin/Crypto/Schnorr/TaggedHash.lean:12:the vendored C2 PoC — W13 proved `sha256_size : … = 32` and verified
+Bitcoin/Crypto/Taproot/Sighash.lean:316:theorem shaPrevouts_size (tx : Tx) : (shaPrevouts tx).size = 32 := sha256_size _
+Bitcoin/Crypto/Taproot/Sighash.lean:321:theorem shaSequences_size (tx : Tx) : (shaSequences tx).size = 32 := sha256_size _
+Bitcoin/Crypto/Taproot/Sighash.lean:322:theorem shaOutputs_size (tx : Tx) : (shaOutputs tx).size = 32 := sha256_size _
+Bitcoin/Crypto/Taproot/Sighash.lean:361:theorem bip341_subhashes_single_sha256 (tx : Tx) (outs : List TxOut)
+Bitcoin/Crypto/Taproot/Sighash.lean:383:theorem sighashTaproot_single_sha256 (env : TapSighashEnv) (inPos : Nat)
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcd /home/ubuntu/btc-lean-public/spec/core && grep -rn "hashSha256" Bitcoin | grep -i "size\|theorem\|lemma" | head -20; grep -rn "mdPad" -A 30 Bitcoin/Interpreter/Hashes.lean | head -50
+72:def mdPad (data : ByteArray) (lenBE : Bool) : ByteArray :=
+73-  let zeros := ((55 : Nat) + 64 - data.size % 64) % 64
+74-  let bitLen := data.size * 8
+75-  let lenBytes : ByteArray :=
+76-    List.toByteArray ((List.range 8).map (fun i =>
+77-      let sh := if lenBE then 8 * (7 - i) else 8 * i
+78-      ((bitLen >>> sh) &&& 0xFF).toUInt8))
+79-  data.push 0x80 ++ (List.replicate zeros 0).toByteArray ++ lenBytes
+80-
+81-/-! ## SHA-256 (FIPS 180-4, interpreter.cpp OP_SHA256 via CSHA256) -/
+82-
+83-def K256 : Array UInt32 := #[
+84-  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+85-  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+86-  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+87-  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+88-  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+89-  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+90-  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+91-  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2]
+92-
+93-/-- One SHA-256 compression step over the expanded schedule. -/
+94-def sha256Round (i : Nat) (w : Array UInt32) (a b c d e f g h : UInt32) :
+95-    UInt32 × UInt32 × UInt32 × UInt32 × UInt32 × UInt32 × UInt32 × UInt32 :=
+96-  let s1 := rotr32 e 6 ^^^ rotr32 e 11 ^^^ rotr32 e 25
+97-  let ch := (e &&& f) ^^^ (~~~e &&& g)
+98-  let t1 := h + s1 + ch + K256[i]! + w[i]!
+99-  let s0 := rotr32 a 2 ^^^ rotr32 a 13 ^^^ rotr32 a 22
+100-  let maj := (a &&& b) ^^^ (a &&& c) ^^^ (b &&& c)
+101-  let t2 := s0 + maj
+102-  ((t1 + t2), a, b, c, (d + t1), e, f, g)
+--
+126:  let padded := mdPad data true
+127-  let nblocks := padded.size / 64
+128-  let h := (List.range nblocks).foldl (fun h i => sha256Compress h padded (64 * i))
+129-    #[0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+130-      0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]
+131-  (List.range 8).foldl (fun acc i => acc ++ wordBEEmit h[i]!) ByteArray.empty
+132-
+133-/-! ## SHA-1 (FIPS 180-4, OP_SHA1) -/
+134-
+135-def sha1F (i : Nat) (b c d : UInt32) : UInt32 :=
+136-  if i < 20 then (b &&& c) ||| (~~~b &&& d)
+137-  else if i < 40 then b ^^^ c ^^^ d
+138-  else if i < 60 then (b &&& c) ||| (b &&& d) ||| (c &&& d)
+139-  else b ^^^ c ^^^ d
+140-
+141-def sha1K (i : Nat) : UInt32 :=
+142-  if i < 20 then 0x5A827999 else if i < 40 then 0x6ED9EBA1
+143-  else if i < 60 then 0x8F1BBCDC else 0xCA62C1D6
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mmkdir -p /tmp/opencode/lean && cat > /tmp/opencode/lean/t.lean <<'EOF'
+import Bitcoin.Interpreter.Hashes
+
+open Bitcoin.Interpreter
+
+example (d : ByteArray) : (hashSha256 d).size = 32 := by
+  simp [hashSha256]
+EOF
+export PATH=/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/bin:$PATH; cd /home/ubuntu/ln-lean-pubbump && lake env lean /tmp/opencode/lean/t.lean 2>&1 | head -40
+/tmp/opencode/lean/t.lean:5:54: error: unsolved goals
+d : ByteArray
+⊢ (List.foldl
+        (fun acc i =>
+          acc ++
+            wordBEEmit
+              (List.foldl (fun h i => sha256Compress h (mdPad d true) (64 * i))
+                  #[1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924, 528734635, 1541459225]
+                  (List.range ((mdPad d true).size / 64)))[i]!)
+        ByteArray.empty (List.range 8)).size =
+    32
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcat > /tmp/opencode/lean/t.lean <<'EOF'
+import Bitcoin.Interpreter.Hashes
+
+open Bitcoin.Interpreter
+
+private theorem foldl_append_size (l : List Nat) (init : ByteArray) (g : Nat → ByteArray)
+    (hg : ∀ i, (g i).size = 4) :
+    (l.foldl (fun acc i => acc ++ g i) init).size = init.size + 4 * l.length := by
+  induction l generalizing init with
+  | nil => simp
+  | cons a t ih =>
+    simp only [List.foldl_cons, List.length_cons]
+    rw [ih (init ++ g a) hg, ByteArray.size_append, hg a]
+    omega
+
+example (d : ByteArray) : (hashSha256 d).size = 32 := by
+  simp only [hashSha256]
+  rw [foldl_append_size]
+  · simp
+  · intro i
+    sorry
+EOF
+export PATH=/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/bin:$PATH; cd /home/ubuntu/ln-lean-pubbump && lake env lean /tmp/opencode/lean/t.lean 2>&1 | head -40
+/tmp/opencode/lean/t.lean:12:8: error: Function expected at
+  ih (init ++ g a)
+but this term has type
+  (List.foldl (fun acc i => acc ++ g i) (init ++ g a) t).size = (init ++ g a).size + 4 * t.length
+
+Note: Expected a function because this term is being applied to the argument
+  hg
+/tmp/opencode/lean/t.lean:15:0: warning: declaration uses `sorry`
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcat > /tmp/opencode/lean/t.lean <<'EOF'
+import Bitcoin.Interpreter.Hashes
+
+open Bitcoin.Interpreter
+
+private theorem foldl_append_size (l : List Nat) (init : ByteArray) (g : Nat → ByteArray)
+    (hg : ∀ i, (g i).size = 4) :
+    (l.foldl (fun acc i => acc ++ g i) init).size = init.size + 4 * l.length := by
+  induction l generalizing init with
+  | nil => simp
+  | cons a t ih =>
+    simp only [List.foldl_cons, List.length_cons]
+    rw [ih (init ++ g a), ByteArray.size_append, hg a]
+    omega
+
+example (d : ByteArray) : (hashSha256 d).size = 32 := by
+  simp only [hashSha256]
+  rw [foldl_append_size]
+  · simp
+  · intro i
+    simp [wordBEEmit]
+EOF
+export PATH=/dev/shm/btc/elan/toolchains/leanprover--lean4--v4.35.0/bin:$PATH; cd /home/ubuntu/ln-lean-pubbump && lake env lean /tmp/opencode/lean/t.lean 2>&1 | head -40
+(no output)
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcat > /tmp/opencode/lean/t.lean <<'EOF'
+import Bitcoin.Interpreter.Interface
+import Bitcoin.Script.Parser.Interface
+import LnLean.Bitcoin.Funding
+
+namespace T
+open Bitcoin.Data Bitcoin.Interpreter Bitcoin.Script.Parser
+open LnLean LnLean.Bitcoin
+
+def fundingWitnessScript (k1 k2 : PubKey) : Script :=
+  ⟨serializeOpcodes [.pushNum 2, .pushBytes k1.bytes, .pushBytes k2.bytes,
+     .pushNum 2, .op ⟨0xae, by omega⟩]⟩
+
+def fundingWitnessProgram (k1 k2 : PubKey) : ByteArray :=
+  hashSha256 (fundingWitnessScript k1 k2).bytes
+
+def fundingP2WSH (k1 k2 : PubKey) : Script :=
+  ⟨List.toByteArray [0x00, 0x20] ++ fundingWitnessProgram k1 k2⟩
+
+private theorem foldl_append_size (l : List Nat) (init : ByteArray) (g : Nat → ByteArray)
+    (hg : ∀ i, (g i).size = 4) :
+    (l.foldl (fun acc i => acc ++ g i) init).size = init.size + 4 * l.length := by
+  induction l generalizing init with
+  | nil => simp
+  | cons a t ih =>
+    simp only [List.foldl_cons, List.length_cons]
+    rw [ih (init ++ g a), ByteArray.size_append, hg a]
+    omega
+
+theorem hashSha256_size (d : ByteArray) : (hashSha256 d).size = 32 := by
+  simp only [hashSha256]
+  rw [foldl_append_size]
+  · simp
+  · intro i
+    simp [wordBEEmit]
+
+example (k1 k2 : PubKey) :
+    isWitnessProgram (fundingP2WSH k1 k2).bytes = some (0, fundingWitnessProgram k1 k2) := by
+  unfold fundingP2WSH isWitnessProgram
+  simp only [hashSha256_size, ByteArray.size_append, List.size_toByteArray]
+  norm_num
+EOF
+export PATH=/dev/shm/btc/elan/toolchains/leanprover--lean4--v4.35.0/bin:$PATH; cd /home/ubuntu/ln-lean-pubbump && lake env lean /tmp/opencode/lean/t.lean 2>&1 | head -60
+/tmp/opencode/lean/t.lean:9:44: error: Ambiguous term
+  Script
+Possible interpretations:
+  Bitcoin.Script : Type
+  
+  Bitcoin.Data.Script : Type
+/tmp/opencode/lean/t.lean:13:4: warning: declaration uses `sorry`
+/tmp/opencode/lean/t.lean:16:36: error: Ambiguous term
+  Script
+Possible interpretations:
+  Bitcoin.Script : Type
+  
+  Bitcoin.Data.Script : Type
+/tmp/opencode/lean/t.lean:40:3: error: unknown tactic
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcat > /tmp/opencode/lean/t.lean <<'EOF'
+import Bitcoin.Interpreter.Interface
+import Bitcoin.Script.Parser.Interface
+import LnLean.Bitcoin.Funding
+
+namespace T
+open Bitcoin.Data Bitcoin.Interpreter
+open Bitcoin.Script.Parser (Opcode serializeOpcodes)
+open LnLean LnLean.Bitcoin
+
+def fundingWitnessScript (k1 k2 : PubKey) : Bitcoin.Data.Script :=
+  ⟨serializeOpcodes [Opcode.pushNum 2, Opcode.pushBytes k1.bytes,
+     Opcode.pushBytes k2.bytes, Opcode.pushNum 2, Opcode.op ⟨0xae, by omega⟩]⟩
+
+def fundingWitnessProgram (k1 k2 : PubKey) : ByteArray :=
+  hashSha256 (fundingWitnessScript k1 k2).bytes
+
+def fundingP2WSH (k1 k2 : PubKey) : Bitcoin.Data.Script :=
+  ⟨List.toByteArray [0x00, 0x20] ++ fundingWitnessProgram k1 k2⟩
+
+private theorem foldl_append_size (l : List Nat) (init : ByteArray) (g : Nat → ByteArray)
+    (hg : ∀ i, (g i).size = 4) :
+    (l.foldl (fun acc i => acc ++ g i) init).size = init.size + 4 * l.length := by
+  induction l generalizing init with
+  | nil => simp
+  | cons a t ih =>
+    simp only [List.foldl_cons, List.length_cons]
+    rw [ih (init ++ g a), ByteArray.size_append, hg a]
+    omega
+
+theorem hashSha256_size (d : ByteArray) : (hashSha256 d).size = 32 := by
+  simp only [hashSha256]
+  rw [foldl_append_size]
+  · simp
+  · intro i
+    simp [wordBEEmit]
+
+example (k1 k2 : PubKey) :
+    isWitnessProgram (fundingP2WSH k1 k2).bytes = some (0, fundingWitnessProgram k1 k2) := by
+  unfold fundingP2WSH isWitnessProgram
+  simp only [hashSha256_size, ByteArray.size_append, List.size_toByteArray]
+  norm_num
+EOF
+export PATH=/dev/shm/btc/elan/toolchains/leanprover--lean4--v4.35.0/bin:$PATH; cd /home/ubuntu/ln-lean-pubbump && lake env lean /tmp/opencode/lean/t.lean 2>&1 | head -60
+/tmp/opencode/lean/t.lean:41:3: error: unknown tactic
+/tmp/opencode/lean/t.lean:38:91: error: unsolved goals
+k1 k2 : PubKey
+⊢ (if
+        4 ≤ [0, 32].length + (fundingWitnessProgram k1 k2).size ∧
+          [0, 32].length + (fundingWitnessProgram k1 k2).size ≤ 42 then
+      if
+          (([0, 32].toByteArray ++ fundingWitnessProgram k1 k2).get! 0).toNat = 0 ∨
+            81 ≤ (([0, 32].toByteArray ++ fundingWitnessProgram k1 k2).get! 0).toNat ∧
+              (([0, 32].toByteArray ++ fundingWitnessProgram k1 k2).get! 0).toNat ≤ 96 then
+        if
+            (([0, 32].toByteArray ++ fundingWitnessProgram k1 k2).get! 1).toNat + 2 =
+              [0, 32].length + (fundingWitnessProgram k1 k2).size then
+          some
+            (if (([0, 32].toByteArray ++ fundingWitnessProgram k1 k2).get! 0).toNat = 0 then 0
+              else (([0, 32].toByteArray ++ fundingWitnessProgram k1 k2).get! 0).toNat - 80,
+              ([0, 32].toByteArray ++ fundingWitnessProgram k1 k2).extract 2
+                ([0, 32].length + (fundingWitnessProgram k1 k2).size))
+        else none
+      else none
+    else none) =
+    some (0, fundingWitnessProgram k1 k2)
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mgrep -rn "theorem get!_append_left\|theorem get!_append_right\|get!_eq_getElem\|extract_append_eq_right\|extract_zero_size\|extract_append_size_add" /dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/*.lean 2>/dev/null | head -30; grep -rn "get!_append_left\|extract_append_eq_right" /home/ubuntu/btc-lean-public/spec/core/Bitcoin | head
+/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Lemmas.lean:39:theorem extract_zero_size {b : ByteArray} : b.extract 0 b.size = b := by
+/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Lemmas.lean:182:theorem extract_append_eq_right {a b : ByteArray} {i j : Nat} (hi : i = a.size) (hj : j = a.size + b.size) :
+/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Lemmas.lean:199:theorem extract_append_size_add {a b : ByteArray} {i j : Nat} :
+/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Lemmas.lean:209:theorem extract_append_size_add' {a b : ByteArray} {i j k : Nat} (h : k = a.size) :
+/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Lemmas.lean:212:  rw [extract_append_size_add]
+/home/ubuntu/btc-lean-public/spec/core/Bitcoin/Script/Parser/Defs.lean:20:* Slicing uses `ByteArray.extract` (core lemmas `extract_append_eq_right`,
+/home/ubuntu/btc-lean-public/spec/core/Bitcoin/Script/Parser/Defs.lean:424:  ByteArray.extract_append_eq_right rfl rfl
+/home/ubuntu/btc-lean-public/spec/core/Bitcoin/Crypto/Taproot/Program.lean:114:    exact ByteArray.extract_append_eq_right h2.symm (by omega)
+/home/ubuntu/btc-lean-public/spec/core/Bitcoin/Wallet/Taproot/Commit.lean:235:    exact ByteArray.extract_append_eq_right h2.symm (by omega)
+> build · deepseek-v4.1-flash-1017
+[0m$ [0msed -n '178,205p' /dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Lemmas.lean
+theorem append_inj_left {xs₁ xs₂ ys₁ ys₂ : ByteArray} (h : xs₁ ++ ys₁ = xs₂ ++ ys₂) (hl : xs₁.size = xs₂.size) : xs₁ = xs₂ := by
+  simp only [ByteArray.ext_iff, ← ByteArray.size_data, ByteArray.data_append] at *
+  exact Array.append_inj_left h hl
+
+theorem extract_append_eq_right {a b : ByteArray} {i j : Nat} (hi : i = a.size) (hj : j = a.size + b.size) :
+    (a ++ b).extract i j = b := by
+  subst hi hj
+  ext1
+  simp [← size_data]
+
+theorem extract_append_eq_left {a b : ByteArray} {i : Nat} (hi : i = a.size) :
+    (a ++ b).extract 0 i = a := by
+  subst hi
+  ext1
+  simp
+
+theorem extract_append_size_left {a b : ByteArray} {i : Nat} :
+    (a ++ b).extract i a.size = a.extract i a.size := by
+  ext1
+  simp
+
+theorem extract_append_size_add {a b : ByteArray} {i j : Nat} :
+    (a ++ b).extract (a.size + i) (a.size + j) = b.extract i j := by
+  ext1
+  simp
+
+theorem extract_append  {as bs : ByteArray} {i j : Nat} :
+    (as ++ bs).extract i j = as.extract i j ++ bs.extract (i - as.size) (j - as.size) := by
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mcat > /tmp/opencode/lean/t.lean <<'EOF'
+import Bitcoin.Interpreter.Interface
+import Bitcoin.Script.Parser.Interface
+import LnLean.Bitcoin.Funding
+
+namespace T
+open Bitcoin.Data Bitcoin.Interpreter
+open Bitcoin.Script.Parser (Opcode serializeOpcodes)
+open LnLean LnLean.Bitcoin
+
+def fundingWitnessScript (k1 k2 : PubKey) : Bitcoin.Data.Script :=
+  ⟨serializeOpcodes [Opcode.pushNum 2, Opcode.pushBytes k1.bytes,
+     Opcode.pushBytes k2.bytes, Opcode.pushNum 2, Opcode.op ⟨0xae, by omega⟩]⟩
+
+def fundingWitnessProgram (k1 k2 : PubKey) : ByteArray :=
+  hashSha256 (fundingWitnessScript k1 k2).bytes
+
+def fundingP2WSH (k1 k2 : PubKey) : Bitcoin.Data.Script :=
+  ⟨List.toByteArray [0x00, 0x20] ++ fundingWitnessProgram k1 k2⟩
+
+private theorem foldl_append_size (l : List Nat) (init : ByteArray) (g : Nat → ByteArray)
+    (hg : ∀ i, (g i).size = 4) :
+    (l.foldl (fun acc i => acc ++ g i) init).size = init.size + 4 * l.length := by
+  induction l generalizing init with
+  | nil => simp
+  | cons a t ih =>
+    simp only [List.foldl_cons, List.length_cons]
+    rw [ih (init ++ g a), ByteArray.size_append, hg a]
+    omega
+
+theorem hashSha256_size (d : ByteArray) : (hashSha256 d).size = 32 := by
+  simp only [hashSha256]
+  rw [foldl_append_size]
+  · simp
+  · intro i
+    simp [wordBEEmit]
+
+example (k1 k2 : PubKey) :
+    isWitnessProgram (fundingP2WSH k1 k2).bytes = some (0, fundingWitnessProgram k1 k2) := by
+  unfold fundingP2WSH isWitnessProgram fundingWitnessProgram
+  simp only [hashSha256_size, ByteArray.size_append, List.size_toByteArray]
+  have h0 : (List.toByteArray [0x00, 0x20] ++ hashSha256 (fundingWitnessScript k1 k2).bytes)[0]! = 0x00 := by
+    simp
+  have h1 : (List.toByteArray [0x00, 0x20] ++ hashSha256 (fundingWitnessScript k1 k2).bytes)[1]! = 0x20 := by
+    simp
+  have hext : (List.toByteArray [0x00, 0x20] ++ hashSha256 (fundingWitnessScript k1 k2).bytes).extract 2
+      (List.toByteArray [0x00, 0x20]).length + 32 = hashSha256 (fundingWitnessScript k1 k2).bytes := by
+    rw [ByteArray.extract_append_eq_right]
+    · exact ByteArray.extract_zero_size
+    · simp
+    · simp
+  simp only [h0, h1, hext]
+  norm_num
+EOF
+export PATH=/dev/shm/btc/elan/toolchains/leanprover--lean4--v4.35.0/bin:$PATH; cd /home/ubuntu/ln-lean-pubbump && lake env lean /tmp/opencode/lean/t.lean 2>&1 | head -60
+/tmp/opencode/lean/t.lean:52:3: error: unknown tactic
+/tmp/opencode/lean/t.lean:42:4: error: `simp` made no progress
+/tmp/opencode/lean/t.lean:44:4: error: `simp` made no progress
+/tmp/opencode/lean/t.lean:46:38: error(lean.invalidField): Invalid field `length`: The environment does not contain `ByteArray.length`, so it is not possible to project the field `length` from an expression
+  [0, 32].toByteArray
+of type `ByteArray`
+/tmp/opencode/lean/t.lean:45:14: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HAdd ByteArray Nat ByteArray
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+/tmp/opencode/lean/t.lean:48:6: error: Type mismatch
+  ByteArray.extract_zero_size
+has type
+  ByteArray.extract ?m.102 0 (ByteArray.size ?m.102) = ?m.102
+but is expected to have type
+  hashSha256 (fundingWitnessScript k1 k2).bytes + 32 = hashSha256 (fundingWitnessScript k1 k2).bytes
+/tmp/opencode/lean/t.lean:50:4: error: unsolved goals
+case hj
+k1 k2 : PubKey
+h0 : ([0, 32].toByteArray ++ hashSha256 (fundingWitnessScript k1 k2).bytes)[0]! = 0
+h1 : ([0, 32].toByteArray ++ hashSha256 (fundingWitnessScript k1 k2).bytes)[1]! = 32
+⊢ sorry () = 2 + (hashSha256 (fundingWitnessScript k1 k2).bytes).size
+> build · deepseek-v4.1-flash-1017
+[0m$ [0mgrep -rn "theorem get!_eq\|def get!\|get!_eq_getElem\|getElem!_append\|getElem_append_left" /dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/*.lean | head -20; grep -rn "instance.*GetElem.*ByteArray\|getElem_append_left" /dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/*.lean | head
+/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Basic.lean:69:def get! : (@& ByteArray) → (@& Nat) → UInt8
+/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Lemmas.lean:111:theorem getElem_append_left {i : Nat} {a b : ByteArray} {h : i < (a ++ b).size}
+/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Lemmas.lean:114:  rw [Array.getElem_append_left (by simpa)]
+/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Basic.lean:82:instance : GetElem ByteArray Nat UInt8 fun xs i => i < xs.size where
+/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Basic.lean:85:instance : GetElem ByteArray USize UInt8 fun xs i => i.toFin < xs.size where
+/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Lemmas.lean:111:theorem getElem_append_left {i : Nat} {a b : ByteArray} {h : i < (a ++ b).size}
+/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Lemmas.lean:114:  rw [Array.getElem_append_left (by simpa)]
+> build · deepseek-v4.1-flash-1017
+[0m$ [0msed -n '60,90p' /dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Basic.lean; sed -n '105,125p' /dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Lemmas.lean; grep -rn "toByteArray.*getElem\|getElem_toByteArray\|toByteArray_get" /dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/*.lean /dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/List/*.lean | head -20
+-/
+@[extern "lean_byte_array_uget"]
+def uget : (a : @& ByteArray) → (i : USize) → (h : i.toNat < a.size := by get_elem_tactic) → UInt8
+  | ⟨bs⟩, i, h => bs[i]
+
+/--
+Retrieves the byte at the indicated index. Panics if the index is out of bounds.
+-/
+@[extern "lean_byte_array_get"]
+def get! : (@& ByteArray) → (@& Nat) → UInt8
+  | ⟨bs⟩, i => bs[i]!
+
+/--
+Retrieves the byte at the indicated index. Callers must prove that the index is in bounds.
+
+Use {name}`uget` for a more efficient alternative or {name}`get!` for a variant that panics if the
+index is out of bounds.
+-/
+@[extern "lean_byte_array_fget", implicit_reducible]
+def get : (a : @& ByteArray) → (i : @& Nat) → (h : i < a.size := by get_elem_tactic) → UInt8
+  | ⟨bs⟩, i, _ => bs[i]
+
+instance : GetElem ByteArray Nat UInt8 fun xs i => i < xs.size where
+  getElem xs i h := xs.get i
+
+instance : GetElem ByteArray USize UInt8 fun xs i => i.toFin < xs.size where
+  getElem xs i h := xs.uget i h
+
+/--
+Replaces the byte at the given index.
+
+  simp [← Array.size_eq_zero_iff, h]
+
+theorem getElem_eq_getElem_data {a : ByteArray} {i : Nat} {h : i < a.size} :
+    a[i] = a.data[i]'(by simpa [← size_data]) := rfl
+
+@[simp]
+theorem getElem_append_left {i : Nat} {a b : ByteArray} {h : i < (a ++ b).size}
+    (hlt : i < a.size) : (a ++ b)[i] = a[i] := by
+  simp only [getElem_eq_getElem_data, data_append]
+  rw [Array.getElem_append_left (by simpa)]
+
+theorem getElem_append_right {i : Nat} {a b : ByteArray} {h : i < (a ++ b).size}
+    (hle : a.size ≤ i) : (a ++ b)[i] = b[i - a.size]'(by simp_all; omega) := by
+  simp only [getElem_eq_getElem_data, data_append]
+  rw [Array.getElem_append_right (by simpa)]
+  simp
+
+@[simp]
+theorem _root_.List.getElem_toByteArray {l : List UInt8} {i : Nat} {h : i < l.toByteArray.size} :
+    l.toByteArray[i]'h = l[i]'(by simp_all) := by
+  simp [ByteArray.getElem_eq_getElem_data]
+/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Lemmas.lean:123:theorem _root_.List.getElem_toByteArray {l : List UInt8} {i : Nat} {h : i < l.toByteArray.size} :
+/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Init/Data/ByteArray/Lemmas.lean:127:theorem _root_.List.getElem_eq_getElem_toByteArray {l : List UInt8} {i : Nat} {h : i < l.length} :

@@ -7,9 +7,9 @@ import LnLean.Bitcoin.Seam
 English claim.  This module is the machine-readable obligation catalog: one
 record for every property the scaffold commits to tracking.  It does not
 prove the obligations.  A record whose `status` is `.proved` names a theorem
-that exists in this tree (`LnLean.Security.Model` or
-`LnLean.Security.Invariants`); every other record is `.statementOnly` and
-names the declaration that wave B must add.  The catalog covers all eight
+that exists in this tree (`LnLean.Security.Invariants`, or a wave-D/wave-E
+module such as `LnLean.Proofs.WaveD.D14`); every other record is
+`.statementOnly` and names the declaration that wave B must add.  The catalog covers all eight
 domains: L1 seam, crypto/wire, channel/commitment, HTLC/revocation, peer
 protocol, routing/onion, payments, and security/liveness.
 
@@ -135,13 +135,13 @@ def obligations : List Obligation :=
     rlAnchor := "lightning/src/ln/onion_payment.rs:505" },
   { id := "LN-CR-004", domain := .cryptoWire,
     claim := "BigSize encoding and decoding are inverse on canonical encodings.",
-    leanTarget := "LnLean.Wire.BigSize.decode_encode",
-    status := .statementOnly,
+    leanTarget := "LnLean.Wire.decode_encode",
+    status := .proved,
     boltdoc := "BOLT 1 §Fundamental Types; BOLT 1 Appendix A",
     rlAnchor := "lightning/src/util/ser.rs:442" },
   { id := "LN-CR-005", domain := .cryptoWire,
     claim := "A TLV stream is strictly sorted by type and has no duplicate types.",
-    leanTarget := "LnLean.Wire.TLV.WellFormed",
+    leanTarget := "LnLean.Wire.TLVStream.WellFormed",
     status := .statementOnly,
     boltdoc := "BOLT 1 §Type-Length-Value Format",
     rlAnchor := "lightning/src/util/ser.rs:369" },
@@ -186,7 +186,7 @@ def obligations : List Obligation :=
   { id := "LN-CH-006", domain := .channel,
     claim := "HTLC exposure and channel reserve bounds are respected by admissible updates.",
     leanTarget := "LnLean.Channel.Reserve.bounds",
-    status := .statementOnly,
+    status := .proved,
     boltdoc := "BOLT 2 §Bounding exposure to trimmed in-flight HTLCs",
     rlAnchor := "lightning/src/ln/channel.rs:4223" },
 
@@ -238,7 +238,7 @@ def obligations : List Obligation :=
   { id := "LN-PR-002", domain := .protocol,
     claim := "The channel enters normal operation only after both channel_ready messages.",
     leanTarget := "LnLean.Protocol.Handshake.channel_ready_gate",
-    status := .statementOnly,
+    status := .proved,
     boltdoc := "BOLT 2 §The channel_ready Message",
     rlAnchor := "lightning/src/ln/channelmanager.rs:17614" },
   { id := "LN-PR-003", domain := .protocol,
@@ -320,7 +320,7 @@ def obligations : List Obligation :=
   { id := "LN-PM-003", domain := .payment,
     claim := "The final onion payload's payment secret matches the invoice's payment secret.",
     leanTarget := "LnLean.Payment.Invoice.payment_secret_match",
-    status := .statementOnly,
+    status := .proved,
     boltdoc := "BOLT 4 §Payload for the Last Node; BOLT 11 §Tagged Fields",
     rlAnchor := "lightning-invoice/src/lib.rs:1195; lightning/src/ln/onion_payment.rs:856" },
   { id := "LN-PM-004", domain := .payment,
@@ -338,7 +338,7 @@ def obligations : List Obligation :=
   { id := "LN-PM-006", domain := .payment,
     claim := "A keysend payment uses the sender-supplied preimage as the payment preimage.",
     leanTarget := "LnLean.Payment.Keysend.preimage_binding",
-    status := .statementOnly,
+    status := .proved,
     boltdoc := "BOLT 4 §Payload for the Last Node (keysend extension)",
     rlAnchor := "lightning/src/ln/onion_payment.rs:454" },
 

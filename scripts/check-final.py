@@ -15,6 +15,18 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 LEAN = "/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/bin"
 
+# The repair/integrated branch adds the 29 C2/C3 modules and
+# LnLean/Proofs/Common to the original 132-file final tree.
+EXPECTED_LEAN_FILES = 164
+
+# These are convenience aggregators, not root dependencies.  The root module
+# imports the concrete modules directly; importing an aggregator as well would
+# only duplicate the import graph.
+ROOT_AGGREGATORS = {
+    "LnLean/Proofs/All.lean",
+    "LnLean/Proofs/PhaseC2.lean",
+}
+
 D = set("01 02 03 04 05 07 08 10 11 12 13 14 15 16 17 18 21 23 25 27 28 29 30 32 34 36 38 41 42 43 44 46 47".split())
 E = set("06 09 19 20 22 24 26 31 33 35 37 39 40 45 48".split())
 F = set("01 02 03 04 05 06 07 08 09 11 12 13 14 15 16".split())
@@ -64,18 +76,32 @@ def main() -> int:
 
     files = sorted((ROOT / "LnLean").rglob("*.lean"))
     print(f"lean files={len(files)}")
-    if len(files) != 132:
-        errors.append(f"expected 132 Lean files, found {len(files)}")
+    if len(files) != EXPECTED_LEAN_FILES:
+        errors.append(
+            f"expected {EXPECTED_LEAN_FILES} Lean files, found {len(files)}"
+        )
+
+    for rel in sorted(ROOT_AGGREGATORS):
+        if not (ROOT / rel).exists():
+            errors.append(f"missing expected aggregator: {rel}")
 
     root = (ROOT / "LnLean.lean").read_text(encoding="utf-8")
     imports = [ln for ln in root.splitlines() if ln.startswith("import ")]
     expected = {
         "import " + str(p.relative_to(ROOT).with_suffix("")).replace("/", ".")
         for p in files
+        if str(p.relative_to(ROOT)) not in ROOT_AGGREGATORS
     }
     print(f"root imports={len(imports)}")
     if set(imports) != expected:
-        errors.append("root imports do not match the Lean file set")
+        missing = sorted(expected - set(imports))
+        extra = sorted(set(imports) - expected)
+        if missing:
+            errors.append(f"root imports missing: {', '.join(missing)}")
+        if extra:
+            errors.append(f"root imports extra: {', '.join(extra)}")
+        if not missing and not extra:
+            errors.append("root imports do not match the Lean file set")
 
     if args.build:
         env = dict(os.environ)
