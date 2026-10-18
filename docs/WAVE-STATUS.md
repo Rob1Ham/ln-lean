@@ -98,6 +98,36 @@ audit to 194 headline theorems, and closed `CH-01`, `RT-01`, `CONF-02`,
 `MODEL-02`, and `MODEL-03`. The remaining open issues are in
 `docs/OPEN-ISSUES.md`.
 
+## Wave 8 lanes
+
+Wave 8 launched 48 lanes from `50d78ed`. **43 Lean modules** and the three
+artifact lanes H46–H48 are integrated; **H04** produced no module in the
+worktree and **H08** did not build, so both are recorded as dropped rather than
+carried as false green claims. The full gate is **286 Lake jobs, RC 0**, with
+**247 Lean files**, **245 root imports**, **48/48 catalog rows proved**, **79
+targets**, **204 audited headline theorems**, and zero actual `sorry`.
+
+| Lane group | Issues | Result |
+|---|---|---|
+| `H01`, `H02`, `H03`, `H05`, `H06`, `H31`, `H32` | `L1-02`, `L1-07` | Unconditional `txCheckerFor (some amount) = realCheckerOf` equality; delayed/revocation branches at `txCheckerFor`; exact `csv < 32768` boundary and `MINIMALDATA` policy split; full-script composition guard remains open |
+| `H29`, `H30`, `H31` | `L1-01`, `L1-07` | Concrete `verifyImpl` interface and funding 2-of-2 checker instantiation; positive EC witness remains open |
+| `H07`, `H09`, `H11`, `H12`, `H37` | `PR-05`, `PR-02` | HTLC BIP 143 preimage/digest equality, wire serialization domain, conditional wire-view binding, and exact 65533/65535 framing boundary; scriptCode synthesis (H08) dropped |
+| `H13`, `H14`, `H15`, `H16`, `H17`, `H18`, `H19` | `L1-03`, `PR-01` | BOLT 2 type-32 `open_channel` mandatory payload fixed at **319 bytes** (not 313), encode/decode round-trip, field projections; `accept_channel` 270-byte payload; `Messages.lean` patch remains unapplied |
+| `H20`, `H21`, `H22` | `PR-01` | Accept payload carried through the handshake extension; registration + PoP contract and attribution under `KeyBinding`; PoP game remains open |
+| `H23`, `H24`, `H25`, `H26`, `H27`, `H28` | `CH-01`, `CH-02`, `PR-02` | Commitment/tx view adapters, transaction view, consumer boundary, downstream accounting, and the construction-site coverage-loss counterexample |
+| `H33` | `L1-04` | **Closed**: witness-inclusive commitment weight is `1116 + 172*k`; `1124 + 172*k` is the fee basis, the extra 8 WU is `count_tx_out`, not missing witness bytes |
+| `H34` | `L1-05` | **Closed on its recorded boundary**: C1 is refuted for 71-byte script injectivity; a domain-separated commitment binds under the retained finite pair admission |
+| `H35`, `H36`, `H38` | `CONF-01` | Additional conformance/decoder/TLV boundary targets; finite-vector scope retained |
+| `H39`, `H40`, `H41`, `H42` | `RT-01`, `RT-02` | Epoch store, sequence projection square, supersession/rotation preservation, and raw boundary-extension impossibility |
+| `H43` | `NET-01` | Explicit adversarial schedule/fairness model with eventual-delivery and eventual-inclusion instances; unconditional liveness still open |
+| `H44` | `SEC-01`, `CR-01` | Lossless event bound, event-cover accounting, negligible-add closure, and sharp separations; no reduction/game claimed |
+| `H45` | `L1-06` | Reorg safety with explicit common-tip/bounded-depth hypotheses; concrete reorg preservation |
+| `H46`–`H48` | release/artifact | Vendor artifact digest verifier, clean-checkout dry run, and release/PR decision support; H46 intentionally flags the OPS-04 absolute symlink |
+
+H46’s strict vendor check still fails on the absolute symlink
+`vendor/btc-lean-core/btc-lean-core`; it is not wired into CI. The ordinary
+`verify-vendor.sh` gate is green for the 119-file manifest.
+
 ## Historical waves
 
 | Wave | Scope | Result |
@@ -110,6 +140,7 @@ audit to 194 headline theorems, and closed `CH-01`, `RT-01`, `CONF-02`,
 | Proof-wave 5 (8 lanes) | Vendored L1 bridge, gross/net, sighash, differential conformance, update step, funding link, gossip consistency, crypto limits | **8 modules; 67 targets; 204-job gate** |
 | Proof-wave 6 (8 lanes) | BIP 143/revocation, five-field commitment, bit-exact wire, conditional view binding, dance, canonical gossip, transport promotion | **7 files; 73 targets; 218-job gate** |
 | Proof-wave 7 (8 lanes) | Sequence context, preimage equality, consumer migration, guarded fold, raw gossip, live conformance, open_channel auth, key model | **7 files; 79 targets; 233-job gate** |
+| Proof-wave 8 (48 lanes) | Per-input L1 checker, HTLC preimage/wire, 319-byte `open_channel`, accept/PoP, commitment sites, anchor/script-commitment, epoch gossip, liveness, security arithmetic, reorg, release artifacts | **43 files; 79 targets; 204 audited; 286-job gate; H04/H08 dropped** |
 
 ## Reproduce
 
