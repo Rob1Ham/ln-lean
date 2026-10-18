@@ -35,15 +35,15 @@ Evidence labels used below:
 | GitHub releases | none | GitHub releases API empty |
 | `LICENSE` | **none** at repository root | `find` / `git ls-files` |
 | Project version | **not declared** in `lakefile.lean` | `lake-manifest.json` `"version": "1.3.0"` is the Lake manifest schema version, not this project's version |
-| Vendor snapshot | 119 files, checksums OK locally; **gitignored and not tracked** | `./scripts/verify-vendor.sh`; `git check-ignore vendor/btc-lean-core/lakefile.lean` |
-| Vendor provenance | `vendor/btc-lean-core` at `f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb`, **not present in public `btc-lean` history** | `refs/PINNED.md` |
+| Vendor snapshot | 149 files, checksums OK locally; **gitignored and not tracked** | `./scripts/verify-vendor.sh`; `git check-ignore vendor/btc-lean-core/lakefile.lean` |
+| Vendor provenance | `vendor/btc-lean-core` is a copy of public `btc-lean` `spec/core` at `4f5c4f858fb9ca0743042644453cfa92d30dd271` (MIT repository) | `refs/PINNED.md`, `docs/L1-PIN.md` |
 | Catalog | 48 rows, 48 `proved`, 0 `statementOnly`, 0 unresolved, 0 proved failures, 79 targets | `python3 scripts/check-catalog.py --audit` — **Verified** |
 | Source policy check | `files=204 obligations=82 sorry_in_proofs=0` | `./scripts/check.sh` — **Verified** |
 | File/import check | 204 Lean files, 202 root imports, D=33 E=15 F=15 | `python3 scripts/check-final.py` — **Verified** |
-| Vendor integrity | `OK (119 files)` | `./scripts/verify-vendor.sh` — **Verified** |
+| Vendor integrity | `OK (149 files)` | `./scripts/verify-vendor.sh` — **Verified** |
 | Anchors | 306 anchors, 0 bad, 2 unanchored rows | `python3 scripts/verify-anchors.py` — **Verified** |
 | Full build | **not run in this release lane**. Historical claim: 233 jobs, RC 0 at the wave-7 gate. | See build gate below |
-| Public CI | 3 runs, all `success`; latest run #3 at `f2123ef`. The build job's `lake build` and `verify-vendor.sh` steps were **skipped**. | GitHub Actions API, run `39138200828` |
+| Public CI | Build provisioning now falls back to exact public commit `4f5c4f8`; first run on this path is pending. Historical run #3 at `f2123ef` skipped `lake build`/`verify-vendor.sh`. | `.github/workflows/ci.yml`; GitHub Actions API run `39138200828` (historical) |
 
 The working tree at the snapshot was clean except for the pre-existing untracked
 `agents/status/REPAIR.status`. Other Wave-4 lanes may add unrelated changes in
@@ -143,26 +143,26 @@ not a substitute. **This lane did not run `lake build`.**
       `refs/btc-lean`, or any other local-only path. The build dependency must
       remain `vendor/btc-lean-core` or the chosen replacement policy.
 
-## 3. Vendor reproducibility (`OPS-01`)
+## 3. Vendor reproducibility (`OPS-01`, closed)
 
-**This is a hard release blocker and is not resolved.** `vendor/btc-lean-core`
-is excluded by `.gitignore` (`vendor/`), its pin `f950806` is not in public
-`btc-lean` history, and the public CI build job therefore skips the build.
-A clean public checkout of the current tree cannot satisfy the `core` path
-dependency declared in `lakefile.lean`, so `lake build` cannot proceed without
-external provisioning.
+`vendor/btc-lean-core` is still excluded by `.gitignore` (`vendor/`), but the
+build input is now the **public** `btc-lean` `spec/core` at
+`4f5c4f858fb9ca0743042644453cfa92d30dd271`, not the private `f950806` lineage.
+The tree is a 149-file real directory copied from the public MIT repository;
+`vendor/VENDOR-SHA256` covers every file.
 
-A maintainer must choose one packaging policy (this checklist does not choose):
+`scripts/fetch-vendor.sh` pins the same commit. `--from-git` fetches exactly
+that commit (never a branch or tag tip), extracts `spec/core`, and verifies the
+149-file manifest. The CI build job uses an explicitly configured checksummed
+archive when available and otherwise runs `--from-git`; it no longer skips the
+build. `--from-git --dry-run`, the full build, and the local gate were verified;
+the first hosted CI run on this path remains to be observed.
 
-| Option | What it requires | Consequence |
-|---|---|---|
-| Commit a checksummed vendor snapshot | Track the 119 files (or an archive), keep `vendor/VENDOR-SHA256`, confirm redistribution rights, include the upstream license/provenance | Public checkout can build; repository grows; vendor edits become reviewable |
-| Publish a separate vendor artifact | Versioned archive + `SHA256SUMS`, download/provision script, checksum verification in CI, documented pin | Public checkout needs a provisioning step; artifact hosting and retention must be maintained |
-| Fetch a public ancestor | Bump the pin to a commit in public `btc-lean` history, adapt imports, refresh checksums and anchors, full rebuild | Requires a deliberate pin-bump project; the current snapshot lineage is not public |
-
-- [ ] Record the chosen policy and its checksum/provenance record in the release
-      notes and in `docs/OPEN-ISSUES.md` (`OPS-01`).
-- [ ] Verify the pack procedure from a **clean clone**, not the working tree:
+- [x] Record the public pin and 149-file checksum manifest in
+      `refs/PINNED.md`, `docs/L1-PIN.md`, and `vendor/VENDOR-SHA256`.
+- [x] Remove the dangling vendor self-symlink; the snapshot is a real directory
+      (`OPS-04`).
+- [ ] Verify the clean-clone path at the exact release commit:
 
   ```sh
   rm -rf /tmp/ln-lean-release-check
@@ -170,19 +170,17 @@ A maintainer must choose one packaging policy (this checklist does not choose):
   git clone https://github.com/Rob1Ham/ln-lean.git /tmp/ln-lean-release-check
   cd /tmp/ln-lean-release-check
   git checkout "$TAG"
-  test ! -e vendor/btc-lean-core/lakefile.lean   # current state
-  python3 scripts/check-catalog.py --audit
-  ./scripts/check.sh
-  python3 scripts/check-final.py
+  ./scripts/fetch-vendor.sh --from-git
+  ./scripts/verify-vendor.sh
+  lake build
   ```
 
-  Then provision the vendor exactly as the chosen policy specifies and run the
-  full build and `./scripts/verify-vendor.sh` in that clone.
 - [ ] If the snapshot is redistributed, include the upstream `btc-lean` MIT
-      license and Bitcoin Core notice, plus the provenance record. The snapshot
-      itself contains **no `LICENSE` file**; see `docs/LICENSE-DECISION.md`.
-- [ ] Do not remove the CI skip gate until the clean-clone build path actually
-      runs and `verify-vendor.sh` passes in CI.
+      license and Bitcoin Core notice, plus the provenance record. The copied
+      `spec/core` tree contains **no `LICENSE` file**; see
+      `docs/LICENSE-DECISION.md`.
+- [ ] Confirm the next public CI run executes the full build and passes
+      `verify-vendor.sh`; reopen `OPS-01` if it does not.
 
 ## 4. License decision (`OPS-02`)
 
@@ -445,7 +443,7 @@ the public CI build steps are still skipped without an explicit release caveat.
 | `OPS-01` — vendor snapshot is gitignored and not reproducible from public history | Hard release blocker | Clean public build and honest build CI | Maintainer chooses packaging policy |
 | `OPS-02` — no `LICENSE` | Hard release blocker | Any public grant of rights | Maintainer chooses license; see `docs/LICENSE-DECISION.md` |
 | `OPS-03` — no tag, `main` behind | Hard release blocker | Tagged release and release notes | Maintainer chooses PR/merge/tag path |
-| Vendor snapshot has no `LICENSE`; public `btc-lean` is MIT but the `f950806` lineage is not public | Legal/provenance blocker if the snapshot or a build artifact is redistributed | Redistribution of vendor code or compiled artifacts | Maintainer confirms grant and adds notices |
+| Vendor snapshot has no `LICENSE` file of its own; public `btc-lean` at `4f5c4f8` is MIT | Notice/provenance item if the snapshot or a build artifact is redistributed | Redistribution of vendor code or compiled artifacts | Add upstream MIT and Bitcoin Core notices; project license remains `OPS-02` |
 | BOLT text is CC-BY-4.0 and no project-level attribution file exists | Compliance blocker for quoted spec text | Publishing docs/release notes with BOLT excerpts | Maintainer adds attribution |
 | No project version or release notes | Packaging blocker | Artifact naming and release publication | Maintainer chooses version and notes |
 | Public CI build steps skipped | Claim blocker | Any statement that CI proves the build | Resolved only by `OPS-01` |

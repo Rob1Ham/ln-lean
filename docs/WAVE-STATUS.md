@@ -26,13 +26,13 @@ history; they are not a claim about the current tree. Current open work is in
 | Catalog `statementOnly` | **0** |
 | Catalog targets | **79** |
 | Unresolved/planned targets | **0** |
-| Vendor snapshot | **OK**, 119 files; `fetch-vendor.sh` tested |
+| Vendor snapshot | **OK**, 149 files from public `btc-lean` `4f5c4f8`; `fetch-vendor.sh --from-git` tested |
 | Anchors | **306 checked, 0 bad**, 2 unanchored rows |
 | Generated obligation index | 166 proof files, 81 markers, 5761 declarations, 0 `sorry` sites |
 | Axiom audit | 194 theorems; only `propext`, `Quot.sound`, `Classical.choice` |
 | Conformance | 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 146 Lean references, 9/9 mutation controls, 3 declared model gaps; live 26 BigSize + 3 TLV + 4 wire |
 | Public L1 pin | `Rob1Ham/btc-lean` `main@4f5c4f8` |
-| Build dependency | `vendor/btc-lean-core` `f950806` |
+| Build dependency | `vendor/btc-lean-core` `4f5c4f8` (public `spec/core` copy) |
 
 The exact `sorry` result is **zero matching lines**. Prose mentions of
 `sorry` in documentation are not `sorry` terms.
@@ -53,7 +53,7 @@ The exact `sorry` result is **zero matching lines**. Prose mentions of
   checks, 33 differential fixtures, 146 Lean references, 9/9 mutation
   controls, deterministic fixture provenance verified, live transcript
   `3dd7a98f…` with 26 BigSize + 3 TLV + 4 wire live rows.
-- `verify-vendor.sh` — **RC 0**, 119 files.
+- `verify-vendor.sh` — **RC 0**, 149 files (public `4f5c4f8` snapshot).
 - `verify-anchors.py` — **RC 0**, 306 anchors, 0 bad, 2 unanchored rows.
 - `AxiomAudit` — **RC 0**, 194 audited theorems with the permitted classical
   axioms only.

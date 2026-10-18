@@ -114,7 +114,7 @@ python3 scripts/check-catalog.py --audit
                                       # rows=48 proved=48 statementOnly=0 targets=79
 python3 scripts/check-conformance.py  # 61 base + 16 framing + 9 boundaries, 33 differential fixtures, live evidence
 python3 scripts/verify-anchors.py     # anchors=306 bad=0 unanchored_rows=2
-./scripts/verify-vendor.sh            # 119-file L1 snapshot checksums
+./scripts/verify-vendor.sh            # 149-file L1 snapshot checksums
 ./scripts/regen-root.sh               # regenerate LnLean.lean from the module tree
 ```
 
@@ -129,8 +129,9 @@ need neither.
   (`fe4900930c6bd5786ec4203274d7cf312776a5a6`).
 * `refs/bolts` — BOLT specifications
   (`1aadb719b4007c4cea0ba6e36b08c4fb53788dee`).
-* `vendor/btc-lean-core` — read-only Bitcoin L1 Lean model snapshot
-  (`f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb`).
+* `vendor/btc-lean-core` — read-only Bitcoin L1 Lean model snapshot from the
+  public `btc-lean` `spec/core` at
+  `4f5c4f858fb9ca0743042644453cfa92d30dd271` (149 files).
 * `refs/PINNED.md` — full pin and provenance record.
 
 ## Release status
@@ -141,12 +142,12 @@ been merged into `repair/integrated`.
 
 The public CI workflow `.github/workflows/ci.yml` runs the source-level gates,
 the BigSize/TLV conformance checker, and the anchor check. Its full-build job
-uses `scripts/fetch-vendor.sh` to verify or provision an explicitly configured
-pinned snapshot; when none is configured it records an explicit skip rather
-than claiming a build. Reproducible clean-checkout CI still requires a
-deliberate vendor-packaging decision; see `docs/OPEN-ISSUES.md` (`OPS-01`).
+now fetches the exact public `btc-lean` commit `4f5c4f8`, copies `spec/core`
+into the gitignored vendor path, and verifies every file against
+`vendor/VENDOR-SHA256` before building. An explicitly configured checksummed
+archive can still override the public fetch for offline or self-hosted runs.
 `docs/RELEASE-CHECKLIST.md` and `docs/LICENSE-DECISION.md` record the remaining
-release decisions.
+release decisions (`OPS-02`, `OPS-03`).
 
 ## Documentation
 

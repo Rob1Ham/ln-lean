@@ -8,13 +8,15 @@ Proof-wave 6 code was `0a3a5fb`; wave 7 launched from `3180581`.
 **Catalog state:** **48 `proved` / 0 `statementOnly` / 0 unresolved / 79
 targets**.
 **Remote refs:** push is non-force to `origin/repair/integrated`. `origin/main`
-is not touched by this work. `origin/repair/pubbump` remains a separate
-compatibility branch.
+is not touched by this work. The former `repair/pubbump` branch is merged and
+retired; its public-core bump is part of this branch.
 **Toolchain:** `leanprover/lean4:v4.35.0`
-**L1 build dependency:** read-only `vendor/btc-lean-core` snapshot
-`f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb`
+**L1 build dependency:** read-only `vendor/btc-lean-core` copy of public
+`btc-lean` `spec/core` at
+`4f5c4f858fb9ca0743042644453cfa92d30dd271` (149 files)
 **L1 public reference:** `https://github.com/Rob1Ham/btc-lean`
-`main@4f5c4f858fb9ca0743042644453cfa92d30dd271` (review only; not imported)
+`main@4f5c4f858fb9ca0743042644453cfa92d30dd271` (same commit; copied, not
+imported from the live clone)
 **Spec / client references:** `lightning/bolts`
 `1aadb719b4007c4cea0ba6e36b08c4fb53788dee`; `rust-lightning`
 `fe4900930c6bd5786ec4203274d7cf312776a5a6`
@@ -99,7 +101,7 @@ are retained.
 | Actual `sorry` | `grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` | **0 matches** (grep RC 1: no lines) |
 | Policy checker | `./scripts/check.sh` | **RC 0**, `files=204 obligations=82 sorry_in_proofs=0`, `check: OK` |
 | Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 204 Lean files, 202 root imports |
-| Vendor integrity | `./scripts/verify-vendor.sh` | **RC 0**, `OK (119 files)` |
+| Vendor integrity | `./scripts/verify-vendor.sh` | **RC 0**, `OK (149 files)` |
 | Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=306 bad=0 unanchored_rows=2` |
 | Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 48 proved, 0 statement-only, 79 targets, 0 unresolved, 0 proved failures, 0 candidates |
 | Catalog, planned-aware | `python3 scripts/check-catalog.py --allow-planned` | **RC 0**, `rows=48 proved=48 statementOnly=0 planned=0 proved_failures=0` |

@@ -18,17 +18,14 @@ env:
   PYTHONUNBUFFERED: "1"
   # Pinned in refs/PINNED.md. The anchor checker reads refs/rust-lightning.
   RUST_LIGHTNING_SHA: fe4900930c6bd5786ec4203274d7cf312776a5a6
-  # Optional vendor provisioning inputs (OPS-01). The pinned btc-lean snapshot
-  # f950806 is not in public btc-lean history, so the build input must be
-  # supplied explicitly. After a maintainer publishes a checksummed archive,
-  # set the repository variables VENDOR_ARTIFACT_URL and
-  # VENDOR_ARTIFACT_SHA256. On a self-hosted runner, VENDOR_ARTIFACT_PATH may
-  # point at the archive instead. Setting REQUIRE_VENDOR_BUILD=true turns a
-  # missing snapshot from an explicit skip into a job failure.
+  # vendor/btc-lean-core is gitignored. The build job provisionally fetches the
+  # exact pinned public btc-lean commit (4f5c4f8) and verifies its spec/core
+  # tree against vendor/VENDOR-SHA256. Optional repository variables may point
+  # at a checksummed archive for offline or self-hosted runs; when present
+  # they take precedence over the public git fetch.
   VENDOR_ARTIFACT_URL: ${{ vars.VENDOR_ARTIFACT_URL }}
   VENDOR_ARTIFACT_SHA256: ${{ vars.VENDOR_ARTIFACT_SHA256 }}
   VENDOR_ARTIFACT_PATH: ${{ vars.VENDOR_ARTIFACT_PATH }}
-  REQUIRE_VENDOR_BUILD: ${{ vars.REQUIRE_VENDOR_BUILD }}
 
 jobs:
   source-gates:
@@ -91,64 +88,25 @@ jobs:
         with:
           python-version: "3.12"
 
-      # vendor/btc-lean-core is gitignored, and its pinned snapshot is not in
-      # public btc-lean history (OPS-01). This step either provisions the
-      # snapshot from an explicitly configured, checksummed artifact and
-      # verifies every file against vendor/VENDOR-SHA256, or records an
-      # explicit skip. Exit code 3 is the "no input supplied" gate; any other
-      # failure (bad archive, checksum mismatch, misconfiguration) fails CI.
+      # vendor/btc-lean-core is gitignored. Prefer an explicitly configured
+      # checksummed artifact; otherwise fetch the exact pinned public commit.
+      # Every path is verified against vendor/VENDOR-SHA256 before the build.
       - name: Provision or verify the pinned vendor snapshot
-        id: vendor
         run: |
-          set +e
-          ./scripts/fetch-vendor.sh --ci
-          rc=$?
-          set -e
-          case "$rc" in
-            0)
-              echo "available=true" >> "$GITHUB_OUTPUT"
-              echo "Pinned vendor snapshot provisioned and verified against vendor/VENDOR-SHA256." \
-                >> "$GITHUB_STEP_SUMMARY"
-              ;;
-            3)
-              echo "available=false" >> "$GITHUB_OUTPUT"
-              {
-                echo "## Full build not run: pinned vendor snapshot unavailable"
-                echo ""
-                echo "The build input \`vendor/btc-lean-core\` is gitignored, and the pinned"
-                echo "commit \`f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb\` is not in public"
-                echo "\`Rob1Ham/btc-lean\` history (OPS-01)."
-                echo ""
-                echo "The \`source-gates\` job still ran and is the required CI signal."
-                echo "**This run is not evidence that the tree builds.**"
-                echo ""
-                echo "To enable this job, publish a checksummed snapshot archive and set"
-                echo "the repository variables \`VENDOR_ARTIFACT_URL\` and"
-                echo "\`VENDOR_ARTIFACT_SHA256\`; on a self-hosted runner, set"
-                echo "\`VENDOR_ARTIFACT_PATH\` instead. Every input is verified against"
-                echo "\`vendor/VENDOR-SHA256\` (119 files) before installation."
-              } >> "$GITHUB_STEP_SUMMARY"
-              echo "::warning title=Full build not run::vendor/btc-lean-core is unavailable; the pinned f950806 snapshot is not public (OPS-01). See the job summary for the provisioning options."
-              require="${REQUIRE_VENDOR_BUILD:-false}"
-              case "${require,,}" in
-                true|1|yes)
-                  echo "::error title=Vendor build required::REQUIRE_VENDOR_BUILD=$require but the pinned vendor snapshot is unavailable."
-                  exit 1
-                  ;;
-              esac
-              ;;
-            *)
-              echo "fetch-vendor.sh failed with exit code $rc" >&2
-              exit "$rc"
-              ;;
-          esac
+          if [ -n "${VENDOR_ARTIFACT_URL:-}" ] || [ -n "${VENDOR_ARTIFACT_PATH:-}" ]; then
+            ./scripts/fetch-vendor.sh --ci
+          elif [ -f vendor/btc-lean-core/lakefile.lean ]; then
+            ./scripts/fetch-vendor.sh --check
+          else
+            ./scripts/fetch-vendor.sh --from-git
+          fi
+          echo "Pinned vendor snapshot provisioned and verified against vendor/VENDOR-SHA256." \
+            >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify vendored snapshot checksums
-        if: steps.vendor.outputs.available == 'true'
         run: ./scripts/verify-vendor.sh
 
       - name: Install pinned Lean toolchain and run lake build
-        if: steps.vendor.outputs.available == 'true'
         uses: leanprover/lean-action@v1
         with:
           auto-config: false
@@ -156,7 +114,6 @@ jobs:
           use-mathlib-cache: false
 
       - name: Record build result
-        if: steps.vendor.outputs.available == 'true'
         run: |
-          echo "Full build ran with the pinned vendor snapshot (\`f950806\`)." \
+          echo "Full build ran with the pinned vendor snapshot (\`4f5c4f8\`)." \
             >> "$GITHUB_STEP_SUMMARY"

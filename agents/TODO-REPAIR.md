@@ -4,7 +4,8 @@
 **Branch:** `repair/integrated` (from `final/integrated@af6caae`)
 **Toolchain:** `leanprover/lean4:v4.35.0`
 **L1 public reference:** `https://github.com/Rob1Ham/btc-lean` (`main@4f5c4f8`)
-**Vendor L1 snapshot:** `f950806` (read-only; retained for build compatibility)
+**Vendor L1 snapshot:** public `btc-lean` `spec/core` at `4f5c4f8` (149 files;
+  read-only copy; `repair/pubbump` merged)
 
 ## Baseline (done)
 
@@ -261,6 +262,16 @@ Five disjoint lanes extended the model and promoted eight more exact targets.
 - [x] Closed `CH-01`, `RT-01`, `CONF-02`, `MODEL-02`, and `MODEL-03`;
   retained `L1-02`/`L1-07`, `PR-05`, `L1-03`, and `PR-01` with narrower
   boundaries.
+
+### Public-core vendor bump — merged
+
+- [x] `V01` — replace the private `f950806` snapshot with the public
+  `btc-lean` `spec/core` at `4f5c4f8`; 149-file real directory, no self-symlink,
+  regenerated `vendor/VENDOR-SHA256`; full 233-job build green on the bump.
+- [x] Parent — merge `repair/pubbump`, pin `scripts/fetch-vendor.sh` to
+  `4f5c4f8`, make CI fall back to `--from-git` instead of skipping the build,
+  and retire the merged branch.
+- [x] `OPS-01` closed at source (first hosted CI run pending); `OPS-04` closed.
 
 ### Proof-wave 8 — residual transfer, wire, registration, EC, and store epochs
 

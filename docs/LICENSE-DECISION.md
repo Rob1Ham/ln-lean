@@ -36,7 +36,7 @@ all code dependencies, and their obligations differ.
 | Input | How it is used | License / status | What a release must preserve |
 |---|---|---|---|
 | `btc-lean` public repository, pin `4f5c4f8` | Authoritative L1 reference for review; not imported | **MIT** (`LICENSE`: "Copyright (c) 2026 btc-lean contributors"; portions derived from Bitcoin Core, MIT; vectors from BIPs/Bitcoin Core test data under their respective terms) | MIT copyright/permission notice and Bitcoin Core notice if its code is copied or redistributed |
-| `vendor/btc-lean-core`, pin `f950806` | **Build dependency**; imported as Lake path dependency `«core»` | Snapshot contains **no `LICENSE` file**; commit `f950806` is **not in public `btc-lean` history**; the public repository's MIT license is evidence of project policy but does not by itself prove the grant for this separate lineage | Maintainer must confirm the grant for `f950806`; if the snapshot or a build artifact is distributed, include the upstream MIT text, Bitcoin Core notice, and provenance record |
+| `vendor/btc-lean-core`, public `4f5c4f8` | **Build dependency**; imported as Lake path dependency `«core»` | Byte-identical copy of public `btc-lean` `spec/core` at `4f5c4f8`; the copied tree itself contains **no `LICENSE` file**, but the upstream repository is **MIT** (portions derived from Bitcoin Core, MIT) | If the snapshot or a build artifact is distributed, include the upstream MIT text, Bitcoin Core notice, and provenance record |
 | `rust-lightning`, pin `fe49009` | Reference-only for `path:line` anchors; not imported | **Dual MIT OR Apache-2.0** (`LICENSE.md`, `LICENSE-MIT`, `LICENSE-APACHE`) | If any code/text is copied, retain the applicable notice; reference-only use does not relicense this tree |
 | BOLTs, pin `1aadb71` | Specification text quoted/paraphrased and cited by anchor | **CC-BY-4.0** per-file notices; no root software license detected | Attribution for quoted/adapted BOLT text; CC-BY is not a software license and does not replace the code license |
 | Lean 4 toolchain `v4.35.0` | Build toolchain, not vendored | **Apache-2.0** upstream | Not redistributed with source; preserve notices if a binary/toolchain bundle is shipped |
@@ -45,12 +45,14 @@ Consequences:
 
 - A permissive code license for this repository does **not** automatically cover
   the vendored snapshot or BOLT text. Those need their own notices.
-- The unresolved vendor provenance is a separate blocker from the choice among
-  MIT, Apache-2.0, and dual licensing. No license choice can cure an absent
-  grant for `f950806`.
+- The vendor snapshot now comes from the public MIT `btc-lean` repository at
+  `4f5c4f8`; the earlier `f950806` provenance gap is retired. The remaining
+  project-level decision is the outbound license for this repository and the
+  exact third-party notice text.
 - If the release is source-only and the vendor snapshot is not redistributed,
-  the vendor remains a documented build prerequisite; this reduces, but does
-  not eliminate, the need to explain the provenance and rights.
+  the vendor remains a documented build prerequisite; the release notes must
+  still explain how to obtain it and must not imply that the repository license
+  covers it.
 
 ## 3. Decision matrix
 
@@ -90,11 +92,10 @@ The choice depends on what is actually distributed:
    can carry MIT, Apache-2.0, or dual MIT/Apache-2.0. The vendor snapshot is a
    build prerequisite. The release notes must still explain how to obtain it
    and must not imply that the repository license covers it.
-2. **Source release that redistributes `vendor/btc-lean-core`.** The upstream
-   `btc-lean` code is MIT, so any of the three options can coexist with it, but
-   the MIT notice and Bitcoin Core notice must be retained. The `f950806`
-   lineage grant must be confirmed first; the public `4f5c4f8` LICENSE is not a
-   substitute for that confirmation.
+2. **Source release that redistributes `vendor/btc-lean-core`.** The vendor
+   snapshot is now the public `btc-lean` `spec/core` at `4f5c4f8`, whose
+   upstream repository is MIT. Any of the three options can coexist with it,
+   but the MIT notice and Bitcoin Core notice must be retained.
 3. **Built `.olean` or binary artifact.** Compiled vendor-derived code is still
    third-party code for licensing purposes. The same notice and grant questions
    apply, plus toolchain and build-provenance questions.
@@ -129,8 +130,8 @@ in the decision record below.
    chosen outbound license (inbound = outbound), or is a DCO/CLA required?
 4. **Vendor redistribution.** Will `vendor/btc-lean-core` be committed,
    published as a separate checksummed artifact, or kept as an external build
-   prerequisite? If distributed, confirm the `f950806` grant and include the
-   upstream MIT and Bitcoin Core notices.
+   prerequisite? If distributed, include the upstream MIT and Bitcoin Core
+   notices for the public `4f5c4f8` snapshot.
 5. **Commercial/proprietary relicensing.** Is any dual commercial model
    contemplated? If so, obtain the necessary contributor permissions and legal
    review before promising it.
@@ -177,7 +178,7 @@ This record is intentionally blank. Filling it is the maintainer's decision.
 | Authority/approval basis | _pending_ |
 | Contribution policy (DCO/CLA/inbound=outbound) | _pending_ |
 | Vendor redistribution decision | _pending_ |
-| Vendor grant confirmed for `f950806` | _pending_ |
+| Vendor redistribution decision for public `4f5c4f8` snapshot | _pending_ |
 | Third-party notices approved | _pending_ |
 | Trademark/name policy | _pending_ |
 | Legal review completed | _pending_ |
