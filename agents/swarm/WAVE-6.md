@@ -1,7 +1,6 @@
 # Wave 6 — residual L1, encoding, state-machine, and conformance gaps
 
-**Status:** complete — all eight lanes integrated in the proof-wave 6
-checkpoint.
+**Status:** complete — all eight lanes integrated at `0a3a5fb`.
 
 **Launch commit:** `201a0a0` (`[STATUS] define and launch wave 6 residual lanes`)
 **Branch:** `repair/integrated`

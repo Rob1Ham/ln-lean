@@ -2,8 +2,8 @@
 
 **Status:** living roadmap after proof-wave 6; wave 7 candidate lanes defined.
 **Branch:** `repair/integrated`.
-**Base commit:** `201a0a0` (wave 6 launch); proof-wave 5 code is `6389baa`
-(proof-wave 4 code at `26ced90`).
+**Base commit:** `201a0a0` (wave 6 launch); proof-wave 6 code is `0a3a5fb`
+(proof-wave 5 code is `6389baa`; proof-wave 4 code at `26ced90`).
 **Catalog gate:** 48/48 rows `proved`, 0 `statement-only`, 0 unresolved,
 73 targets.
 **Full build:** 218 jobs, RC 0.

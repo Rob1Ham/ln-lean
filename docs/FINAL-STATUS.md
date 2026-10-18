@@ -2,9 +2,9 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** this proof-wave 6 checkpoint; the following status commit records
-the exact hash. Proof-wave 5 code was `6389baa`; wave 6 launched from
-`201a0a0`.
+**Gate HEAD:** `0a3a5fb` (`[PROOF] integrate proof-wave 6 sighash and refinement
+lanes`). Status commits may advance the branch tip. Proof-wave 5 code was
+`6389baa`; wave 6 launched from `201a0a0`.
 **Catalog state:** **48 `proved` / 0 `statementOnly` / 0 unresolved / 73
 targets**.
 **Remote refs:** push is non-force to `origin/repair/integrated`. `origin/main`
