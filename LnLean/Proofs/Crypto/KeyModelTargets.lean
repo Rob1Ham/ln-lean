@@ -516,4 +516,46 @@ theorem key_model_summary :
         attribution_contract_nonvacuous M₀ k₀
       exact ⟨M, K, m, s, tx, he, hkb, hw, ha⟩⟩
 
+/-! ## 8. Stored `accept_channel` payload (wave 8)
+
+Wave 8 adds `HandshakeState.acceptChannel?`, set by the payload-carrying
+receive path `handshakeStepRecvAccept`.  The definition below records the exact
+joint condition that the positive attribution contract needs; it is still an
+explicit registration hypothesis, not a proof of possession.  The state-level
+reachability and negative results are in
+`LnLean.Proofs.Crypto.AcceptPayloadTargets`. -/
+
+/-- A handshake state stores exactly the accept payload `m`, and that payload
+advertises the key generated from `seed`. -/
+def StoredAccept {M : PrimitiveModel} (K : KeyModel M) (seed : ByteArray)
+    (s : HandshakeState) (m : AcceptChannel) : Prop :=
+  s.acceptChannel? = some m ∧ AdvertisesKey K seed m
+
+/-- The stored payload is the one named in `StoredAccept`. -/
+theorem storedAccept_acceptChannel? {M : PrimitiveModel} {K : KeyModel M}
+    {seed : ByteArray} {s : HandshakeState} {m : AcceptChannel}
+    (h : StoredAccept K seed s m) :
+    s.acceptChannel? = some m :=
+  h.1
+
+/-- The stored payload's `funding_pubkey` is the signer's generated key. -/
+theorem storedAccept_fundingPubKey {M : PrimitiveModel} {K : KeyModel M}
+    {seed : ByteArray} {s : HandshakeState} {m : AcceptChannel}
+    (h : StoredAccept K seed s m) :
+    m.fundingPubKey = K.publicOfSeed seed :=
+  h.2
+
+/-- **Attribution from a stored payload.**  Under the unchanged `KeyBinding`,
+any key that accepts the signer's funding signature is the `funding_pubkey`
+stored in the handshake state. -/
+theorem storedAccept_attribution {M : PrimitiveModel} (K : KeyModel M)
+    (hkb : KeyBinding M.ecdsaVerify) {seed : ByteArray}
+    {s : HandshakeState} {m : AcceptChannel}
+    (h : StoredAccept K seed s m) {fundingTx : ByteArray}
+    (hdom : K.correctOn (fundingTag ++ fundingTx)) {pk' : PubKey}
+    (hver : M.ecdsaVerify pk' (fundingTag ++ fundingTx)
+      (K.sign (K.secretOfSeed seed) (fundingTag ++ fundingTx)) = true) :
+    pk' = m.fundingPubKey :=
+  funding_signature_attribution K hkb m seed h.2 fundingTx hdom hver
+
 end LnLean.Proofs.Crypto.KeyModelTargets

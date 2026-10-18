@@ -27,6 +27,7 @@ import LnLean.Payment.Invoice
 import LnLean.Payment.Laws
 import LnLean.Payment.MPP
 import LnLean.Proofs.Bitcoin.AnchorProps
+import LnLean.Proofs.Bitcoin.EcdsaBridgeTargets
 import LnLean.Proofs.Bitcoin.FundingAuthTargets
 import LnLean.Proofs.Bitcoin.FundingLinkTargets
 import LnLean.Proofs.Bitcoin.FundingProps
@@ -38,9 +39,11 @@ import LnLean.Proofs.Bitcoin.SequenceContextTargets
 import LnLean.Proofs.Bitcoin.SighashBridgeTargets
 import LnLean.Proofs.Bitcoin.SpendTargets
 import LnLean.Proofs.Bitcoin.ToLocalScriptTargets
+import LnLean.Proofs.Bitcoin.TxValidTransferTargets
 import LnLean.Proofs.Bitcoin.WeightProps
 import LnLean.Proofs.Bitcoin.WeightTargets
 import LnLean.Proofs.Channel.BreachProps
+import LnLean.Proofs.Channel.CommitmentConsumerSitesTargets
 import LnLean.Proofs.Channel.CommitmentConsumerTargets
 import LnLean.Proofs.Channel.CommitmentDanceTargets
 import LnLean.Proofs.Channel.CommitmentGrossNetTargets
@@ -52,6 +55,7 @@ import LnLean.Proofs.Channel.FeeProps
 import LnLean.Proofs.Channel.FeeTargets
 import LnLean.Proofs.Channel.HTLCProps
 import LnLean.Proofs.Channel.HtlcGlobalIdTargets
+import LnLean.Proofs.Channel.HtlcPreimageTargets
 import LnLean.Proofs.Channel.PenaltyProps
 import LnLean.Proofs.Channel.ProtocolEventFoldTargets
 import LnLean.Proofs.Channel.ReserveProps
@@ -64,6 +68,7 @@ import LnLean.Proofs.Common
 import LnLean.Proofs.ConformanceDiffTargets
 import LnLean.Proofs.ConformanceTargets
 import LnLean.Proofs.Conservation
+import LnLean.Proofs.Crypto.AcceptPayloadTargets
 import LnLean.Proofs.Crypto.EcdsaProps
 import LnLean.Proofs.Crypto.KeyModelTargets
 import LnLean.Proofs.Crypto.SchnorrProps
@@ -123,6 +128,7 @@ import LnLean.Proofs.Protocol.ChannelReestablishProps
 import LnLean.Proofs.Protocol.ErrorProps
 import LnLean.Proofs.Protocol.FeaturesProps
 import LnLean.Proofs.Protocol.HandshakeProps
+import LnLean.Proofs.Protocol.OpenChannelWireTargets
 import LnLean.Proofs.ProtocolCoverageTargets
 import LnLean.Proofs.ProtocolSigningTargets
 import LnLean.Proofs.ProtocolTargets
@@ -132,6 +138,7 @@ import LnLean.Proofs.Routing.GossipCanonicalTargets
 import LnLean.Proofs.Routing.GossipKeyConsistencyTargets
 import LnLean.Proofs.Routing.GossipProps
 import LnLean.Proofs.Routing.GossipRawRefinementTargets
+import LnLean.Proofs.Routing.GossipStoreEpochTargets
 import LnLean.Proofs.Routing.GossipTargets
 import LnLean.Proofs.Routing.GraphProps
 import LnLean.Proofs.Routing.OnionProps

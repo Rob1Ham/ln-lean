@@ -86,7 +86,18 @@ structure HandshakeState where
   fundingSignedReceived : Bool := false
   channelReadySent : Bool := false
   channelReadyReceived : Bool := false
-deriving Repr, DecidableEq, BEq
+  /-- The BOLT 2 `accept_channel` (type 33) payload this endpoint received,
+  recorded by the payload-carrying receive path `handshakeStepRecvAccept`.
+  `none` means no payload has been recorded.  A recorded payload is evidence
+  about the peer's advertised `funding_pubkey`; it is *not* a proof of
+  possession (see `LnLean.Proofs.Crypto.AcceptPayloadTargets`). -/
+  acceptChannel? : Option AcceptChannel := none
+deriving Repr, BEq
+
+/- `AcceptChannel`, `PubKey`, and `ChannelId` keep only `Repr`/`BEq` in the
+wire model, so this structure cannot derive `DecidableEq`.  No existing
+handshake theorem or executable path uses decidable equality on the state;
+equality of milestone flags remains available through `BEq`. -/
 
 namespace HandshakeState
 
@@ -175,6 +186,28 @@ abbrev canSendChannelReady (s : HandshakeState) : Prop :=
 abbrev canRecvChannelReady (s : HandshakeState) : Prop :=
   inited s ∧ (s.fundingSignedSent = true ∨ s.fundingSignedReceived = true) ∧
   s.channelReadyReceived = false
+
+/-- Record an `accept_channel` payload received from the peer.  The milestone
+transition `handshakeStep` does not touch `acceptChannel?`; this is the only
+state writer for the payload field, so a stored payload cannot be guessed from
+the boolean milestones. -/
+def recordAccept (s : HandshakeState) (a : AcceptChannel) : HandshakeState :=
+  { s with acceptChannel? := some a }
+
+@[simp] theorem recordAccept_acceptChannel? (s : HandshakeState)
+    (a : AcceptChannel) : (s.recordAccept a).acceptChannel? = some a := rfl
+
+@[simp] theorem recordAccept_acceptReceived (s : HandshakeState)
+    (a : AcceptChannel) : (s.recordAccept a).acceptReceived = s.acceptReceived := rfl
+
+/-- Forget the recorded `accept_channel` payload, retaining the milestone
+flags.  This is the projection used to compare the payload machine with the
+original milestone reachability relation. -/
+def forgetAcceptChannel (s : HandshakeState) : HandshakeState :=
+  { s with acceptChannel? := none }
+
+@[simp] theorem forgetAcceptChannel_acceptChannel? (s : HandshakeState) :
+    s.forgetAcceptChannel.acceptChannel? = none := rfl
 
 end HandshakeState
 
@@ -482,6 +515,296 @@ theorem acceptReceived_of_recvAcceptChannel {s s' : HandshakeState}
     rcases h with ⟨-, h⟩
     rw [← h]
   · simp [handshakeStep, hg] at h
+
+/-! ### Payload-carrying `accept_channel` receipt
+
+`HandshakeEvent.recvAcceptChannel` is nullary: the wave-A machine records only
+the milestone, not the BOLT 2 type-33 payload.  Changing that constructor to
+carry an `AcceptChannel` would break every downstream `HandshakeEvent` match
+(`LnLean.Protocol.Peer.receiveEvent?`, `D18`, `D21`, ...), so the payload is
+attached by the additive wrapper `handshakeStepRecvAccept`.  `handshakeStep`
+itself is unchanged; the wrapper runs the existing receive transition and then
+calls `HandshakeState.recordAccept`.
+
+The field records the peer's payload only.  A locally sent `accept_channel`
+carries this endpoint's own key, which is not evidence about the peer, so the
+send path deliberately does not write `acceptChannel?`.
+-/
+
+/-- Run the permitted `recvAcceptChannel` milestone transition and record the
+actual BOLT 2 `accept_channel` payload. -/
+def handshakeStepRecvAccept (s : HandshakeState) (a : AcceptChannel) :
+    Option HandshakeState :=
+  match handshakeStep s .recvAcceptChannel with
+  | some s' => some (s'.recordAccept a)
+  | none => none
+
+/-- Every payload-carrying receive is the existing milestone transition
+followed by `recordAccept`. -/
+theorem handshakeStepRecvAccept_underlying {s s' : HandshakeState}
+    {a : AcceptChannel} (h : handshakeStepRecvAccept s a = some s') :
+    ∃ s0 : HandshakeState,
+      handshakeStep s .recvAcceptChannel = some s0 ∧ s' = s0.recordAccept a := by
+  unfold handshakeStepRecvAccept at h
+  cases h0 : handshakeStep s .recvAcceptChannel with
+  | none => rw [h0] at h; simp at h
+  | some s0 =>
+      rw [h0] at h
+      simp only [Option.some.injEq] at h
+      exact ⟨s0, rfl, h.symm⟩
+
+/-- The recorded payload is exactly the payload the receive event carried. -/
+theorem acceptChannel?_of_handshakeStepRecvAccept {s s' : HandshakeState}
+    {a : AcceptChannel} (h : handshakeStepRecvAccept s a = some s') :
+    s'.acceptChannel? = some a := by
+  obtain ⟨s0, _hs0, rfl⟩ := handshakeStepRecvAccept_underlying h
+  rfl
+
+/-- A payload-carrying receive also records the milestone. -/
+theorem acceptReceived_of_handshakeStepRecvAccept {s s' : HandshakeState}
+    {a : AcceptChannel} (h : handshakeStepRecvAccept s a = some s') :
+    s'.acceptReceived = true := by
+  obtain ⟨s0, hs0, rfl⟩ := handshakeStepRecvAccept_underlying h
+  simpa using acceptReceived_of_recvAcceptChannel hs0
+
+/-- The milestone transition never changes the stored payload.  Only the
+payload-carrying wrapper writes it. -/
+theorem handshakeStep_acceptChannel?_preserved {s s' : HandshakeState}
+    {e : HandshakeEvent} (h : handshakeStep s e = some s') :
+    s'.acceptChannel? = s.acceptChannel? := by
+  cases e <;> simp only [handshakeStep] at h
+  all_goals
+    split at h
+    · simp only [Option.some.injEq] at h
+      subst h
+      rfl
+    · simp at h
+
+/-- Apart from `recvAcceptChannel`, the milestone transition does not change
+the `acceptReceived` flag. -/
+theorem handshakeStep_acceptReceived_eq {s s' : HandshakeState}
+    {e : HandshakeEvent} (h : handshakeStep s e = some s')
+    (he : e ≠ .recvAcceptChannel) :
+    s'.acceptReceived = s.acceptReceived := by
+  cases e <;> simp only [handshakeStep] at h
+  all_goals
+    first
+    | exact absurd rfl he
+    | (split at h
+       · simp only [Option.some.injEq] at h
+         subst h
+         rfl
+       · simp at h)
+
+/-- The send path does not record a peer payload: a locally chosen
+`accept_channel` is not evidence about the peer. -/
+theorem sendAcceptChannel_acceptChannel?_preserved {s s' : HandshakeState}
+    (h : handshakeStep s .sendAcceptChannel = some s') :
+    s'.acceptChannel? = s.acceptChannel? :=
+  handshakeStep_acceptChannel?_preserved h
+
+/-- If no payload was stored before sending `accept_channel`, none is stored
+afterwards. -/
+theorem sent_accept_does_not_store {s s' : HandshakeState}
+    (h : handshakeStep s .sendAcceptChannel = some s')
+    (h0 : s.acceptChannel? = none) :
+    s'.acceptChannel? = none := by
+  rw [sendAcceptChannel_acceptChannel?_preserved h, h0]
+
+/-! #### Payload-reachable states -/
+
+/-- Handshake events used by the payload machine.  `.plain e` is the original
+milestone event, except that `.plain .recvAcceptChannel` is rejected: a receive
+must use `.recvAccept a` so that the payload is recorded. -/
+inductive HandshakePayloadEvent where
+  | plain (e : HandshakeEvent)
+  | recvAccept (a : AcceptChannel)
+deriving Repr
+
+/-- One transition of the payload machine. -/
+def handshakePayloadStep (s : HandshakeState) :
+    HandshakePayloadEvent → Option HandshakeState
+  | .plain e =>
+      match e with
+      | .recvAcceptChannel => none
+      | _ => handshakeStep s e
+  | .recvAccept a => handshakeStepRecvAccept s a
+
+/-- Reachability with payload-carrying `accept_channel` receipts. -/
+inductive PayloadReachable : HandshakeState → Prop where
+  | initial : PayloadReachable HandshakeState.initial
+  | step {s s' : HandshakeState} (e : HandshakePayloadEvent) :
+      PayloadReachable s → handshakePayloadStep s e = some s' → PayloadReachable s'
+
+/-- One payload step preserves the `acceptReceived` / payload-presence
+equivalence. -/
+theorem payloadStep_acceptReceived_iff {s s' : HandshakeState}
+    {e : HandshakePayloadEvent} (hstep : handshakePayloadStep s e = some s')
+    (ih : s.acceptReceived = true ↔ s.acceptChannel?.isSome = true) :
+    s'.acceptReceived = true ↔ s'.acceptChannel?.isSome = true := by
+  cases e with
+  | plain e =>
+      by_cases he : e = .recvAcceptChannel
+      · subst he
+        simp [handshakePayloadStep] at hstep
+      · have hstep' : handshakeStep s e = some s' := by
+          simpa [handshakePayloadStep, he] using hstep
+        have hrec : s'.acceptReceived = s.acceptReceived :=
+          handshakeStep_acceptReceived_eq hstep' he
+        have hfield : s'.acceptChannel? = s.acceptChannel? :=
+          handshakeStep_acceptChannel?_preserved hstep'
+        rw [hfield, hrec]
+        exact ih
+  | recvAccept a =>
+      have hpay : s'.acceptChannel? = some a :=
+        acceptChannel?_of_handshakeStepRecvAccept hstep
+      have hrecv : s'.acceptReceived = true :=
+        acceptReceived_of_handshakeStepRecvAccept hstep
+      rw [hpay, hrecv]
+      simp
+
+/-- One payload step preserves payload provenance. -/
+theorem payloadStep_provenance {s s' : HandshakeState}
+    {e : HandshakePayloadEvent} (hprev : PayloadReachable s)
+    (hstep : handshakePayloadStep s e = some s')
+    (a : AcceptChannel)
+    (ih : s.acceptChannel? = some a →
+      ∃ s0 s1 : HandshakeState,
+        PayloadReachable s0 ∧ handshakeStepRecvAccept s0 a = some s1)
+    (ha : s'.acceptChannel? = some a) :
+    ∃ s0 s1 : HandshakeState,
+      PayloadReachable s0 ∧ handshakeStepRecvAccept s0 a = some s1 := by
+  cases e with
+  | plain e =>
+      by_cases he : e = .recvAcceptChannel
+      · subst he
+        simp [handshakePayloadStep] at hstep
+      · have hstep' : handshakeStep s e = some s' := by
+          simpa [handshakePayloadStep, he] using hstep
+        have hfield : s'.acceptChannel? = s.acceptChannel? :=
+          handshakeStep_acceptChannel?_preserved hstep'
+        rw [hfield] at ha
+        exact ih ha
+  | recvAccept b =>
+      have hb : s'.acceptChannel? = some b :=
+        acceptChannel?_of_handshakeStepRecvAccept hstep
+      rw [hb] at ha
+      have hba : b = a := Option.some.inj ha
+      subst hba
+      exact ⟨s, s', hprev, hstep⟩
+
+/-- The milestone transition is independent of the recorded payload: forgetting
+the payload commutes with one step. -/
+theorem handshakeStep_forgetAcceptChannel {s s' : HandshakeState}
+    {e : HandshakeEvent} (h : handshakeStep s e = some s') :
+    handshakeStep s.forgetAcceptChannel e = some s'.forgetAcceptChannel := by
+  cases e <;> simp only [handshakeStep] at h ⊢
+  all_goals
+    split at h
+    · simp only [Option.some.injEq] at h
+      subst h
+      simp_all [HandshakeState.forgetAcceptChannel]
+    · simp at h
+
+/-- Milestone-reachable states never record a payload: the original
+`handshakeStep` has no payload to record. -/
+theorem reachable_acceptChannel?_none {s : HandshakeState} (h : Reachable s) :
+    s.acceptChannel? = none := by
+  induction h with
+  | initial => rfl
+  | step e hprev hstep ih =>
+      rw [handshakeStep_acceptChannel?_preserved hstep, ih]
+
+/-- Every payload-reachable state projects to a milestone-reachable state by
+forgetting the recorded payload.  The payload field is the only difference
+between the two machines. -/
+theorem payloadReachable_forget_reachable {s : HandshakeState}
+    (h : PayloadReachable s) : Reachable s.forgetAcceptChannel := by
+  induction h with
+  | initial =>
+      simpa [HandshakeState.forgetAcceptChannel, HandshakeState.initial] using
+        Reachable.initial
+  | step e hprev hstep ih =>
+      cases e with
+      | plain e =>
+          cases e <;> simp only [handshakePayloadStep] at hstep
+          all_goals
+            first
+            | (have hf := handshakeStep_forgetAcceptChannel hstep
+               exact Reachable.step _ ih hf)
+            | simp at hstep
+      | recvAccept a =>
+          obtain ⟨s0, hs0, rfl⟩ := handshakeStepRecvAccept_underlying hstep
+          have hf := handshakeStep_forgetAcceptChannel hs0
+          have hrec : Reachable s0.forgetAcceptChannel :=
+            Reachable.step .recvAcceptChannel ih hf
+          simpa [HandshakeState.forgetAcceptChannel, HandshakeState.recordAccept]
+            using hrec
+
+/-- `acceptChannel?` starts empty. -/
+@[simp] theorem initial_acceptChannel? :
+    HandshakeState.initial.acceptChannel? = none := rfl
+
+/-- In a payload-reachable state, the payload field is present exactly when the
+`acceptReceived` milestone is set: the field cannot be guessed and the
+milestone cannot be set without recording the payload. -/
+theorem payloadReachable_acceptReceived_iff {s : HandshakeState}
+    (h : PayloadReachable s) :
+    s.acceptReceived = true ↔ s.acceptChannel?.isSome = true := by
+  induction h with
+  | initial => simp [HandshakeState.initial]
+  | step e hprev hstep ih => exact payloadStep_acceptReceived_iff hstep ih
+
+/-- A payload-reachable state that has received an accept payload exposes some
+payload. -/
+theorem payloadReachable_acceptReceived_payload {s : HandshakeState}
+    (h : PayloadReachable s) (hr : s.acceptReceived = true) :
+    ∃ a : AcceptChannel, s.acceptChannel? = some a :=
+  Option.isSome_iff_exists.mp ((payloadReachable_acceptReceived_iff h).1 hr)
+
+/-- A stored payload implies that the receive milestone is set. -/
+theorem payloadReachable_acceptChannel?_received {s : HandshakeState}
+    {a : AcceptChannel} (h : PayloadReachable s) (ha : s.acceptChannel? = some a) :
+    s.acceptReceived = true := by
+  have hf : s.acceptChannel?.isSome = true := by rw [ha]; rfl
+  exact (payloadReachable_acceptReceived_iff h).2 hf
+
+/-- **Payload provenance.**  In a payload-reachable state, any stored payload
+comes from an actual `handshakeStepRecvAccept` transition.  This is the
+registration half of the bridge: the field is not a free-floating claim. -/
+theorem payloadReachable_acceptChannel?_provenance {s : HandshakeState}
+    (h : PayloadReachable s) (a : AcceptChannel) (ha : s.acceptChannel? = some a) :
+    ∃ s0 s1 : HandshakeState,
+      PayloadReachable s0 ∧ handshakeStepRecvAccept s0 a = some s1 := by
+  induction h with
+  | initial => simp [HandshakeState.initial] at ha
+  | step e hprev hstep ih =>
+      exact payloadStep_provenance hprev hstep a ih ha
+
+/-- **The recorded payload is stable.**  Once a payload-reachable state has
+stored a payload, no later payload-machine step replaces it: a second
+`recvAccept` is blocked by the `acceptReceived` guard. -/
+theorem payloadReachable_acceptChannel?_stable {s s' : HandshakeState}
+    {e : HandshakePayloadEvent} (h : PayloadReachable s)
+    (hstep : handshakePayloadStep s e = some s') {a : AcceptChannel}
+    (ha : s.acceptChannel? = some a) :
+    s'.acceptChannel? = some a := by
+  cases e with
+  | plain e =>
+      by_cases he : e = .recvAcceptChannel
+      · subst he
+        simp [handshakePayloadStep] at hstep
+      · have hstep' : handshakeStep s e = some s' := by
+          simpa [handshakePayloadStep, he] using hstep
+        rw [handshakeStep_acceptChannel?_preserved hstep', ha]
+  | recvAccept b =>
+      obtain ⟨s0, hs0, _⟩ := handshakeStepRecvAccept_underlying hstep
+      have hguard : s.canRecvAccept := by
+        by_cases hg : s.canRecvAccept
+        · exact hg
+        · simp [handshakeStep, hg] at hs0
+      have hfalse : s.acceptReceived = false := hguard.2.2.2.1
+      exact absurd (payloadReachable_acceptChannel?_received h ha ▸ hfalse) (by decide)
 
 /-! ## Explicit `open_channel` coverage
 

@@ -1420,6 +1420,173 @@ theorem insertUpdateCanonical_newest {u : ChannelUpdate}
   rw [hvu]
   exact Nat.le_refl u.timestamp
 
+/-! ## Replacement removals and their accounting (additive, `RT-01`, wave 8)
+
+`insertReplacing` and `insertUpdateCanonical` drop the stored records they
+replace.  The definitions below make those removals explicit, so an epoch or
+history layer can record *what* a replacement superseded instead of only the
+resulting store.  They are list primitives: nothing here changes a transition.
+-/
+
+/-- **Stored announcements removed by `insertReplacing a`.**  These are exactly
+the old records for the incoming `short_channel_id`.  Under the canonical
+invariant there is at most one such record; on the raw store there may be
+several. -/
+def replacedAnnouncements (a : ChannelAnnellation)
+    (l : List ChannelAnnellation) : List ChannelAnnellation :=
+  l.filter (fun b => decide (b.shortChannelId = a.shortChannelId))
+
+/-- Exact membership in the removed announcement list. -/
+theorem mem_replacedAnnouncements_iff {a b : ChannelAnnellation}
+    {l : List ChannelAnnellation} :
+    b ∈ replacedAnnouncements a l ↔
+      b ∈ l ∧ b.shortChannelId = a.shortChannelId := by
+  simp [replacedAnnouncements]
+
+/-- Every removed announcement was an old record for the incoming channel. -/
+theorem mem_replacedAnnouncements_of_mem {a b : ChannelAnnellation}
+    {l : List ChannelAnnellation} (hb : b ∈ replacedAnnouncements a l) :
+    b ∈ l ∧ b.shortChannelId = a.shortChannelId :=
+  mem_replacedAnnouncements_iff.mp hb
+
+/-- A replacement removes a record exactly when it is a same-channel old
+record.  This is the accounting law for announcement replacement: for any
+record other than the incoming one, surviving and being listed as replaced are
+exact complements. -/
+theorem mem_insertReplacing_iff_not_replaced {a b : ChannelAnnellation}
+    {l : List ChannelAnnellation} (hne : b ≠ a) :
+    b ∈ insertReplacing a l ↔
+      b ∈ l ∧ b ∉ replacedAnnouncements a l := by
+  rw [mem_insertReplacing_iff]
+  constructor
+  · rintro (hba | ⟨hbl, hbne⟩)
+    · exact absurd hba hne
+    · refine ⟨hbl, ?_⟩
+      intro hbr
+      exact hbne (mem_replacedAnnouncements_iff.mp hbr).2
+  · rintro ⟨hbl, hbr⟩
+    refine Or.inr ⟨hbl, ?_⟩
+    intro hsame
+    exact hbr (mem_replacedAnnouncements_iff.mpr ⟨hbl, hsame⟩)
+
+/-- The removed announcement list is duplicate-free when the input is. -/
+theorem replacedAnnouncements_nodup {a : ChannelAnnellation}
+    {l : List ChannelAnnellation} (h : l.Nodup) :
+    (replacedAnnouncements a l).Nodup :=
+  h.filter _
+
+/-- **At most one replacement per channel under canonicality.**  In a
+canonical announcement list, every two records removed by one replacement are
+the same record. -/
+theorem replacedAnnouncements_subsingleton {a : ChannelAnnellation}
+    {l : List ChannelAnnellation} (hc : CanonicalAnnouncements l) :
+    ∀ x ∈ replacedAnnouncements a l,
+      ∀ y ∈ replacedAnnouncements a l, x = y := by
+  intro x hx y hy
+  rcases mem_replacedAnnouncements_iff.mp hx with ⟨hxl, hxs⟩
+  rcases mem_replacedAnnouncements_iff.mp hy with ⟨hyl, hys⟩
+  exact hc x hxl y hyl (hxs.trans hys.symm)
+
+/-- The removed announcement list is empty exactly when no stored record
+addresses the incoming channel. -/
+theorem replacedAnnouncements_eq_nil_iff {a : ChannelAnnellation}
+    {l : List ChannelAnnellation} :
+    replacedAnnouncements a l = [] ↔
+      ∀ b ∈ l, b.shortChannelId ≠ a.shortChannelId := by
+  constructor
+  · intro h b hb hsame
+    have hmem : b ∈ replacedAnnouncements a l :=
+      mem_replacedAnnouncements_iff.mpr ⟨hb, hsame⟩
+    rw [h] at hmem
+    simp at hmem
+  · intro h
+    rw [List.eq_nil_iff_forall_not_mem]
+    intro b hb
+    exact h b (mem_replacedAnnouncements_iff.mp hb).1
+      (mem_replacedAnnouncements_iff.mp hb).2
+
+/-- **Stored updates removed by `insertUpdateCanonical u`.**  These are exactly
+the old records in the incoming `(short_channel_id, direction)` slot. -/
+def replacedUpdates (u : ChannelUpdate)
+    (l : List ChannelUpdate) : List ChannelUpdate :=
+  l.filter (fun v => decide (v.shortChannelId = u.shortChannelId ∧
+    v.direction = u.direction))
+
+/-- Exact membership in the removed update list. -/
+theorem mem_replacedUpdates_iff {u v : ChannelUpdate}
+    {l : List ChannelUpdate} :
+    v ∈ replacedUpdates u l ↔
+      v ∈ l ∧ v.shortChannelId = u.shortChannelId ∧
+        v.direction = u.direction := by
+  simp [replacedUpdates]
+
+/-- Every removed update was an old record in the incoming directional slot. -/
+theorem mem_replacedUpdates_of_mem {u v : ChannelUpdate}
+    {l : List ChannelUpdate} (hv : v ∈ replacedUpdates u l) :
+    v ∈ l ∧ v.shortChannelId = u.shortChannelId ∧
+      v.direction = u.direction :=
+  mem_replacedUpdates_iff.mp hv
+
+/-- The removal history records the supersession direction: under the BOLT 7
+per-slot gate, every replaced update is strictly older than the incoming one. -/
+theorem replacedUpdates_timestamp_lt {u : ChannelUpdate}
+    {l : List ChannelUpdate} (h : UpdateSupersedes u l) :
+    ∀ v ∈ replacedUpdates u l, v.timestamp < u.timestamp := by
+  intro v hv
+  rcases mem_replacedUpdates_iff.mp hv with ⟨hvl, hscid, hdir⟩
+  exact h v hvl hscid hdir
+
+/-- A slot update removes a record exactly when it is a same-slot old record. -/
+theorem mem_insertUpdateCanonical_iff_not_replaced {u v : ChannelUpdate}
+    {l : List ChannelUpdate} (hne : v ≠ u) :
+    v ∈ insertUpdateCanonical u l ↔
+      v ∈ l ∧ v ∉ replacedUpdates u l := by
+  rw [mem_insertUpdateCanonical_iff]
+  constructor
+  · rintro (hvu | ⟨hvl, hne'⟩)
+    · exact absurd hvu hne
+    · refine ⟨hvl, ?_⟩
+      intro hvr
+      rcases mem_replacedUpdates_iff.mp hvr with ⟨_, hscid, hdir⟩
+      rcases hne' with hscid' | hdir'
+      · exact hscid' hscid
+      · exact hdir' hdir
+  · rintro ⟨hvl, hvr⟩
+    refine Or.inr ⟨hvl, ?_⟩
+    have hnot : ¬ (v.shortChannelId = u.shortChannelId ∧
+        v.direction = u.direction) := by
+      intro hsame
+      exact hvr (mem_replacedUpdates_iff.mpr ⟨hvl, hsame.1, hsame.2⟩)
+    by_cases hscid : v.shortChannelId = u.shortChannelId
+    · by_cases hdir : v.direction = u.direction
+      · exact absurd ⟨hscid, hdir⟩ hnot
+      · exact Or.inr hdir
+    · exact Or.inl hscid
+
+/-- The removed update list is duplicate-free when the input is. -/
+theorem replacedUpdates_nodup {u : ChannelUpdate} {l : List ChannelUpdate}
+    (h : l.Nodup) : (replacedUpdates u l).Nodup :=
+  h.filter _
+
+/-- The removed update list is empty exactly when no stored record addresses
+the incoming directional slot. -/
+theorem replacedUpdates_eq_nil_iff {u : ChannelUpdate}
+    {l : List ChannelUpdate} :
+    replacedUpdates u l = [] ↔
+      ∀ v ∈ l, ¬ (v.shortChannelId = u.shortChannelId ∧
+        v.direction = u.direction) := by
+  constructor
+  · intro h v hv hsame
+    have hmem : v ∈ replacedUpdates u l :=
+      mem_replacedUpdates_iff.mpr ⟨hv, hsame.1, hsame.2⟩
+    rw [h] at hmem
+    simp at hmem
+  · intro h
+    rw [List.eq_nil_iff_forall_not_mem]
+    intro v hv
+    rcases mem_replacedUpdates_iff.mp hv with ⟨hvl, hscid, hdir⟩
+    exact h v hvl ⟨hscid, hdir⟩
+
 /-! ## Canonical selection of a raw store (additive, `RT-01`, wave 7)
 
 `applyGossip` is append-only: it never replaces an announcement for an existing
@@ -1793,5 +1960,17 @@ theorem canonicalStoreView_applyGossip_nodeAnnouncements (s : GossipState)
     (canonicalStoreView (applyGossip s (.nodeAnnouncement n))).nodeAnnouncements =
       n :: s.nodeAnnouncements :=
   rfl
+
+/-- **At most one replacement per directional slot under slot uniqueness.**
+In a slot-unique update list, every two records removed by one replacement are
+the same record. -/
+theorem replacedUpdates_subsingleton {u : ChannelUpdate}
+    {l : List ChannelUpdate} (h : UpdatesSlotUnique l) :
+    ∀ x ∈ replacedUpdates u l,
+      ∀ y ∈ replacedUpdates u l, x = y := by
+  intro x hx y hy
+  rcases mem_replacedUpdates_iff.mp hx with ⟨hxl, hxs, hxd⟩
+  rcases mem_replacedUpdates_iff.mp hy with ⟨hyl, hys, hyd⟩
+  exact h x hxl y hyl (hxs.trans hys.symm) (hxd.trans hyd.symm)
 
 end LnLean.Routing

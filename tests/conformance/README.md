@@ -1,17 +1,19 @@
-# Wire conformance vectors (BigSize, TLV, and transport framing)
+# Wire conformance vectors (BigSize, TLV, transport framing, BOLT 2 payloads)
 
 **This is vector/differential conformance, not a full implementation test.**  The
 files here check a finite set of BOLT 1 encoded byte strings, the BOLT 8
-transport frame, and pinned rust-lightning fixtures against the Lean model's
-accept/reject decisions.  They do not cover IO, allocation limits,
-message-specific TLV value decoding, namespace/known-type policy, Noise
-encryption, or byte-for-byte equivalence with a running rust-lightning node.
+transport frame, a finite set of BOLT 2 message payload/field vectors
+(`open_channel`, `accept_channel`, `commitment_signed`, `update_add_htlc`), and
+pinned rust-lightning fixtures against the Lean model's decisions.  They do not
+cover IO, allocation limits, message-specific TLV value decoding,
+namespace/known-type policy, Noise encryption, signature validity, sender
+identity, or byte-for-byte equivalence with a running rust-lightning node.
 
 ## Files
 
 | Path | Role |
 |---|---|
-| `tests/conformance/vectors.json` | authoritative BigSize, TLV, and framing vector set |
+| `tests/conformance/vectors.json` | authoritative BigSize, TLV, framing, and BOLT 2 message-payload vector set |
 | `tests/conformance/rust-lightning/fixtures.json` | pinned rust-lightning differential fixtures, live-run metadata, and generation provenance |
 | `tests/conformance/rust-lightning/generate.py` | deterministic pinned-source fixture re-derivation/verification and the live cargo/probe harness |
 | `tests/conformance/rust-lightning/live_probe.rs` | public-API Rust probe copied into the disposable checkout by `--live` |
@@ -117,6 +119,29 @@ rejection reason.  The `framing.boundaries` table pins payload lengths `0, 1,
 size, and whether the transport length fits.  At payload `65534` the transport
 length is `65536`, which the fixed two-byte header truncates to `0000`; such a
 message must be rejected by the size check, never framed.
+
+### BOLT 2 message payloads
+
+`messages.cases` holds six finite payload vectors from the pinned BOLT 2
+layouts: two `open_channel` (type 32; 319-byte base and 343-byte type-0
+`upfront_shutdown_script` TLV), two `accept_channel` (type 33; 270-byte base and
+306-byte TLV), one `commitment_signed` (type 132; 226 bytes with two 64-byte
+HTLC signatures), and one `update_add_htlc` (type 128; 1450 bytes with a
+1366-byte onion).  Each row carries an ordered field table with byte offsets,
+widths, and values, the concatenated payload, the transport header
+(`transport_length = 2 + payload.size`), and the type-plus-header frame prefix.
+
+The row bytes are independent fixtures: `open_channel` uses a local
+`OpenChannelWire` record in `LnLean/Proofs/ConformanceDiffTargets.lean`, not
+`LnLean.Protocol.Messages.Msg.openChannel`, and the other records are not
+serializers from `Messages.lean`.  The checker rebuilds each payload from its
+field table, validates the TLV envelope, recomputes the lengths and header, and
+cross-checks the named Lean `decide` theorems.  The exact payload-equality
+theorem is present for five rows; the 1450-byte `update_add_htlc` row pins
+length, transport, header, and frame prefix only, and declares that omission in
+its `lean.payload` field.  These vectors do **not** claim signature validity,
+sender identity, handshake routing, or a live rust-lightning message
+serialization comparison.
 
 ### rust-lightning differential fixtures
 

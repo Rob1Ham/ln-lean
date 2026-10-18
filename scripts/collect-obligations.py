@@ -118,7 +118,10 @@ for path in files:
                 "file": str(rel),
                 "line": i,
             })
-        d = DECL.match(line)
+        # Match declarations on the comment-stripped line.  The obligation
+        # marker itself lives in a line comment, so that scan below still uses
+        # the original text.
+        d = DECL.match(code_lines[i - 1])
         if d:
             decls.append({
                 "kind": d.group(1),
