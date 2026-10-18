@@ -1081,4 +1081,343 @@ theorem updateKeyAnnouncedDirectional_canonicalView (s : GossipState)
 
 end GossipState
 
+/-! ## Canonical announcement replacement, node-key registration, and
+canonical update supersession (additive, `RT-02`, wave 6)
+
+The wave-5 canonical *view* (`dedupAnnouncements`, `GossipState.canonicalView`)
+removes same-`short_channel_id` duplicates but is not a transition: raw
+`applyGossip` remains append-only, and `NodeKeyConsistent` remains an explicit
+hypothesis.  This section supplies the store-level primitives needed by a
+*transition* that maintains both invariants by construction:
+
+* `insertReplacing` replaces the stored announcement for the incoming
+  `short_channel_id` instead of appending.  It is the announcement half of the
+  canonicalising store step.
+* `GossipState.CompatibleWithStore` is the node-key registration gate: an
+  incoming announcement must not rebind a graph node that is already bound to
+  a different BOLT 7 key.
+* `bindNodeKeys` records the incoming announcement's two `NodeId → PubKey`
+  bindings; `NodeKeyAgreement` is the list-level form of
+  `GossipState.NodeKeyConsistent`.
+* `rotateNodeKey` and `rekeyAnnouncement` model an explicit key rotation: the
+  registration map and every affected announcement field are rewritten
+  together.  Rotation is a registration operation only; it does not preserve
+  announcement signature validity (the re-signed records are the caller's
+  obligation), which is stated in the wave-6 proof module.
+* `insertUpdateCanonical` replaces the stored update for the same
+  `(short_channel_id, direction)` slot when a strictly newer update arrives;
+  `UpdateSupersedes` is the BOLT 7 timestamp gate for that replacement.
+
+Nothing below changes `applyGossip`, `GossipState.applyUpdate`,
+`applyUpdateAttributed`, `applyUpdateDirected`, `dedupAnnouncements`, or any
+existing statement.  The raw store stays append-only, signature-unfiltered,
+and undeduplicated. -/
+
+/-- **Replace-by-channel insertion.**  Drop every stored announcement for the
+incoming `short_channel_id`, then prepend the incoming one.  Under the
+canonical invariant this is an ordinary supersession; without it, it is the
+canonicalising replacement the wave-5 `insertCanonical` deliberately did not
+perform on the raw store. -/
+def insertReplacing (a : ChannelAnnellation)
+    (l : List ChannelAnnellation) : List ChannelAnnellation :=
+  a :: l.filter (fun b => decide (b.shortChannelId ≠ a.shortChannelId))
+
+/-- **Exact membership after replacement.**  An announcement is stored iff it
+is the incoming one, or it was stored before with a different
+`short_channel_id`. -/
+theorem mem_insertReplacing_iff {a b : ChannelAnnellation}
+    {l : List ChannelAnnellation} :
+    b ∈ insertReplacing a l ↔
+      b = a ∨ (b ∈ l ∧ b.shortChannelId ≠ a.shortChannelId) := by
+  simp [insertReplacing, List.mem_filter]
+
+/-- A stored announcement for a different channel survives replacement. -/
+theorem mem_insertReplacing_of_mem_of_ne {a b : ChannelAnnellation}
+    {l : List ChannelAnnellation} (hb : b ∈ l)
+    (hne : b.shortChannelId ≠ a.shortChannelId) :
+    b ∈ insertReplacing a l :=
+  List.mem_cons_of_mem _ (List.mem_filter.mpr ⟨hb, decide_eq_true hne⟩)
+
+/-- Every non-incoming member after replacement was stored before. -/
+theorem mem_of_mem_insertReplacing_of_ne {a b : ChannelAnnellation}
+    {l : List ChannelAnnellation} (h : b ∈ insertReplacing a l)
+    (hne : b ≠ a) : b ∈ l := by
+  rcases mem_insertReplacing_iff.mp h with rfl | ⟨hb, _⟩
+  · exact absurd rfl hne
+  · exact hb
+
+/-- **Replacement preserves canonicality.**  A canonical list stays canonical
+after replacing a channel's record: the old record for that channel is
+removed, so exactly one record per `short_channel_id` remains. -/
+theorem canonical_insertReplacing {l : List ChannelAnnellation}
+    (hc : CanonicalAnnouncements l) (a : ChannelAnnellation) :
+    CanonicalAnnouncements (insertReplacing a l) := by
+  intro x hx y hy hscid
+  rcases mem_insertReplacing_iff.mp hx with rfl | ⟨hxl, hxn⟩
+  · rcases mem_insertReplacing_iff.mp hy with rfl | ⟨hyl, hyn⟩
+    · rfl
+    · exact absurd hscid.symm hyn
+  · rcases mem_insertReplacing_iff.mp hy with rfl | ⟨hyl, hyn⟩
+    · exact absurd hscid hxn
+    · exact hc x hxl y hyl hscid
+
+namespace GossipState
+
+/-- **Node-key registration compatibility.**  The incoming announcement does
+not rebind any graph node already named by a stored announcement to a different
+BOLT 7 key.  The four implications cover both endpoint positions of the
+incoming announcement against both positions of every stored one.  This is the
+admission check that makes `NodeKeyConsistent` a transition invariant rather
+than a hypothesis. -/
+def CompatibleWithStore (s : GossipState) (a : ChannelAnnellation) : Prop :=
+  ∀ b ∈ s.announcements,
+    (b.node1 = a.node1 → b.nodeKey1 = a.nodeKey1) ∧
+    (b.node2 = a.node1 → b.nodeKey2 = a.nodeKey1) ∧
+    (b.node1 = a.node2 → b.nodeKey1 = a.nodeKey2) ∧
+    (b.node2 = a.node2 → b.nodeKey2 = a.nodeKey2)
+
+end GossipState
+
+/-- **List-level node-key agreement.**  This is `NodeKeyConsistent` unfolded
+to an announcement list, so the registration lemmas can be stated without
+constructing a store. -/
+def NodeKeyAgreement (nodeKeyOf : NodeId → PubKey)
+    (l : List ChannelAnnellation) : Prop :=
+  ∀ a ∈ l, nodeKeyOf a.node1 = a.nodeKey1 ∧
+    nodeKeyOf a.node2 = a.nodeKey2
+
+/-- `NodeKeyConsistent` is exactly `NodeKeyAgreement` on the announcement
+list. -/
+theorem nodeKeyConsistent_iff_agreement (nodeKeyOf : NodeId → PubKey)
+    (s : GossipState) :
+    GossipState.NodeKeyConsistent nodeKeyOf s ↔
+      NodeKeyAgreement nodeKeyOf s.announcements :=
+  Iff.rfl
+
+/-- **Bind an announcement's two graph nodes to its BOLT 7 keys.**  The
+registration map is total; nodes not named by the announcement keep their
+previous binding. -/
+def bindNodeKeys (nodeKeyOf : NodeId → PubKey) (a : ChannelAnnellation) :
+    NodeId → PubKey :=
+  fun n => if n = a.node1 then a.nodeKey1
+    else if n = a.node2 then a.nodeKey2 else nodeKeyOf n
+
+/-- The first endpoint is bound to `nodeKey1`. -/
+@[simp] theorem bindNodeKeys_node1 (nodeKeyOf : NodeId → PubKey)
+    (a : ChannelAnnellation) :
+    bindNodeKeys nodeKeyOf a a.node1 = a.nodeKey1 := by
+  simp [bindNodeKeys]
+
+/-- The second endpoint is bound to `nodeKey2`, provided the endpoints are
+distinct.  BOLT 7 requires distinct channel endpoints; the distinctness is an
+explicit admission hypothesis, not a hidden field invariant. -/
+theorem bindNodeKeys_node2 (nodeKeyOf : NodeId → PubKey)
+    (a : ChannelAnnellation) (h : a.node1 ≠ a.node2) :
+    bindNodeKeys nodeKeyOf a a.node2 = a.nodeKey2 := by
+  simp [bindNodeKeys, Ne.symm h]
+
+/-- A node not named by the announcement keeps its old binding. -/
+theorem bindNodeKeys_of_ne (nodeKeyOf : NodeId → PubKey)
+    (a : ChannelAnnellation) {n : NodeId} (h1 : n ≠ a.node1)
+    (h2 : n ≠ a.node2) :
+    bindNodeKeys nodeKeyOf a n = nodeKeyOf n := by
+  simp [bindNodeKeys, h1, h2]
+
+/-- **Registration establishes node-key consistency.**  If the store is
+consistent, the incoming announcement is compatible with every stored
+announcement, and its endpoints are distinct, then binding its two nodes and
+replacing its channel record keeps `NodeKeyAgreement` for the resulting
+announcement list. -/
+theorem nodeKeyAgreement_insertReplacing {nodeKeyOf : NodeId → PubKey}
+    {s : GossipState} {a : ChannelAnnellation}
+    (hc : NodeKeyAgreement nodeKeyOf s.announcements)
+    (hcompat : s.CompatibleWithStore a)
+    (hne : a.node1 ≠ a.node2) :
+    NodeKeyAgreement (bindNodeKeys nodeKeyOf a)
+      (insertReplacing a s.announcements) := by
+  intro b hb
+  rcases mem_insertReplacing_iff.mp hb with hba | ⟨hb, _hbne⟩
+  · subst b
+    exact ⟨bindNodeKeys_node1 nodeKeyOf a,
+      bindNodeKeys_node2 nodeKeyOf a hne⟩
+  · rcases hc b hb with ⟨hb1, hb2⟩
+    rcases hcompat b hb with ⟨hc1, hc2, hc3, hc4⟩
+    constructor
+    · by_cases h1 : b.node1 = a.node1
+      · rw [h1, bindNodeKeys_node1]
+        exact (hc1 h1).symm
+      · by_cases h2 : b.node1 = a.node2
+        · rw [h2, bindNodeKeys_node2 nodeKeyOf a hne]
+          exact (hc3 h2).symm
+        · rw [bindNodeKeys_of_ne nodeKeyOf a h1 h2]
+          exact hb1
+    · by_cases h1 : b.node2 = a.node1
+      · rw [h1, bindNodeKeys_node1]
+        exact (hc2 h1).symm
+      · by_cases h2 : b.node2 = a.node2
+        · rw [h2, bindNodeKeys_node2 nodeKeyOf a hne]
+          exact (hc4 h2).symm
+        · rw [bindNodeKeys_of_ne nodeKeyOf a h1 h2]
+          exact hb2
+
+/-- Store-level form of `nodeKeyAgreement_insertReplacing`. -/
+theorem nodeKeyConsistent_insertReplacing {nodeKeyOf : NodeId → PubKey}
+    {s : GossipState} {a : ChannelAnnellation}
+    (hc : GossipState.NodeKeyConsistent nodeKeyOf s)
+    (hcompat : s.CompatibleWithStore a)
+    (hne : a.node1 ≠ a.node2) :
+    GossipState.NodeKeyConsistent (bindNodeKeys nodeKeyOf a)
+      { s with announcements := insertReplacing a s.announcements } :=
+  nodeKeyAgreement_insertReplacing hc hcompat hne
+
+/-! ### Explicit node-key rotation -/
+
+/-- **Rotate one graph node's registered BOLT 7 key.** -/
+def rotateNodeKey (nodeKeyOf : NodeId → PubKey) (n : NodeId) (k : PubKey) :
+    NodeId → PubKey :=
+  fun m => if m = n then k else nodeKeyOf m
+
+/-- **Rewrite an announcement to a rotated key.**  Only the fields naming the
+rotated graph node change; the announcement's identity, endpoints, capacity,
+digest, and signatures are untouched.  A production rotation must re-sign the
+record; this operation models the key-registration half only. -/
+def rekeyAnnouncement (a : ChannelAnnellation) (n : NodeId) (k : PubKey) :
+    ChannelAnnellation :=
+  { a with
+    nodeKey1 := if a.node1 = n then k else a.nodeKey1
+    nodeKey2 := if a.node2 = n then k else a.nodeKey2 }
+
+@[simp] theorem rekeyAnnouncement_shortChannelId (a : ChannelAnnellation)
+    (n : NodeId) (k : PubKey) :
+    (rekeyAnnouncement a n k).shortChannelId = a.shortChannelId := rfl
+
+@[simp] theorem rekeyAnnouncement_node1 (a : ChannelAnnellation)
+    (n : NodeId) (k : PubKey) :
+    (rekeyAnnouncement a n k).node1 = a.node1 := rfl
+
+@[simp] theorem rekeyAnnouncement_node2 (a : ChannelAnnellation)
+    (n : NodeId) (k : PubKey) :
+    (rekeyAnnouncement a n k).node2 = a.node2 := rfl
+
+/-- **Rewrite an announcement list to a rotated key.** -/
+def rekeyAnnouncements (l : List ChannelAnnellation) (n : NodeId)
+    (k : PubKey) : List ChannelAnnellation :=
+  l.map (fun a => rekeyAnnouncement a n k)
+
+/-- **Rewrite a store's announcement list to a rotated key.**  Updates, node
+announcements, and the registration map are untouched. -/
+def rekeyStore (s : GossipState) (n : NodeId) (k : PubKey) : GossipState :=
+  { s with announcements := rekeyAnnouncements s.announcements n k }
+
+@[simp] theorem rekeyStore_announcements (s : GossipState) (n : NodeId)
+    (k : PubKey) :
+    (rekeyStore s n k).announcements = rekeyAnnouncements s.announcements n k :=
+  rfl
+
+/-- **Rotation preserves node-key consistency** when every announcement is
+rekeyed alongside the registration map.  This is a purely registration-level
+result: announcement signatures are *not* preserved and must be regenerated by
+the caller. -/
+theorem nodeKeyConsistent_rekey {nodeKeyOf : NodeId → PubKey}
+    {s : GossipState} (h : GossipState.NodeKeyConsistent nodeKeyOf s)
+    (n : NodeId) (k : PubKey) :
+    GossipState.NodeKeyConsistent (rotateNodeKey nodeKeyOf n k)
+      (rekeyStore s n k) := by
+  intro a' ha'
+  rw [rekeyStore_announcements, rekeyAnnouncements] at ha'
+  rcases List.mem_map.mp ha' with ⟨a, ha, rfl⟩
+  rcases h a ha with ⟨h1, h2⟩
+  constructor
+  · by_cases hn : a.node1 = n
+    · simp [rotateNodeKey, rekeyAnnouncement, hn]
+    · simp [rotateNodeKey, rekeyAnnouncement, hn, h1]
+  · by_cases hn : a.node2 = n
+    · simp [rotateNodeKey, rekeyAnnouncement, hn]
+    · simp [rotateNodeKey, rekeyAnnouncement, hn, h2]
+
+/-- Rotation preserves canonicality: rewriting keys does not change the
+`short_channel_id` of any record. -/
+theorem canonical_rekey {l : List ChannelAnnellation}
+    (hc : CanonicalAnnouncements l) (n : NodeId) (k : PubKey) :
+    CanonicalAnnouncements (rekeyAnnouncements l n k) := by
+  intro x hx y hy hscid
+  rw [rekeyAnnouncements] at hx hy
+  rcases List.mem_map.mp hx with ⟨a, ha, rfl⟩
+  rcases List.mem_map.mp hy with ⟨b, hb, rfl⟩
+  have hscid' : a.shortChannelId = b.shortChannelId := hscid
+  rw [hc a ha b hb hscid']
+
+/-! ### Canonical update supersession -/
+
+/-- **BOLT 7 supersession gate for one directional slot.**  Every stored update
+for the incoming update's `(short_channel_id, direction)` is strictly older.
+Updates for other channels or the reverse direction are unaffected. -/
+def UpdateSupersedes (u : ChannelUpdate) (l : List ChannelUpdate) : Prop :=
+  ∀ v ∈ l, v.shortChannelId = u.shortChannelId → v.direction = u.direction →
+    v.timestamp < u.timestamp
+
+/-- **Replace-by-slot update insertion.**  Remove every stored update for the
+incoming `(short_channel_id, direction)` slot and prepend the incoming update.
+Unlike the raw `GossipState.applyUpdate`, this keeps at most one update per
+directional slot. -/
+def insertUpdateCanonical (u : ChannelUpdate) (l : List ChannelUpdate) :
+    List ChannelUpdate :=
+  u :: l.filter (fun v => decide (¬ (v.shortChannelId = u.shortChannelId ∧
+    v.direction = u.direction)))
+
+/-- **Exact membership after canonical update insertion.** -/
+theorem mem_insertUpdateCanonical_iff {u v : ChannelUpdate}
+    {l : List ChannelUpdate} :
+    v ∈ insertUpdateCanonical u l ↔
+      v = u ∨ (v ∈ l ∧ (v.shortChannelId ≠ u.shortChannelId ∨
+        v.direction ≠ u.direction)) := by
+  constructor
+  · intro hv
+    rcases List.mem_cons.mp hv with hvu | hvf
+    · exact Or.inl hvu
+    · have hf := List.mem_filter.mp hvf
+      refine Or.inr ⟨hf.1, ?_⟩
+      have hnot : ¬ (v.shortChannelId = u.shortChannelId ∧
+          v.direction = u.direction) := of_decide_eq_true hf.2
+      by_cases hA : v.shortChannelId = u.shortChannelId
+      · by_cases hB : v.direction = u.direction
+        · exact absurd ⟨hA, hB⟩ hnot
+        · exact Or.inr hB
+      · exact Or.inl hA
+  · intro hv
+    rcases hv with hvu | ⟨hvl, hne⟩
+    · subst v
+      exact List.mem_cons_self ..
+    · refine List.mem_cons_of_mem _ (List.mem_filter.mpr ⟨hvl, ?_⟩)
+      apply decide_eq_true
+      rintro ⟨hA, hB⟩
+      rcases hne with hA' | hB'
+      · exact hA' hA
+      · exact hB' hB
+
+/-- **Canonical update insertion leaves one update per directional slot.**
+Every stored update in the incoming slot is the incoming update itself. -/
+theorem insertUpdateCanonical_slot_unique (u : ChannelUpdate)
+    (l : List ChannelUpdate) :
+    ∀ v ∈ insertUpdateCanonical u l,
+      v.shortChannelId = u.shortChannelId → v.direction = u.direction → v = u := by
+  intro v hv hscid hdir
+  rcases mem_insertUpdateCanonical_iff.mp hv with hvu | ⟨_hvl, hne⟩
+  · exact hvu
+  · rcases hne with hscid' | hdir'
+    · exact absurd hscid hscid'
+    · exact absurd hdir hdir'
+
+/-- Under the supersession gate, the incoming update is the newest record in
+its directional slot. -/
+theorem insertUpdateCanonical_newest {u : ChannelUpdate}
+    {l : List ChannelUpdate} (_h : UpdateSupersedes u l) :
+    ∀ v ∈ insertUpdateCanonical u l,
+      v.shortChannelId = u.shortChannelId → v.direction = u.direction →
+        v.timestamp ≤ u.timestamp := by
+  intro v hv hscid hdir
+  have hvu : v = u := insertUpdateCanonical_slot_unique u l v hv hscid hdir
+  rw [hvu]
+  exact Nat.le_refl u.timestamp
+
 end LnLean.Routing

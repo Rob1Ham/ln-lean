@@ -207,15 +207,41 @@ Five disjoint lanes extended the model and promoted eight more exact targets.
   190/82/0 RC 0, `check-final.py` 190/188 RC 0, conformance 61+16/33/146 RC 0,
   anchors 305/0 bad, vendor 119 OK.
 
-### Wave 6 and beyond
+### Proof-wave 6 — residual L1/encoding/state-machine attack
+
+- [x] `S6-L1-SIGHASH` — BIP 143 witness-v0 model/digest, vendor byte equality,
+  constructed `LocktimeEnv`, checker digest consumption, funding/to_local
+  instantiations.
+- [x] `S6-L1-REVOKE` — vendored `to_local` revocation branch, branch selection,
+  wrong-key/delayed-key/wrong-branch negatives.
+- [x] `S6-CH-TYPES` — five-field gross/net record patch, migration API,
+  field-boundary conservation/effective-fee/canonical refinement.
+- [x] `S6-PR-BITEXACT` — exact BOLT 3 transaction wire layouts/parser
+  round-trips, BIP 143 preimage size/vector, shared-view/digest refinement,
+  script strictness counterexample.
+- [x] `S6-PR-VIEWBIND` — conditional signature-to-view binding, non-vacuity
+  witnesses, digest-binding-only counterexample.
+- [x] `S6-MODEL-DANCE` — additive dance layer, round window, revocation
+  ordering, no stale/revoked commitment, balance/ledger/reserve preservation.
+- [x] `S6-GOSSIP-DERIVE` — canonical admission/store, derived
+  `NodeKeyConsistent`/`CanonicalAnnouncements`, rotation/supersession.
+- [x] `S6-CONF-LIVE` — promoted `Wire.Transport`, deterministic fixture
+  provenance, 9 mutation controls; live cargo still blocked.
+- [x] Seven new files root-imported; four catalog rows strengthened from 67 to
+  73 targets; `AxiomAudit` extended to 163 theorems.
+- [x] Full gate: build 218 jobs, strict catalog 73 targets RC 0, `check.sh`
+  197/82/0 RC 0, `check-final.py` 197/195 RC 0, conformance 61+16+9/33/146
+  RC 0, anchors 306/0 bad, vendor 119 OK.
+
+### Wave 7 and beyond
 
 The catalog is no longer the work queue. Open issues are tracked in
-`docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`. Wave 6
-candidates are BIP 143 sighash/locktime, the vendor revocation branch,
-literal gross/net `Types.lean` fields, bit-exact BOLT 3 preimages,
-digest-to-view binding, commitment dance, gossip invariant derivation, and live
-transport/fixture conformance. Human-gated release decisions remain outside
-agent lanes.
+`docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`. Wave 7
+candidates are decoded sequence/policy context, exact BIP 143 preimage
+equality, legacy commitment-consumer migration, folding `UpdateStep`/`DanceStep`
+into `ProtocolEvent`, raw gossip-store refinement, live cargo conformance,
+`open_channel`/funding-key authentication, and a secret-key/signer model.
+Human-gated release decisions remain outside agent lanes.
 
 ## Commands
 

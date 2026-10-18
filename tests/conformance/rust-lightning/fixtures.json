@@ -4,6 +4,12 @@
   "issue": "CONF-02",
   "pinned_commit": "fe4900930c6bd5786ec4203274d7cf312776a5a6",
   "offline": true,
+  "generation": {
+    "script": "tests/conformance/rust-lightning/generate.py",
+    "mode": "transcribed-from-pinned-source",
+    "live_cargo_test": false,
+    "note": "The committed rows were extracted from the pinned source/unit-test literals; `generate.py --check` re-extracts and compares them, and `generate.py --live` runs the pinned cargo tests only when the offline cache is complete. No live cargo result is claimed here."
+  },
   "scope": "Pinned rust-lightning differential fixtures for BigSize, a TLV reader stream, and the BOLT 8 wire length header. This is NOT a full implementation test: fixtures are finite, were transcribed from the pinned source/unit tests, and are validated offline against the same independent Python references used for the BOLT vectors. No Rust toolchain or network is required to run the checker.",
   "provenance": [
     {

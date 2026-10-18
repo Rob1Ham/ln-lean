@@ -179,12 +179,30 @@ def Channel.fundingValueSat (c : Channel) : Nat := c.fundingValue.toSatFloor
 
 /-! ## Commitment transaction records -/
 
-/-- An HTLC output that survives trimming on a commitment transaction. -/
+/-- An HTLC output that survives trimming on a commitment transaction.
+
+BOLT 3 carries two satoshi values for an HTLC output:
+
+* `amountSat` is the **gross** value `amount_msat / 1000` that the commitment
+  transaction pays (`03-transactions.md:365`);
+* `netAmountSat` is the **net** value
+  `gross - second_stage_fee`, which the HTLC-timeout/HTLC-success transaction
+  pays after withholding its own fee (`03-transactions.md:367`).
+
+The commitment dust test is on the net value
+(`gross - second_stage_fee < dust_limit_satoshis`), so a record with
+`netAmountSat < dustLimitSat` is trimmed even when `amountSat` is at or above
+the dust limit.  The default `netAmountSat := amountSat` is the identity
+projection used by every existing literal (zero second-stage fee); a
+BOLT-3-exact construction sets both fields explicitly. -/
 structure CommitmentHTLCOutput where
   direction : Direction
+  /-- Gross value carried by the commitment output (`amount_msat / 1000`). -/
   amountSat : Nat
   cltvExpiry : Height
   state : HTLCState
+  /-- Net second-stage value; the default is the legacy identity projection. -/
+  netAmountSat : Nat := amountSat
 deriving Repr, DecidableEq, BEq
 
 /-- The BOLT 3 anchor output value: 330 satoshis per anchor. -/
@@ -213,7 +231,17 @@ def CommitmentOutput.value : CommitmentOutput → Nat
 /-- A commitment transaction record.  `holder` is the party that broadcasts
 it, so `toLocal` is the holder's output (BOLT 3 names the holder "local").
 `contestDelay` is the CSV delay on that output: it is the *counterparty's*
-`to_self_delay`, which is the source of the local/remote asymmetry. -/
+`to_self_delay`, which is the source of the local/remote asymmetry.
+
+`trimmedTotalSat` is the **gross** satoshi value removed by BOLT 3's dust
+filter and therefore added to the commitment transaction fee
+(`03-transactions.md:329`).  It defaults to `0`, so every existing literal is
+unchanged; a migrated record records the removed value explicitly.
+
+The stored field is named `trimmedTotalSat` rather than `trimmedSat` because
+`LnLean.Channel.Commitment.trimmedSat` is already the *computed* nominal
+trimmed value (a function of a dust limit and a net projection).  See the
+integration notes at that function. -/
 structure Commitment where
   holder : Direction
   commitmentNumber : Nat
@@ -224,6 +252,8 @@ structure Commitment where
   feeSat : Nat
   contestDelay : Nat
   anchorOutputs : Bool
+  /-- Gross value removed by trimming and added to the commitment fee. -/
+  trimmedTotalSat : Nat := 0
 deriving Repr, DecidableEq, BEq
 
 /-- Both commitment transactions of the channel. -/

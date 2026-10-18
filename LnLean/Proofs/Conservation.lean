@@ -640,18 +640,18 @@ private instance : LawfulBEq CommitmentHTLCOutput where
   eq_of_beq := by
     intro a b h
     cases a with
-    | mk da aa ca sa =>
+    | mk da aa ca sa na =>
       cases b with
-      | mk db ab cb sb =>
+      | mk db ab cb sb nb =>
         simp [BEq.beq, instBEqCommitmentHTLCOutput.beq] at h
-        rcases h with ⟨hda, haa, hca, hsa⟩
+        rcases h with ⟨hda, haa, hca, hsa, hna⟩
         have hda' : da = db := LawfulBEq.eq_of_beq (α := Direction) hda
         have hsa' : sa = sb := LawfulBEq.eq_of_beq (α := HTLCState) hsa
-        rw [hda', haa, hca, hsa']
+        rw [hda', haa, hca, hsa', hna]
   rfl := by
     intro a
     cases a with
-    | mk d am c s =>
+    | mk d am c s n =>
       have hd : instBEqDirection.beq d d = true := by cases d <;> rfl
       have hs : instBEqHTLCState.beq s s = true := by cases s <;> rfl
       simp [BEq.beq, instBEqCommitmentHTLCOutput.beq, hd, hs]

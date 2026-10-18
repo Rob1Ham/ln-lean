@@ -7,6 +7,7 @@ import LnLean.Bitcoin.Funding
 import LnLean.Bitcoin.Laws
 import LnLean.Bitcoin.ScriptTemplates
 import LnLean.Bitcoin.Seam
+import LnLean.Bitcoin.Sighash
 import LnLean.Channel.Commitment
 import LnLean.Channel.Fee
 import LnLean.Channel.HTLC
@@ -29,16 +30,20 @@ import LnLean.Proofs.Bitcoin.FundingLinkTargets
 import LnLean.Proofs.Bitcoin.FundingProps
 import LnLean.Proofs.Bitcoin.FundingScriptTargets
 import LnLean.Proofs.Bitcoin.InterpreterBridgeTargets
+import LnLean.Proofs.Bitcoin.InterpreterRevocationTargets
 import LnLean.Proofs.Bitcoin.ScriptProps
+import LnLean.Proofs.Bitcoin.SighashBridgeTargets
 import LnLean.Proofs.Bitcoin.SpendTargets
 import LnLean.Proofs.Bitcoin.ToLocalScriptTargets
 import LnLean.Proofs.Bitcoin.WeightProps
 import LnLean.Proofs.Bitcoin.WeightTargets
 import LnLean.Proofs.Channel.BreachProps
+import LnLean.Proofs.Channel.CommitmentDanceTargets
 import LnLean.Proofs.Channel.CommitmentGrossNetTargets
 import LnLean.Proofs.Channel.CommitmentIntegrationTargets
 import LnLean.Proofs.Channel.CommitmentOrderTargets
 import LnLean.Proofs.Channel.CommitmentTxProps
+import LnLean.Proofs.Channel.CommitmentTypesTargets
 import LnLean.Proofs.Channel.FeeProps
 import LnLean.Proofs.Channel.FeeTargets
 import LnLean.Proofs.Channel.HTLCProps
@@ -47,6 +52,7 @@ import LnLean.Proofs.Channel.PenaltyProps
 import LnLean.Proofs.Channel.ReserveProps
 import LnLean.Proofs.Channel.RevocationProps
 import LnLean.Proofs.Channel.SighashTargets
+import LnLean.Proofs.Channel.SighashViewBindingTargets
 import LnLean.Proofs.Channel.StateMachineProps
 import LnLean.Proofs.Channel.StateTransitionTargets
 import LnLean.Proofs.Common
@@ -116,6 +122,7 @@ import LnLean.Proofs.ProtocolSigningTargets
 import LnLean.Proofs.ProtocolTargets
 import LnLean.Proofs.ProtocolWireTargets
 import LnLean.Proofs.Routing.GossipAttributionTargets
+import LnLean.Proofs.Routing.GossipCanonicalTargets
 import LnLean.Proofs.Routing.GossipKeyConsistencyTargets
 import LnLean.Proofs.Routing.GossipProps
 import LnLean.Proofs.Routing.GossipTargets

@@ -2,17 +2,32 @@
 # BOLT 1 message framing
 
 **English claim.**  A Lightning message is a 2-byte big-endian `type` followed
-by a payload.  After decryption the transport also carries a 2-byte length
-header, so this module models the abstract frame
-`type || length || payload`; the length is the payload byte count.  A message
-fits iff its type-plus-payload size is at most 65535 bytes.  Types 128–255 are
-the commitment-message group, 256–511 the routing group, and 32768–65535
-custom types; the optional TLV extension of BOLT 1 Appendix C can only be
-appended when the payload does not already fill the maximum.
+by a payload.  This module models **two different two-byte length fields** and
+keeps them explicitly separate:
+
+* `frame` / `unframe` are the abstract **payload-only** frame
+  `type || payload.size || payload` used by the catalog and by the existing
+  declared-length row (`LN-CR-006`).  The second field counts only the payload.
+* `Transport.transportFrame` / `Transport.unframeTransport` are the **BOLT 8
+  transport** frame `type || (2 + payload.size) || payload`.  The second field
+  counts the type plus the payload.
+
+They are not interchangeable: `unframe` rejects every transport frame, and the
+generic theorem `Transport.unframe_transportFrame_eq_none` records that
+boundary.  Code that reads BOLT 8 bytes must use `Transport.unframeTransport`;
+the payload-only decoder is retained so the existing catalog semantics do not
+change silently.
+
+A message fits iff its type-plus-payload size is at most 65535 bytes.  Types
+128–255 are the commitment-message group, 256–511 the routing group, and
+32768–65535 custom types; the optional TLV extension of BOLT 1 Appendix C can
+only be appended when the payload does not already fill the maximum.
 
 **BOLT sections.**  BOLT 1 §Lightning Message Format (type/payload layout,
 groups, "maximum possible size is 65535 bytes", extension rule);
-§Appendix C: Message Extension.
+§Appendix C: Message Extension.  BOLT 8 §Lightning Message Specification: the
+two-byte transport length counts the type plus the payload and is capped at
+`65535`.
 
 **rust-lightning anchors (commit fe49009).**
 * `lightning/src/ln/wire.rs:259-267` — reads a `u16` message type and then
@@ -326,5 +341,231 @@ theorem decode_length (b : ByteArray) (m : WireMessage) (h : unframe b = some m)
     omega
 
 end Message
+
+/-! ## BOLT 8 transport framing
+
+The production payload-only decoder above is intentionally unchanged.  The
+`Transport` namespace below is the promoted BOLT 8 transport model: its length
+field counts the two type bytes and the payload, matching BOLT 8 and
+rust-lightning's `msgbuf.len() - 16 - 2` (`lightning/src/ln/peer_channel_encryptor.rs:518-540`,
+pinned `fe49009`).  Keeping the two decoders under distinct names avoids
+silently reinterpreting existing `unframe` callers. -/
+
+namespace Transport
+
+/-- The BOLT 8 transport length: the total Lightning message size, i.e. the
+two-byte type plus the payload.  This is **not** the payload length. -/
+def transportLength (m : WireMessage) : Nat := 2 + m.payload.size
+
+/-- The transport length is definitionally the model's `messageSize`. -/
+theorem transportLength_eq_messageSize (m : WireMessage) :
+    transportLength m = m.messageSize := rfl
+
+/-- The two-byte big-endian length header of a transport frame. -/
+def lengthHeader (m : WireMessage) : ByteArray := u16BE (transportLength m)
+
+/-- The concrete BOLT 8 transport frame: `type || transportLength || payload`.
+The `length` field counts the type bytes and the payload, unlike
+`LnLean.Wire.frame`. -/
+def transportFrame (m : WireMessage) : ByteArray :=
+  u16BE m.type.toNat ++ lengthHeader m ++ m.payload
+
+/-- The transport header is exactly the payload length plus two. -/
+theorem transportFrame_header_eq (m : WireMessage) :
+    transportFrame m =
+      u16BE m.type.toNat ++ u16BE (m.payload.size + 2) ++ m.payload := by
+  simp [transportFrame, lengthHeader, transportLength, Nat.add_comm]
+
+/-- The transport frame has two type bytes, two length bytes, and the payload. -/
+theorem transportFrame_size (m : WireMessage) :
+    (transportFrame m).size = 4 + m.payload.size := by
+  simp [transportFrame, lengthHeader, u16BE, beBytes_size, ByteArray.size_append]
+
+/-- Frame size in terms of the model's message size. -/
+theorem transportFrame_size_eq (m : WireMessage) :
+    (transportFrame m).size = m.messageSize + 2 := by
+  rw [transportFrame_size]
+  unfold WireMessage.messageSize
+  omega
+
+/-- A message fits the BOLT 8 limit exactly when its transport length fits in
+the two-byte header. -/
+theorem fits_iff_transportLength (m : WireMessage) :
+    m.fits ↔ transportLength m ≤ MAX_MESSAGE_SIZE := by
+  unfold WireMessage.fits WireMessage.messageSize transportLength MAX_MESSAGE_SIZE
+  omega
+
+/-- The payload budget is 65533 bytes once the two type bytes are counted. -/
+theorem fits_iff_payload (m : WireMessage) :
+    m.fits ↔ m.payload.size ≤ 65533 := by
+  simpa [MAX_PAYLOAD_SIZE] using LnLean.Wire.fits_payload_iff m
+
+/-- Parse a single BOLT 8 transport frame `type || length || payload`.  The
+declared length must equal `2 + payload.size`; trailing bytes and short
+payloads are rejected, so the decoder is length-total for one frame. -/
+def unframeTransportList : List UInt8 → Option WireMessage
+  | a :: b :: c :: d :: rest =>
+      if u16Nat c d = rest.length + 2 then
+        some ⟨u16FromBytes a b, rest.toByteArray⟩
+      else none
+  | _ => none
+
+/-- Decode one abstract BOLT 8 transport frame. -/
+def unframeTransport (b : ByteArray) : Option WireMessage :=
+  unframeTransportList (bytesToList b)
+
+/-- The declared transport length, read from the two-byte big-endian field.
+Returns `none` when the input is shorter than the four-byte header. -/
+def declaredTransportLength? (b : ByteArray) : Option Nat :=
+  match bytesToList b with
+  | _ :: _ :: c :: d :: _ => some (u16Nat c d)
+  | _ => none
+
+/-- Inversion for the transport decoder. -/
+theorem unframeTransportList_eq_some_iff (l : List UInt8) (m : WireMessage) :
+    unframeTransportList l = some m ↔
+      ∃ a b c d rest, l = a :: b :: c :: d :: rest ∧
+        u16Nat c d = rest.length + 2 ∧
+        m = ⟨u16FromBytes a b, rest.toByteArray⟩ := by
+  constructor
+  · intro h
+    cases l with
+    | nil => simp [unframeTransportList] at h
+    | cons a l1 =>
+      cases l1 with
+      | nil => simp [unframeTransportList] at h
+      | cons b l2 =>
+        cases l2 with
+        | nil => simp [unframeTransportList] at h
+        | cons c l3 =>
+          cases l3 with
+          | nil => simp [unframeTransportList] at h
+          | cons d rest =>
+            simp only [unframeTransportList] at h
+            by_cases hlen : u16Nat c d = rest.length + 2
+            · rw [ite_eq_left hlen] at h
+              simp only [Option.some.injEq] at h
+              exact ⟨a, b, c, d, rest, rfl, hlen, h.symm⟩
+            · rw [ite_eq_right hlen] at h
+              simp at h
+  · rintro ⟨a, b, c, d, rest, rfl, hlen, rfl⟩
+    simp [unframeTransportList, hlen]
+
+/-- **Transport frame/unframe round trip.**  For a payload that leaves room for
+the two type bytes in a two-byte length field, decoding the transport frame
+returns the original message. -/
+theorem unframeTransport_transportFrame (m : WireMessage)
+    (h : m.payload.size < 65534) : unframeTransport (transportFrame m) = some m := by
+  have ht : m.type.toNat < 65536 := MessageType.toNat_lt m.type
+  have hlen : transportLength m < 65536 := by
+    unfold transportLength
+    omega
+  unfold unframeTransport
+  rw [transportFrame, lengthHeader, bytesToList_append, bytesToList_append]
+  rw [bytesToList_u16BE m.type.toNat ht]
+  rw [bytesToList_u16BE (transportLength m) hlen]
+  simp only [List.cons_append, List.nil_append, unframeTransportList]
+  rw [bytesToList_length, u16Nat_roundtrip (transportLength m) hlen]
+  have hdecl : transportLength m = m.payload.size + 2 := by
+    unfold transportLength
+    omega
+  rw [hdecl]
+  simp only [ite_true]
+  rw [u16FromBytes_roundtrip m.type.toNat ht, toByteArray_bytesToList]
+  simp only [UInt16.ofNat_toNat]
+
+/-- A message that satisfies the BOLT 1/8 size limit round-trips through the
+transport frame. -/
+theorem unframeTransport_transportFrame_of_fits (m : WireMessage) (h : m.fits) :
+    unframeTransport (transportFrame m) = some m := by
+  apply unframeTransport_transportFrame
+  have hp : m.payload.size ≤ 65533 := (fits_iff_payload m).mp h
+  omega
+
+/-- **Declared transport length law.**  On every successful transport decode:
+the declared length is the whole-message size, the payload is exactly the tail
+after the four-byte header, and the frame accounts for every input byte. -/
+theorem decode_transport_length (b : ByteArray) (m : WireMessage)
+    (h : unframeTransport b = some m) :
+    declaredTransportLength? b = some m.messageSize ∧
+      (bytesToList b).drop 4 = bytesToList m.payload ∧
+      b.size = 4 + m.payload.size := by
+  have hlist : unframeTransportList (bytesToList b) = some m := by
+    simpa [unframeTransport] using h
+  rcases (unframeTransportList_eq_some_iff _ _).mp hlist with
+    ⟨a, bty, c, d, rest, hb, hlen, hm⟩
+  subst hm
+  have hdrop : (bytesToList b).drop 4 = rest := by
+    rw [hb]
+    simp
+  refine ⟨?_, ?_, ?_⟩
+  · unfold declaredTransportLength? WireMessage.messageSize
+    rw [hb]
+    simp [hlen, List.size_toByteArray]
+    omega
+  · rw [hdrop, bytesToList_toByteArray]
+  · have hb_size : b.size = (bytesToList b).length := (bytesToList_length b).symm
+    rw [hb_size, hb]
+    simp only [List.length_cons]
+    rw [List.size_toByteArray]
+    omega
+
+/-- Two-byte big-endian encoding, written without the `< 65536` side condition.
+The fixed-width encoder truncates modulo `2^16`, which is exactly why a size
+check must run before framing. -/
+theorem bytesToList_u16BE_mod (n : Nat) :
+    bytesToList (u16BE n) =
+      [((n / 256) % 256).toUInt8, (n % 256).toUInt8] := by
+  unfold u16BE
+  rw [bytesToList_beBytes]
+  simp [beBytesAux]
+
+/-- The numeric value of the truncated two-byte header is `n % 65536`. -/
+theorem u16Nat_u16BE_mod (n : Nat) :
+    u16Nat ((n / 256) % 256).toUInt8 (n % 256).toUInt8 = n % 65536 := by
+  unfold u16Nat
+  rw [toUInt8_toNat_of_lt (Nat.mod_lt _ (by decide : 0 < 256))]
+  rw [toUInt8_toNat_of_lt (Nat.mod_lt n (by decide : 0 < 256))]
+  have h := div256_mod n 1
+  simpa using h
+
+/-- **The payload-only decoder is not a transport decoder.**  For *every*
+message, `Wire.unframe` rejects the BOLT 8 transport frame: its declared field
+is two bytes larger than the payload, and a fixed two-byte header cannot make
+`payload.size = (payload.size + 2) % 65536`.  This is the exact boundary that
+the separately named `unframeTransport` fills. -/
+theorem unframe_transportFrame_eq_none (m : WireMessage) :
+    unframe (transportFrame m) = none := by
+  unfold unframe
+  rw [transportFrame, lengthHeader, bytesToList_append, bytesToList_append]
+  rw [bytesToList_u16BE m.type.toNat (MessageType.toNat_lt m.type)]
+  rw [bytesToList_u16BE_mod (transportLength m)]
+  simp only [List.cons_append, List.nil_append, unframeList]
+  rw [bytesToList_length]
+  rw [u16Nat_u16BE_mod (transportLength m)]
+  have hlen : transportLength m = m.payload.size + 2 := by
+    unfold transportLength
+    omega
+  rw [hlen]
+  have hne : m.payload.size ≠ (m.payload.size + 2) % 65536 := by
+    intro h
+    have hmodlt : (m.payload.size + 2) % 65536 < 65536 :=
+      Nat.mod_lt _ (by decide : 0 < 65536)
+    by_cases hp : m.payload.size < 65536
+    · by_cases hsmall : m.payload.size + 2 < 65536
+      · rw [Nat.mod_eq_of_lt hsmall] at h
+        omega
+      · have hcases : m.payload.size = 65534 ∨ m.payload.size = 65535 := by
+          omega
+        rcases hcases with hc | hc
+        · rw [hc] at h
+          exact (by decide : ¬ (65534 = (65534 + 2) % 65536)) h
+        · rw [hc] at h
+          exact (by decide : ¬ (65535 = (65535 + 2) % 65536)) h
+    · rw [← h] at hmodlt
+      omega
+  rw [ite_eq_right hne]
+
+end Transport
 
 end LnLean.Wire

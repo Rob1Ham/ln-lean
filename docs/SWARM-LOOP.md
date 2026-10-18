@@ -158,15 +158,15 @@ the remaining issues are research-only, or the gate cannot be kept green.
 
 ## Current wave
 
-Wave 5 is complete: 48/48 catalog rows are proved, 67 resolved targets, full
-build 204 jobs, strict catalog audit green, 133 audited theorems, and the
+Wave 6 is complete: 48/48 catalog rows are proved, 73 resolved targets, full
+build 218 jobs, strict catalog audit green, 163 audited theorems, and the
 vector/framing/differential conformance checker is green. Reports are in
-`agents/reports/swarm5/`; the plan is `agents/swarm/WAVE-5.md`. Wave 6 is
-defined in `docs/OPEN-ISSUES.md` and attacks the residual gaps: BIP 143
-sighash/locktime, the revocation branch, literal gross/net `Types.lean` fields,
-bit-exact BOLT 3 preimages, digest-to-view binding, commitment dance, gossip
-invariant derivation, and live transport/fixture conformance. Every wave is
-integrated under the same gate and recorded here.
+`agents/reports/swarm6/`; the plan is `agents/swarm/WAVE-6.md`. Wave 7
+candidates are defined in `docs/OPEN-ISSUES.md`: decoded sequence/policy
+context, exact BIP 143 preimage equality, legacy commitment-consumer migration,
+folding the update/dance layers, raw gossip-store refinement, live cargo
+conformance, `open_channel`/funding-key authentication, and a secret-key/signer
+model. Every wave is integrated under the same gate and recorded here.
 
 ## Why this is not a fully autonomous daemon
 

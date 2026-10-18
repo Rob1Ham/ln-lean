@@ -1,11 +1,14 @@
 # Wave 6 — residual L1, encoding, state-machine, and conformance gaps
 
-**Status:** launched from `86c1733`; parent integration pending.
+**Status:** complete — all eight lanes integrated in the proof-wave 6
+checkpoint.
 
-**Launch commit:** `86c1733` (`[STATUS] record proof-wave 5 gate HEAD`)
+**Launch commit:** `201a0a0` (`[STATUS] define and launch wave 6 residual lanes`)
 **Branch:** `repair/integrated`
 **Catalog at launch:** 48 proved / 0 statementOnly / 67 targets
 **Full build at launch:** 204 jobs, RC 0
+**Result:** 48 proved / 0 statementOnly / 73 targets; 218-job build; 163
+audited theorems. Reports are under `agents/reports/swarm6/`.
 **Roadmap:** `docs/OPEN-ISSUES.md`
 **Protocol:** `docs/SWARM-LOOP.md`
 
@@ -51,3 +54,15 @@ parent integrates and records the gate.
   `agents/reports/swarm6/S6-<LANE>.md`.
 - If a requested change would touch a forbidden shared file, implement the
   additive part in your owned module and report the exact integration patch.
+
+
+## Wave 6 result
+
+All eight lanes returned and were integrated. The catalog strengthened four
+existing rows (`LN-L1-001`, `LN-L1-004`, `LN-CH-003`, `LN-PR-004`) from 67 to
+73 resolved targets. The exact lane results, scope boundaries, and files are
+recorded in `docs/OPEN-ISSUES.md` and `docs/WAVE-STATUS.md`. The residual gaps
+are the wave-7 candidates: decoded sequence/policy context, exact BIP 143
+preimage equality, legacy commitment-consumer migration, folding the
+update/dance layers, raw gossip-store refinement, live cargo conformance,
+`open_channel`/funding-key authentication, and a secret-key/signer model.

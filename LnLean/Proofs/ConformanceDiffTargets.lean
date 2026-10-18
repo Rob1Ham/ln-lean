@@ -24,10 +24,12 @@ easy to confuse:
 Consequently `Wire.unframe` (which expects the declared value to equal the
 payload length) **must not** be used as a transport decoder: its length check
 is two bytes too small for this convention, and the concrete theorem
-`payload_decoder_rejects_transport_frame` below is the witness.  The
-`Transport` namespace below is an explicitly separate conformance reference
-decoder for the transport convention.  It is not wired
-into the production `LnLean.Wire` model; that gap is recorded in the report.
+`payload_decoder_rejects_transport_frame` below is the witness.  The BOLT 8
+model is promoted to `LnLean.Wire.Transport` in `LnLean/Wire/Message.lean`
+(`transportFrame`, `unframeTransport`, and the length laws); this module imports
+it and keeps the finite vectors.  Production `Wire.unframe` is deliberately
+unchanged, and the generic boundary `Wire.Transport.unframe_transportFrame_eq_none`
+states that it rejects every transport frame.
 
 **Vectors.**  `tests/conformance/vectors.json` (`framing` object) holds the
 small valid frames, malformed/truncated frames, and the length-boundary table.
@@ -68,56 +70,17 @@ arithmetic half of `Transport.transportLength`, extracted so the large boundary
 facts do not require reducing a 65K-byte array. -/
 def declaredForPayload (payloadSize : Nat) : Nat := 2 + payloadSize
 
-/-! ## The transport frame -/
+/-! ## Transport model (promoted)
 
-namespace Transport
+The BOLT 8 transport model now lives in `LnLean.Wire.Message` under
+`LnLean.Wire.Transport`; see that module for `transportLength`,
+`transportFrame`, `unframeTransport`, the round trip, and the declared-length
+law.  This conformance module imports it and keeps only the concrete vectors,
+the boundary table, and the differential fixtures.  The `open` below makes the
+same short names visible here so the vector statements read as they did in
+wave 5. -/
 
-/-- The BOLT 8 transport length: the total Lightning message size, i.e. the
-two-byte type plus the payload.  This is **not** the payload length. -/
-def transportLength (m : WireMessage) : Nat := 2 + m.payload.size
-
-/-- The transport length is definitionally the model's `messageSize`. -/
-theorem transportLength_eq_messageSize (m : WireMessage) :
-    transportLength m = m.messageSize := rfl
-
-/-- The two-byte big-endian length header of a transport frame. -/
-def lengthHeader (m : WireMessage) : ByteArray := u16BE (transportLength m)
-
-/-- The concrete BOLT 8 transport frame: `type || transportLength || payload`.
-The `length` field counts the type bytes and the payload, unlike
-`LnLean.Wire.frame`. -/
-def transportFrame (m : WireMessage) : ByteArray :=
-  u16BE m.type.toNat ++ lengthHeader m ++ m.payload
-
-/-- The transport header is exactly the payload length plus two. -/
-theorem transportFrame_header_eq (m : WireMessage) :
-    transportFrame m =
-      u16BE m.type.toNat ++ u16BE (m.payload.size + 2) ++ m.payload := by
-  simp [transportFrame, lengthHeader, transportLength, Nat.add_comm]
-
-/-- The transport frame has two type bytes, two length bytes, and the payload. -/
-theorem transportFrame_size (m : WireMessage) :
-    (transportFrame m).size = 4 + m.payload.size := by
-  simp [transportFrame, lengthHeader, u16BE, beBytes_size, ByteArray.size_append]
-
-/-- Frame size in terms of the model's message size. -/
-theorem transportFrame_size_eq (m : WireMessage) :
-    (transportFrame m).size = m.messageSize + 2 := by
-  rw [transportFrame_size]
-  unfold WireMessage.messageSize
-  omega
-
-/-- A message fits the BOLT 8 limit exactly when its transport length fits in
-the two-byte header. -/
-theorem fits_iff_transportLength (m : WireMessage) :
-    m.fits ↔ transportLength m ≤ MAX_MESSAGE_SIZE := by
-  unfold WireMessage.fits WireMessage.messageSize transportLength MAX_MESSAGE_SIZE
-  omega
-
-/-- The payload budget is 65533 bytes once the two type bytes are counted. -/
-theorem fits_iff_payload (m : WireMessage) :
-    m.fits ↔ m.payload.size ≤ 65533 := by
-  simpa [MAX_PAYLOAD_SIZE] using Wire.fits_payload_iff m
+open Transport
 
 /-- The two conventions are observably different on a concrete message: the
 model frame's second field is `00 04`, the transport frame's is `00 06`. -/
@@ -126,132 +89,16 @@ theorem transportFrame_differs_from_model_frame :
       Wire.frame ⟨16, bytes [0x01, 0x02, 0x03, 0x04]⟩ := by
   decide
 
-end Transport
-
-open Transport
-
-/-! ## A transport decoder (conformance reference only) -/
-
-/-- Parse a single BOLT 8 transport frame `type || length || payload`.  The
-declared length must equal `2 + payload.size`; trailing bytes and short
-payloads are rejected, so the decoder is length-total for one frame. -/
-def unframeTransportList : List UInt8 → Option WireMessage
-  | a :: b :: c :: d :: rest =>
-      if u16Nat c d = rest.length + 2 then
-        some ⟨u16FromBytes a b, rest.toByteArray⟩
-      else none
-  | _ => none
-
-/-- Decode one abstract BOLT 8 transport frame. -/
-def unframeTransport (b : ByteArray) : Option WireMessage :=
-  unframeTransportList (bytesToList b)
-
-/-- The declared transport length, read from the two-byte big-endian field.
-Returns `none` when the input is shorter than the four-byte header. -/
-def declaredTransportLength? (b : ByteArray) : Option Nat :=
-  match bytesToList b with
-  | _ :: _ :: c :: d :: _ => some (u16Nat c d)
-  | _ => none
-
-/-- Inversion for the transport decoder. -/
-theorem unframeTransportList_eq_some_iff (l : List UInt8) (m : WireMessage) :
-    unframeTransportList l = some m ↔
-      ∃ a b c d rest, l = a :: b :: c :: d :: rest ∧
-        u16Nat c d = rest.length + 2 ∧
-        m = ⟨u16FromBytes a b, rest.toByteArray⟩ := by
-  constructor
-  · intro h
-    cases l with
-    | nil => simp [unframeTransportList] at h
-    | cons a l1 =>
-      cases l1 with
-      | nil => simp [unframeTransportList] at h
-      | cons b l2 =>
-        cases l2 with
-        | nil => simp [unframeTransportList] at h
-        | cons c l3 =>
-          cases l3 with
-          | nil => simp [unframeTransportList] at h
-          | cons d rest =>
-            simp only [unframeTransportList] at h
-            by_cases hlen : u16Nat c d = rest.length + 2
-            · rw [ite_eq_left hlen] at h
-              simp only [Option.some.injEq] at h
-              exact ⟨a, b, c, d, rest, rfl, hlen, h.symm⟩
-            · rw [ite_eq_right hlen] at h
-              simp at h
-  · rintro ⟨a, b, c, d, rest, rfl, hlen, rfl⟩
-    simp [unframeTransportList, hlen]
-
-/-- **Transport frame/unframe round trip.**  For a payload that leaves room for
-the two type bytes in a two-byte length field, decoding the transport frame
-returns the original message. -/
-theorem unframeTransport_transportFrame (m : WireMessage)
-    (h : m.payload.size < 65534) : unframeTransport (transportFrame m) = some m := by
-  have ht : m.type.toNat < 65536 := MessageType.toNat_lt m.type
-  have hlen : transportLength m < 65536 := by
-    unfold transportLength
-    omega
-  unfold unframeTransport
-  rw [transportFrame, lengthHeader, bytesToList_append, bytesToList_append]
-  rw [bytesToList_u16BE m.type.toNat ht]
-  rw [bytesToList_u16BE (transportLength m) hlen]
-  simp only [List.cons_append, List.nil_append, unframeTransportList]
-  rw [bytesToList_length, u16Nat_roundtrip (transportLength m) hlen]
-  have hdecl : transportLength m = m.payload.size + 2 := by
-    unfold transportLength
-    omega
-  rw [hdecl]
-  simp only [ite_true]
-  rw [u16FromBytes_roundtrip m.type.toNat ht, toByteArray_bytesToList]
-  simp only [UInt16.ofNat_toNat]
-
-/-- A message that satisfies the BOLT 1/8 size limit round-trips through the
-transport frame. -/
-theorem unframeTransport_transportFrame_of_fits (m : WireMessage) (h : m.fits) :
-    unframeTransport (transportFrame m) = some m := by
-  apply unframeTransport_transportFrame
-  have hp : m.payload.size ≤ 65533 := (Transport.fits_iff_payload m).mp h
-  omega
-
-/-- **Declared transport length law.**  On every successful transport decode:
-the declared length is the whole-message size, the payload is exactly the tail
-after the four-byte header, and the frame accounts for every input byte. -/
-theorem decode_transport_length (b : ByteArray) (m : WireMessage)
-    (h : unframeTransport b = some m) :
-    declaredTransportLength? b = some m.messageSize ∧
-      (bytesToList b).drop 4 = bytesToList m.payload ∧
-      b.size = 4 + m.payload.size := by
-  have hlist : unframeTransportList (bytesToList b) = some m := by
-    simpa [unframeTransport] using h
-  rcases (unframeTransportList_eq_some_iff _ _).mp hlist with
-    ⟨a, bty, c, d, rest, hb, hlen, hm⟩
-  subst hm
-  have hdrop : (bytesToList b).drop 4 = rest := by
-    rw [hb]
-    simp
-  refine ⟨?_, ?_, ?_⟩
-  · unfold declaredTransportLength? WireMessage.messageSize
-    rw [hb]
-    simp [hlen, List.size_toByteArray]
-    omega
-  · rw [hdrop, bytesToList_toByteArray]
-  · have hb_size : b.size = (bytesToList b).length := (bytesToList_length b).symm
-    rw [hb_size, hb]
-    simp only [List.length_cons]
-    rw [List.size_toByteArray]
-    omega
-
 /-! ## The model's payload-only decoder is not a transport decoder -/
 
 /-- The model's `Wire.unframe` reads the second field as the payload length, so
 it rejects the BOLT 8 transport frame even for a small valid message.  This is
-the exact decoder gap that the `Transport` namespace repairs for conformance. -/
+the exact decoder gap that the promoted `Transport` namespace repairs. -/
 theorem payload_decoder_rejects_transport_frame :
     Wire.unframe
         (Transport.transportFrame
-          ⟨16, bytes [0x01, 0x02, 0x03, 0x04]⟩) = none := by
-  decide
+          ⟨16, bytes [0x01, 0x02, 0x03, 0x04]⟩) = none :=
+  LnLean.Wire.Transport.unframe_transportFrame_eq_none _
 
 /-- The payload-only model frame still decodes as documented; only the length
 convention differs from the transport frame. -/
@@ -522,5 +369,21 @@ theorem diff_wire_max_length : declaredForPayload 65533 = 65535 :=
 which cannot fit the two-byte header. -/
 theorem diff_wire_over_max_length : declaredForPayload 65534 = 65536 :=
   boundary_declared_65534
+
+/-! ## Compatibility path for the wave-5 audit -/
+
+/-! Compatibility path for the wave-5 fully-qualified name
+`LnLean.Proofs.Conformance.Diff.Transport.transportFrame_size` used by
+`LnLean/Proofs/PhaseC3/AxiomAudit.lean`.  The real theorem is
+`LnLean.Wire.Transport.transportFrame_size`; this is a one-line delegation, not
+a second proof.  Declared last so the earlier `Transport.*` references resolve
+to the promoted `LnLean.Wire.Transport` namespace. -/
+namespace Transport
+
+theorem transportFrame_size (m : WireMessage) :
+    (LnLean.Wire.Transport.transportFrame m).size = 4 + m.payload.size :=
+  LnLean.Wire.Transport.transportFrame_size m
+
+end Transport
 
 end LnLean.Proofs.Conformance.Diff

@@ -1,8 +1,8 @@
 {
   "schema": "lnlean.conformance.v1",
-  "lane": "S5-CONF-DIFF",
-  "issue": "CONF-01, CONF-02",
-  "scope": "Wire-encoding and message-framing vector conformance for BOLT 1 BigSize/TLV and the BOLT 8 transport frame, plus pinned rust-lightning differential fixtures. This is NOT a full implementation test: it checks encoded bytes and the modelled accept/reject decisions for a finite vector set. IO, allocation limits, message-specific TLV value decoding, namespace/known-type policy, Noise encryption, and byte-for-byte equivalence with a running rust-lightning node are out of scope.",
+  "lane": "S6-CONF-LIVE",
+  "issue": "CONF-02, CONF-03",
+  "scope": "Wire-encoding and message-framing vector conformance for BOLT 1 BigSize/TLV and the BOLT 8 transport frame, plus pinned rust-lightning differential fixtures. The BOLT 8 transport model is promoted to LnLean.Wire.Transport in LnLean/Wire/Message.lean; the payload-only Wire.unframe is unchanged. This is NOT a full implementation test: it checks encoded bytes and the modelled accept/reject decisions for a finite vector set. IO, allocation limits, message-specific TLV value decoding, namespace/known-type policy, Noise encryption, and byte-for-byte equivalence with a running rust-lightning node are out of scope.",
   "sources": {
     "bolts": {
       "path": "refs/bolts/01-messaging.md",
@@ -36,7 +36,7 @@
       "tlv": "LnLean/Wire/TLV.lean",
       "admission": "LnLean/Proofs/Wire/TLVTargets.lean",
       "vector_theorems": "LnLean/Proofs/ConformanceTargets.lean",
-      "framing": "LnLean/Proofs/ConformanceDiffTargets.lean"
+      "framing": "LnLean/Wire/Message.lean (LnLean.Wire.Transport model); LnLean/Proofs/ConformanceDiffTargets.lean (vectors)"
     }
   },
   "bigsize": {
@@ -624,7 +624,7 @@
   "framing": {
     "layout": "type(2 bytes, big-endian) || transport_length(2 bytes, big-endian) || payload",
     "length_semantics": "transport_length = 2 + payload.size = WireMessage.messageSize; the BOLT 8 length covers the type and payload, not the payload alone",
-    "model_note": "LnLean.Wire.frame is the abstract payload-only frame type || payload.size || payload; Transport.transportFrame is the BOLT 8 frame and is defined in LnLean.Proofs.Conformance.Diff",
+    "model_note": "LnLean.Wire.frame is the abstract payload-only frame type || payload.size || payload; LnLean.Wire.Transport.transportFrame is the BOLT 8 frame type || (2 + payload.size) || payload, promoted to LnLean/Wire/Message.lean. LnLean.Wire.unframe remains payload-only and rejects every transport frame (LnLean.Wire.Transport.unframe_transportFrame_eq_none).",
     "cases": [
       {
         "id": "frame_init_empty",

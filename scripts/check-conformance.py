@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate the S5-CONF-DIFF wire, framing, and differential fixtures.
 
-This checker is deliberately small and dependency-free.  It does five things:
+This checker is deliberately small and dependency-free.  It does seven things:
 
 1. Recomputes every BigSize encoding and decoding decision with an independent
    reference implementation and compares it to ``tests/conformance/vectors.json``.
@@ -16,7 +16,14 @@ This checker is deliberately small and dependency-free.  It does five things:
 4. Replays pinned rust-lightning differential fixtures from
    ``tests/conformance/rust-lightning/fixtures.json`` (committed JSON only; no
    network or Rust toolchain).
-5. Cross-checks that every vector names a theorem that exists in
+5. Verifies the fixture provenance against the pinned checkout when
+   ``refs/rust-lightning`` is present: the recorded SHA-256 for each source
+   file and, when the checkout has a ``.git`` directory, its exact HEAD.  Use
+   ``--no-provenance`` to skip this optional check.
+6. Requires the promoted BOLT 8 model to exist in
+   ``LnLean/Wire/Message.lean`` (``transportFrame``, ``unframeTransport``, the
+   round trip, the declared-length law, and the payload-decoder boundary).
+7. Cross-checks that every vector names a theorem that exists in
    ``LnLean/Proofs/ConformanceTargets.lean`` or
    ``LnLean/Proofs/ConformanceDiffTargets.lean`` and that the theorem statement
    mentions the vector's input bytes (and, where applicable, its value).
@@ -30,6 +37,8 @@ Usage:
     python3 scripts/check-conformance.py --no-lean
     python3 scripts/check-conformance.py --verbose
     python3 scripts/check-conformance.py --no-self-test
+    python3 scripts/check-conformance.py --no-provenance
+    python3 scripts/check-conformance.py --source-dir /path/to/rust-lightning
 
 Exit status: 0 on success, 1 on a vector/Lean-sync mismatch, 2 on usage/IO.
 """
@@ -38,8 +47,10 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -48,9 +59,39 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_VECTORS = ROOT / "tests" / "conformance" / "vectors.json"
 DEFAULT_LEAN = ROOT / "LnLean" / "Proofs" / "ConformanceTargets.lean"
 DEFAULT_LEAN_DIFF = ROOT / "LnLean" / "Proofs" / "ConformanceDiffTargets.lean"
+DEFAULT_MESSAGE = ROOT / "LnLean" / "Wire" / "Message.lean"
 DEFAULT_DIFF = ROOT / "tests" / "conformance" / "rust-lightning" / "fixtures.json"
+DEFAULT_SOURCE = ROOT / "refs" / "rust-lightning"
 
 UINT64_MAX = 2**64 - 1
+
+# The BOLT 8 transport model promoted from the wave-5 conformance module into
+# the production `LnLean.Wire.Message` module.  The checker loads this module
+# separately from the vector-theorem modules because `Wire` and
+# `Wire.Transport` intentionally share the short name `fits_iff_payload`.
+PROMOTED_TRANSPORT_THEOREMS = [
+    "transportLength_eq_messageSize",
+    "transportFrame_header_eq",
+    "transportFrame_size",
+    "transportFrame_size_eq",
+    "fits_iff_transportLength",
+    "fits_iff_payload",
+    "unframeTransportList_eq_some_iff",
+    "unframeTransport_transportFrame",
+    "unframeTransport_transportFrame_of_fits",
+    "decode_transport_length",
+    "bytesToList_u16BE_mod",
+    "u16Nat_u16BE_mod",
+    "unframe_transportFrame_eq_none",
+]
+PROMOTED_TRANSPORT_DEFS = [
+    "transportLength",
+    "lengthHeader",
+    "transportFrame",
+    "unframeTransportList",
+    "unframeTransport",
+    "declaredTransportLength?",
+]
 
 # BOLT 1 Appendix A, copied independently from refs/bolts/01-messaging.md.
 # (value, hex bytes) for the published encoding vectors.
@@ -610,8 +651,121 @@ def check_required_categories(doc: dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 THEOREM_RE = re.compile(r"(?m)^theorem\s+([A-Za-z0-9_']+)")
+DECL_RE = re.compile(r"(?m)^(?:theorem|def|abbrev)\s+([A-Za-z0-9_?']+)")
 BYTES_RE = re.compile(r"bytes\s*\[([^\]]*)\]")
 HEX_TOKEN_RE = re.compile(r"0x([0-9a-fA-F]+)")
+
+
+def lean_declarations(text: str) -> dict[str, str]:
+    """Map every top-level theorem/def/abbrev name to its source block.
+
+    Namespace-qualified names are not needed here: the promoted transport
+    module has the only declaration with each of the checked short names.
+    """
+    matches = list(DECL_RE.finditer(text))
+    blocks: dict[str, str] = {}
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        blocks[match.group(1)] = text[match.start():end]
+    return blocks
+
+
+def namespace_body(text: str, name: str) -> str:
+    """Return the body between ``namespace <name>`` and its matching ``end``.
+
+    The promoted transport names include ``fits_iff_payload``, which also exists
+    in the enclosing ``LnLean.Wire`` namespace.  Restricting the declaration map
+    to the transport namespace keeps that short-name collision from satisfying
+    the promoted-model check.
+    """
+    match = re.search(
+        rf"(?ms)^namespace\s+{re.escape(name)}\s*$(.*?)^end\s+{re.escape(name)}\s*$",
+        text)
+    require(match is not None,
+            f"namespace {name} not found in LnLean/Wire/Message.lean")
+    return match.group(1)
+
+
+def check_decoder_boundary(text: str) -> None:
+    """Keep the payload-only decoder payload-only and the transport decoder two bytes larger."""
+    require("if rest.length = u16Nat c d then" in text,
+            "payload decoder changed: unframeList no longer compares the "
+            "declared field with the payload length")
+    require("if u16Nat c d = rest.length + 2 then" in text,
+            "transport decoder changed: unframeTransportList no longer "
+            "compares the declared field with 2 + payload length")
+
+
+def check_promoted_transport(decls: dict[str, str]) -> tuple[int, int]:
+    """Require the BOLT 8 transport model in the production Wire module."""
+    missing_theorems = [n for n in PROMOTED_TRANSPORT_THEOREMS if n not in decls]
+    require(not missing_theorems,
+            "promoted transport: missing theorems in LnLean/Wire/Message.lean: "
+            + ", ".join(missing_theorems))
+    missing_defs = [n for n in PROMOTED_TRANSPORT_DEFS if n not in decls]
+    require(not missing_defs,
+            "promoted transport: missing definitions in LnLean/Wire/Message.lean: "
+            + ", ".join(missing_defs))
+    # The boundary theorem must mention the payload-only decoder and the
+    # promoted transport frame; this keeps the name from being satisfied by an
+    # unrelated statement.
+    boundary = decls["unframe_transportFrame_eq_none"]
+    require("unframe" in boundary and "transportFrame" in boundary,
+            "promoted transport: unframe_transportFrame_eq_none does not state "
+            "the payload-decoder/transport-frame boundary")
+    return len(PROMOTED_TRANSPORT_THEOREMS), len(PROMOTED_TRANSPORT_DEFS)
+
+
+def check_generation(doc: dict[str, Any]) -> bool:
+    """Validate the deterministic fixture-generation metadata."""
+    generation = doc.get("generation")
+    require(isinstance(generation, dict), "generation metadata is missing")
+    script = generation.get("script")
+    require(script == "tests/conformance/rust-lightning/generate.py",
+            f"unexpected generation script {script!r}")
+    require((ROOT / script).is_file(), f"generation script not found: {script}")
+    mode = generation.get("mode")
+    require(mode in ("transcribed-from-pinned-source", "live-cargo-test"),
+            f"unexpected generation mode {mode!r}")
+    live = generation.get("live_cargo_test")
+    require(isinstance(live, bool), "generation.live_cargo_test must be a boolean")
+    if live:
+        require(bool(generation.get("live_transcript_sha256")),
+                "a live cargo run must record live_transcript_sha256")
+    return live
+
+
+def check_provenance(doc: dict[str, Any], source_dir: Path) -> tuple[int, bool]:
+    """Verify the committed fixture provenance against the pinned checkout."""
+    provenance = doc.get("provenance")
+    require(isinstance(provenance, list) and provenance,
+            "differential provenance is missing")
+    verified = 0
+    for entry in provenance:
+        rel = entry.get("path")
+        require(isinstance(rel, str) and rel,
+                "provenance entry is missing a path")
+        path = source_dir / rel
+        require(path.is_file(), f"provenance file not found: {path}")
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        require(digest == entry.get("sha256"),
+                f"provenance sha256 mismatch for {rel}: {digest} != "
+                f"{entry.get('sha256')}")
+        verified += 1
+    commit_verified = False
+    if (source_dir / ".git").exists():
+        try:
+            result = subprocess.run(
+                ["git", "-C", str(source_dir), "rev-parse", "HEAD"],
+                capture_output=True, text=True, check=False)
+        except OSError:
+            result = None
+        if result is not None and result.returncode == 0:
+            head = result.stdout.strip()
+            require(head == doc["pinned_commit"],
+                    f"pinned checkout HEAD {head} != {doc['pinned_commit']}")
+            commit_verified = True
+    return verified, commit_verified
 
 
 def lean_theorems(text: str) -> dict[str, str]:
@@ -817,7 +971,8 @@ def mutation_detected(validate: Any) -> bool:
 
 
 def check_mutations(doc: dict[str, Any], diff_doc: dict[str, Any] | None,
-                    theorems: dict[str, str] | None) -> tuple[int, int]:
+                    theorems: dict[str, str] | None,
+                    message_decls: dict[str, str] | None) -> tuple[int, int]:
     caught = 0
     total = 0
 
@@ -869,12 +1024,23 @@ def check_mutations(doc: dict[str, Any], diff_doc: dict[str, Any] | None,
         control("differential TLV record value changed",
                 lambda: check_diff_tlv(tlv, set()))
 
+        mutated = copy.deepcopy(diff_doc)
+        mutated["generation"]["live_cargo_test"] = True
+        control("fixture generation claims a live run without a transcript",
+                lambda: check_generation(mutated))
+
     if theorems is not None:
         mutated_theorems = dict(theorems)
         name = doc["framing"]["cases"][0]["lean"]
         mutated_theorems.pop(name, None)
         control("framing Lean theorem reference removed",
                 lambda: check_framing_lean_sync(doc, mutated_theorems))
+
+    if message_decls is not None:
+        mutated_decls = dict(message_decls)
+        mutated_decls.pop("unframeTransport_transportFrame", None)
+        control("promoted transport theorem removed",
+                lambda: check_promoted_transport(mutated_decls))
 
     return caught, total
 
@@ -884,7 +1050,8 @@ def check_mutations(doc: dict[str, Any], diff_doc: dict[str, Any] | None,
 # ---------------------------------------------------------------------------
 
 def run(vectors: Path, lean_paths: list[Path] | None, diff_path: Path | None,
-        verbose: bool, self_test: bool) -> int:
+        verbose: bool, self_test: bool, source_dir: Path | None,
+        check_sources: bool) -> int:
     try:
         doc = json.loads(vectors.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -920,24 +1087,43 @@ def run(vectors: Path, lean_paths: list[Path] | None, diff_path: Path | None,
 
         diff_bigsize = diff_tlv = diff_wire = 0
         diff_scopes: list[str] = []
+        live_fixtures = False
         if diff_doc is not None:
+            live_fixtures = check_generation(diff_doc)
             diff_bigsize, diff_tlv, diff_wire = check_differential(diff_doc, seen_ids)
             diff_scopes = [entry["model_scope"]
                            for entry in diff_doc["fixtures"]["tlv"]]
 
+        provenance_count: int | None = None
+        commit_verified = False
+        if diff_doc is not None and check_sources:
+            if source_dir is not None and source_dir.is_dir():
+                provenance_count, commit_verified = check_provenance(
+                    diff_doc, source_dir)
+
         theorems: dict[str, str] | None = None
+        message_decls: dict[str, str] | None = None
         lean_checks = 0
+        promoted_theorems = promoted_defs = 0
         if lean_paths is not None:
             theorems = load_lean_theorems(lean_paths)
             lean_checks += check_lean_sync(doc, theorems)
             lean_checks += check_framing_lean_sync(doc, theorems)
             if diff_doc is not None:
                 lean_checks += check_differential_lean_sync(diff_doc, theorems)
+            require(DEFAULT_MESSAGE.is_file(),
+                    f"promoted transport module not found: {DEFAULT_MESSAGE}")
+            message_text = DEFAULT_MESSAGE.read_text(encoding="utf-8")
+            check_decoder_boundary(message_text)
+            message_decls = lean_declarations(
+                namespace_body(message_text, "Transport"))
+            promoted_theorems, promoted_defs = check_promoted_transport(
+                message_decls)
 
         mutations_caught = mutations_total = 0
         if self_test:
             mutations_caught, mutations_total = check_mutations(
-                doc, diff_doc, theorems)
+                doc, diff_doc, theorems, message_decls)
     except CheckError as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         return 1
@@ -989,11 +1175,26 @@ def run(vectors: Path, lean_paths: list[Path] | None, diff_path: Path | None,
               f"(pinned {diff_doc['pinned_commit'][:7]}, offline)")
         print(f"differential TLV: {diff_tlv - diff_gaps} enforced, "
               f"{diff_gaps} declared not-modelled gaps")
+        print(f"fixture generation: "
+              f"{'live-cargo-test' if live_fixtures else 'transcribed-from-pinned-source'} "
+              f"(live cargo test: {'yes' if live_fixtures else 'no'})")
+        if provenance_count is not None:
+            commit_note = " (HEAD verified)" if commit_verified else ""
+            print(f"provenance: {provenance_count} pinned rust-lightning source "
+                  f"files verified{commit_note}")
+        elif check_sources:
+            print("provenance: skipped (pinned source checkout not present)")
+        else:
+            print("provenance: skipped (--no-provenance)")
     if lean_paths is not None:
         display = ", ".join(str(path.relative_to(ROOT))
                             if path.is_relative_to(ROOT) else str(path)
                             for path in lean_paths)
         print(f"Lean sync: {lean_checks} theorem references checked in {display}")
+        print(f"promoted transport: {promoted_theorems}/"
+              f"{len(PROMOTED_TRANSPORT_THEOREMS)} theorems, "
+              f"{promoted_defs}/{len(PROMOTED_TRANSPORT_DEFS)} definitions "
+              f"checked in LnLean/Wire/Message.lean")
     else:
         print("Lean sync: skipped (--no-lean)")
     if self_test:
@@ -1022,6 +1223,11 @@ def main(argv: list[str] | None = None) -> int:
                         help="skip the Lean theorem-name/byte-literal cross-check")
     parser.add_argument("--no-self-test", action="store_true",
                         help="skip the in-memory mutation controls")
+    parser.add_argument("--source-dir", type=Path, default=DEFAULT_SOURCE,
+                        help="pinned rust-lightning checkout for provenance "
+                             f"verification (default: {DEFAULT_SOURCE})")
+    parser.add_argument("--no-provenance", action="store_true",
+                        help="skip the pinned-source SHA-256/HEAD verification")
     parser.add_argument("--verbose", action="store_true",
                         help="print every vector")
     args = parser.parse_args(argv)
@@ -1033,7 +1239,7 @@ def main(argv: list[str] | None = None) -> int:
         lean_paths = [DEFAULT_LEAN, DEFAULT_LEAN_DIFF]
     diff_path = None if args.no_diff else args.diff_fixtures
     return run(args.vectors, lean_paths, diff_path, args.verbose,
-               not args.no_self_test)
+               not args.no_self_test, args.source_dir, not args.no_provenance)
 
 
 if __name__ == "__main__":

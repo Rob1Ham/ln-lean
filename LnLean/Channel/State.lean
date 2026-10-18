@@ -37,7 +37,9 @@ What is NOT modelled.
 * The HTLC update messages as constructors of `Step`.  They live in the
   additive `UpdateStep` relation below, because the lifecycle relation is
   deliberately balance- and HTLC-preserving (see the section comment).  The
-  commitment round that commits a pending update is still abstract.
+  commitment round that commits a pending update is the separate ordered
+  `DanceStep` layer at the end of the file; the pending-update queue that the
+  round drains is still abstract.
 * Message retransmission, `channel_reestablish`, and the hold/release of
   `commitment_signed` while `AwaitingRemoteRevoke`: the model records which
   event is legal but not the queue of deferred updates.
@@ -452,5 +454,111 @@ abbrev Step.update_add_htlc (hashFn : ByteArray → ByteArray) (c : Channel)
     UpdateStep hashFn c (.addHtlc dir amount ph cltv)
       (updateAddHtlc c dir amount ph cltv) :=
   UpdateStep.update_add_htlc c hphase dir amount ph cltv haff
+
+/-! ## Additive commitment-round layer (`MODEL-03`)
+
+`Step` records `commitment_signed` and `revoke_and_ack` as independent
+lifecycle events: either may be replayed from any `normal` channel, and their
+two counters are not related.  BOLT 2 §3 pairs them into one round: one side
+sends `commitment_signed`, the peer answers with `revoke_and_ack`, and the next
+round cannot start until that revocation has arrived
+(`refs/bolts/02-peer-protocol.md:3097-3249`).  The layer below adds that
+ordering as a *separate* relation over the same `Channel` record.
+
+Both dance transitions are already legal `Step`s (`DanceStep.toStep`), so this
+layer refines the lifecycle relation; it does not replace or weaken it.  It
+also embeds into the wave-5 `UpdateStep` layer (`DanceStep.toUpdateStep` in
+`LnLean.Proofs.Channel.CommitmentDanceTargets`), so every ledger and reserve
+theorem about update traces applies unchanged.  Keeping the dance separate
+leaves `ProtocolEvent`, `Step`, the executable `step?` scheduler, and every
+balance/HTLC preservation theorem untouched.
+
+The invariants (ordered round window, no stale commitment, revocation
+monotonicity, balance/ledger preservation) are proved in
+`LnLean.Proofs.Channel.CommitmentDanceTargets`. -/
+
+/-- The two messages of one commitment round.  This event type is separate
+from `ProtocolEvent` for the same reason as `UpdateEvent`: the executable
+schedule model in `LnLean.Proofs.Liveness` matches `ProtocolEvent`
+exhaustively. -/
+inductive DanceEvent where
+  | commitmentSigned
+  | revokeAndAck
+deriving Repr, DecidableEq, BEq
+
+/-- The `ProtocolEvent` spelling of a dance event.  Both spellings already
+exist in `ProtocolEvent`; the dance layer adds no message vocabulary. -/
+def DanceEvent.toProtocolEvent : DanceEvent → ProtocolEvent
+  | .commitmentSigned => ProtocolEvent.commitmentSigned
+  | .revokeAndAck => ProtocolEvent.revokeAndAck
+
+/-- The ordered round window.  `remoteCommitmentNumber` is either equal to the
+local counter (no round in flight) or exactly one ahead (a `commitment_signed`
+whose `revoke_and_ack` is still outstanding). -/
+def DanceOrdered (c : Channel) : Prop :=
+  c.localCommitmentNumber ≤ c.remoteCommitmentNumber ∧
+    c.remoteCommitmentNumber ≤ c.localCommitmentNumber + 1
+
+/-- The number of `commitment_signed` messages whose matching
+`revoke_and_ack` is still outstanding. -/
+def commitmentGap (c : Channel) : Nat :=
+  c.remoteCommitmentNumber - c.localCommitmentNumber
+
+/-- Commitment number `i` is revoked from the local viewpoint: it lies strictly
+below the local commitment counter, so an earlier `revoke_and_ack` revealed its
+per-commitment secret.  In an ordered state this watermark is at most the
+remote commitment counter (`DanceOrdered`), which is why the same predicate
+also rules out signing a stale remote commitment. -/
+def CommitmentRevoked (c : Channel) (i : Nat) : Prop :=
+  i < c.localCommitmentNumber
+
+/-- Target of `commitment_signed`: advance the remote commitment counter.  The
+balance, the HTLC list, the funding value, and the phase are unchanged. -/
+def signRemoteCommitment (c : Channel) : Channel :=
+  { c with remoteCommitmentNumber := c.remoteCommitmentNumber + 1 }
+
+/-- Target of `revoke_and_ack`: advance the local commitment counter, which
+revokes the previous local commitment.  The balance, the HTLC list, the funding
+value, and the phase are unchanged. -/
+def revokeLocalCommitment (c : Channel) : Channel :=
+  { c with localCommitmentNumber := c.localCommitmentNumber + 1 }
+
+/-- `DanceStep c e c'`: the ordered BOLT 2 commitment round.  Unlike the
+lifecycle `Step`, the two messages alternate:
+
+* `commitmentSigned` is legal only when no round is in flight
+  (`remote = local`);
+* `revokeAndAck` is legal only when exactly one signature is outstanding
+  (`remote = local + 1`).
+
+A state in which the local counter is ahead of the remote counter (which the
+unguarded lifecycle relation permits) has no dance step. -/
+inductive DanceStep : Channel → DanceEvent → Channel → Prop where
+  /-- Sign the remote commitment, starting a round. -/
+  | commitmentSigned (c : Channel) (hphase : c.phase = ChannelPhase.normal)
+      (hidle : c.remoteCommitmentNumber = c.localCommitmentNumber) :
+      DanceStep c DanceEvent.commitmentSigned (signRemoteCommitment c)
+  /-- Acknowledge and revoke the previous local commitment, closing the round. -/
+  | revokeAndAck (c : Channel) (hphase : c.phase = ChannelPhase.normal)
+      (hpending : c.remoteCommitmentNumber = c.localCommitmentNumber + 1) :
+      DanceStep c DanceEvent.revokeAndAck (revokeLocalCommitment c)
+
+/-- Every dance step is the corresponding unguarded lifecycle step: the dance
+layer is a refinement of `Step`, not a second message semantics. -/
+theorem DanceStep.toStep {c c' : Channel} {e : DanceEvent} (h : DanceStep c e c') :
+    Step c e.toProtocolEvent c' := by
+  cases h with
+  | commitmentSigned hphase hidle =>
+      simpa [DanceEvent.toProtocolEvent, signRemoteCommitment] using
+        Step.commitmentSigned c hphase
+  | revokeAndAck hphase hpending =>
+      simpa [DanceEvent.toProtocolEvent, revokeLocalCommitment] using
+        Step.revokeAndAck c hphase
+
+/-- Reflexive-transitive closure of the ordered commitment round. -/
+inductive DanceReachable : Channel → Channel → Prop where
+  | refl (c : Channel) : DanceReachable c c
+  | step {a b c : Channel} {e : DanceEvent} :
+      DanceReachable a b → DanceStep b e c → DanceReachable a c
 
 end LnLean.Channel

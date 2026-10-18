@@ -83,6 +83,7 @@ type: the signing law is keyed by the public key, the same idealization as
   `funding_signed_signing_contract`).
 -/
 
+import Bitcoin.Serialization.Interface
 import LnLean.Protocol.Messages
 import LnLean.Channel.Commitment
 import LnLean.Channel.Fee
@@ -956,5 +957,494 @@ theorem sighash_summary :
     legacy_wire_cannot_determine_coverage,
     legacy_wire_cannot_select_htlc_set,
     producedFrom_without_serialized_digest⟩
+
+/-! ## 12. Exact BOLT 3 commitment/HTLC byte layout and refinement -/
+
+open Bitcoin.Data
+open Bitcoin.Serialization
+
+/-! ### 12.1 Exact transaction and preimage layout -/
+
+def exactU32 (x : UInt32) : ByteArray := Bitcoin.Data.serU32 x
+def exactU64 (x : UInt64) : ByteArray := Bitcoin.Data.serU64 x
+def exactCS (n : Nat) : ByteArray := Bitcoin.Data.compactSizeEnc n
+
+theorem exactU32_size (x : UInt32) : (exactU32 x).size = 4 := by
+  simp [exactU32, Bitcoin.Data.serU32]
+
+theorem exactU64_size (x : UInt64) : (exactU64 x).size = 8 := by
+  simp [exactU64, Bitcoin.Data.serU64]
+
+theorem exactCS_size_zero : (exactCS 0).size = 1 := by
+  simp [exactCS, Bitcoin.Data.compactSizeEnc, Bitcoin.Data.serU8]
+
+structure ExactCommitmentOutput where
+  output : CommitmentOutput
+  scriptPubKey : ByteArray
+deriving Repr, BEq
+
+def ExactCommitmentOutput.toTxOut (o : ExactCommitmentOutput) : TxOut :=
+  { value := (o.output.value : Int), scriptPubKey := ⟨o.scriptPubKey⟩ }
+
+structure CommitmentWire where
+  version : UInt32
+  fundingTxid : ByteArray
+  fundingOutputIndex : UInt32
+  sequence : UInt32
+  outputs : List ExactCommitmentOutput
+  locktime : UInt32
+deriving Repr, BEq
+
+def CommitmentWire.toTx (w : CommitmentWire) : Tx :=
+  { version := w.version.toInt32
+    vin := [{ prevout := ⟨w.fundingTxid, w.fundingOutputIndex⟩,
+              scriptSig := Script.empty, sequence := w.sequence }]
+    vout := w.outputs.map ExactCommitmentOutput.toTxOut
+    locktime := w.locktime
+    witness := [[]] }
+
+def CommitmentWire.txBytes (w : CommitmentWire) : ByteArray := Bitcoin.Data.serTx w.toTx
+
+theorem hasWitness_toTx (w : CommitmentWire) : hasWitness w.toTx = false := by
+  simp [CommitmentWire.toTx, Bitcoin.Serialization.hasWitness]
+
+theorem txBytes_eq_encTxL (w : CommitmentWire) :
+    bL w.txBytes = encTxL w.toTx := by
+  simp [CommitmentWire.txBytes, Bitcoin.Serialization.encTxL, hasWitness_toTx]
+
+
+
+def CommitmentWire.WellFormed (w : CommitmentWire) : Prop :=
+  w.fundingTxid.size = 32 ∧
+  w.outputs.length ≤ Bitcoin.Serialization.MAX_SIZE ∧
+  (∀ o ∈ w.outputs, o.scriptPubKey.size ≤ Bitcoin.Serialization.MAX_SIZE ∧
+     o.output.value < 9223372036854775808)
+
+theorem CommitmentWire.wireDomain_toTx (w : CommitmentWire) (h : w.WellFormed) :
+    Bitcoin.Serialization.wireDomain w.toTx := by
+  obtain ⟨hhash, hlen, hout⟩ := h
+  refine ⟨by simp [CommitmentWire.toTx], by simp [CommitmentWire.toTx], ?_, ?_, ?_, ?_, ?_⟩
+  · have hv : w.toTx.vin.length = 1 := rfl
+    rw [hv]
+    decide
+  · have hv : w.toTx.vout.length = w.outputs.length := by simp [CommitmentWire.toTx]
+    rw [hv]
+    exact hlen
+  · intro i hi
+    rw [CommitmentWire.toTx, List.mem_singleton] at hi
+    subst hi
+    exact ⟨hhash, by simp [Bitcoin.Data.Script.empty]⟩
+  · intro o ho
+    rw [CommitmentWire.toTx, List.mem_map] at ho
+    obtain ⟨a, ha, rfl⟩ := ho
+    obtain ⟨hsz, hval⟩ := hout a ha
+    refine ⟨hsz, ?_, ?_⟩
+    · exact Int.natCast_nonneg _
+    · exact Int.ofNat_lt.mpr hval
+  · intro s hs
+    rw [CommitmentWire.toTx, List.mem_singleton] at hs
+    subst hs
+    exact ⟨by simp, by simp⟩
+
+theorem CommitmentWire.txBytes_parse (w : CommitmentWire) (h : w.WellFormed) :
+    Bitcoin.Serialization.decTxCore (Bitcoin.Serialization.bL w.txBytes) =
+      .ok (w.toTx, []) := by
+  rw [txBytes_eq_encTxL]
+  simpa using Bitcoin.Serialization.decTxCore_encTxL w.toTx []
+    (CommitmentWire.wireDomain_toTx w h)
+
+
+
+def compactSizeWidth (n : Nat) : Nat :=
+  if n < 0xfd then 1 else if n ≤ 0xffff then 3 else if n ≤ 0xffffffff then 5 else 9
+
+theorem compactSizeEnc_size (n : Nat) :
+    (Bitcoin.Data.compactSizeEnc n).size = compactSizeWidth n := by
+  unfold Bitcoin.Data.compactSizeEnc compactSizeWidth
+  by_cases h1 : n < 0xfd
+  · simp [h1, Bitcoin.Data.serU8]
+  · by_cases h2 : n ≤ 0xffff
+    · simp [h1, h2, Bitcoin.Data.serU8, Bitcoin.Data.serU16]
+    · by_cases h3 : n ≤ 0xffffffff
+      · simp [h1, h2, h3, Bitcoin.Data.serU8, Bitcoin.Data.serU32]
+      · simp [h1, h2, h3, Bitcoin.Data.serU8, Bitcoin.Data.serU64]
+
+theorem foldl_append_size {α : Type} (l : List α) (f : α → ByteArray) (init : ByteArray) :
+    (l.foldl (fun acc x => acc ++ f x) init).size =
+      init.size + (l.map (fun x => (f x).size)).sum := by
+  induction l generalizing init with
+  | nil => simp
+  | cons x xs ih =>
+      simp [List.foldl_cons, ih, ByteArray.size_append, Nat.add_assoc]
+
+def exactOutputBytes (o : ExactCommitmentOutput) : ByteArray :=
+  Bitcoin.Data.serTxOut o.toTxOut
+
+theorem exactOutputBytes_size (o : ExactCommitmentOutput) :
+    (exactOutputBytes o).size =
+      8 + compactSizeWidth o.scriptPubKey.size + o.scriptPubKey.size := by
+  simp [exactOutputBytes, ExactCommitmentOutput.toTxOut, Bitcoin.Data.serTxOut,
+    Bitcoin.Data.serU64, compactSizeEnc_size]
+
+@[simp] theorem serTxOut_toTxOut_size (o : ExactCommitmentOutput) :
+    (Bitcoin.Data.serTxOut o.toTxOut).size =
+      8 + compactSizeWidth o.scriptPubKey.size + o.scriptPubKey.size := by
+  simp [ExactCommitmentOutput.toTxOut, Bitcoin.Data.serTxOut,
+    Bitcoin.Data.serU64, compactSizeEnc_size]
+
+theorem map_serTxOut_size_eq (l : List ExactCommitmentOutput) :
+    (l.map (fun o => (Bitcoin.Data.serTxOut o.toTxOut).size)).sum =
+      (l.map (fun o => 8 + compactSizeWidth o.scriptPubKey.size +
+        o.scriptPubKey.size)).sum := by
+  induction l with
+  | nil => rfl
+  | cons o os _ => simp [serTxOut_toTxOut_size]
+
+theorem CommitmentWire.txBytes_size (w : CommitmentWire) :
+    w.txBytes.size =
+      4 + 1 + w.fundingTxid.size + 4 + 1 + 4 +
+        compactSizeWidth w.outputs.length +
+        (w.outputs.map (fun o => 8 + compactSizeWidth o.scriptPubKey.size +
+          o.scriptPubKey.size)).sum + 4 := by
+  simp [CommitmentWire.txBytes, CommitmentWire.toTx, Bitcoin.Data.serTx,
+    Bitcoin.Data.serTxIn, Bitcoin.Data.serU32,
+    compactSizeEnc_size, foldl_append_size, ByteArray.size_append,
+    Bitcoin.Data.Script.empty, compactSizeWidth, Nat.add_assoc]
+  simp [Function.comp_def, compactSizeWidth, Nat.add_assoc]
+
+
+
+def byteList (l : List UInt8) : ByteArray := l.toByteArray
+
+def hash32 (b : UInt8) : ByteArray := byteList (List.replicate 32 b)
+
+def vectorFundingTxid : ByteArray := hash32 0x11
+
+def vectorOutput1 : ExactCommitmentOutput :=
+  { output := .toRemote 1000
+    scriptPubKey := byteList [0x00, 0x14] ++ byteList (List.replicate 20 0x22) }
+
+def vectorOutput2 : ExactCommitmentOutput :=
+  { output := .toLocal 2000
+    scriptPubKey := byteList [0x00, 0x20] ++ byteList (List.replicate 32 0x33) }
+
+def vectorWire : CommitmentWire :=
+  { version := 2
+    fundingTxid := vectorFundingTxid
+    fundingOutputIndex := 0
+    sequence := 0x80000000
+    outputs := [vectorOutput1, vectorOutput2]
+    locktime := 0x20000000 }
+
+set_option maxRecDepth 10000 in
+theorem vectorCommitmentTx :
+    Bitcoin.Serialization.bL vectorWire.txBytes =
+      [0x02, 0x00, 0x00, 0x00, 0x01] ++ List.replicate 32 0x11 ++
+      [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x02,
+       0xe8, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x14] ++
+      List.replicate 20 0x22 ++
+      [0xd0, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x00, 0x20] ++
+      List.replicate 32 0x33 ++
+      [0x00, 0x00, 0x00, 0x20] := by
+  decide
+
+set_option maxRecDepth 10000 in
+theorem vectorCommitmentTx_size : (Bitcoin.Serialization.bL vectorWire.txBytes).length = 125 := by
+  decide
+
+
+
+structure Bip143Preimage where
+  version : UInt32
+  hashPrevouts : ByteArray
+  hashSequence : ByteArray
+  outpointTxid : ByteArray
+  outpointIndex : UInt32
+  scriptCode : ByteArray
+  amountSat : UInt64
+  sequence : UInt32
+  hashOutputs : ByteArray
+  locktime : UInt32
+  sighashType : UInt32
+deriving Repr, BEq
+
+def Bip143Preimage.preimageBytes (p : Bip143Preimage) : ByteArray :=
+  exactU32 p.version ++ p.hashPrevouts ++ p.hashSequence ++
+    p.outpointTxid ++ exactU32 p.outpointIndex ++
+    exactCS p.scriptCode.size ++ p.scriptCode ++
+    exactU64 p.amountSat ++ exactU32 p.sequence ++
+    p.hashOutputs ++ exactU32 p.locktime ++ exactU32 p.sighashType
+
+theorem Bip143Preimage.preimageBytes_size (p : Bip143Preimage)
+    (hp : p.hashPrevouts.size = 32) (hq : p.hashSequence.size = 32)
+    (ho : p.outpointTxid.size = 32) (hh : p.hashOutputs.size = 32) :
+    p.preimageBytes.size =
+      156 + compactSizeWidth p.scriptCode.size + p.scriptCode.size := by
+  simp [Bip143Preimage.preimageBytes, exactU32_size, exactU64_size,
+    exactCS, compactSizeEnc_size, hp, hq, ho, hh, ByteArray.size_append, Nat.add_assoc]
+  omega
+
+def exactSighashDigest (M : PrimitiveModel) (p : Bip143Preimage) : ByteArray :=
+  M.sha256 (M.sha256 p.preimageBytes)
+
+theorem exactSighashDigest_size (M : PrimitiveModel) (p : Bip143Preimage) :
+    (exactSighashDigest M p).size = 32 :=
+  M.sha256_size _
+
+def vectorPreimage : Bip143Preimage :=
+  { version := 2
+    hashPrevouts := hash32 0xaa
+    hashSequence := hash32 0xbb
+    outpointTxid := hash32 0xcc
+    outpointIndex := 0
+    scriptCode := byteList [0x51]
+    amountSat := 1000
+    sequence := 0xffffffff
+    hashOutputs := hash32 0xdd
+    locktime := 0x20000000
+    sighashType := 1 }
+
+set_option maxRecDepth 10000 in
+theorem vectorPreimage_bytes :
+    Bitcoin.Serialization.bL vectorPreimage.preimageBytes =
+      [0x02, 0x00, 0x00, 0x00] ++ List.replicate 32 0xaa ++
+      List.replicate 32 0xbb ++ List.replicate 32 0xcc ++
+      [0x00, 0x00, 0x00, 0x00, 0x01, 0x51,
+       0xe8, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+       0xff, 0xff, 0xff, 0xff] ++
+      List.replicate 32 0xdd ++
+      [0x00, 0x00, 0x00, 0x20, 0x01, 0x00, 0x00, 0x00] := by
+  decide
+
+set_option maxRecDepth 10000 in
+theorem vectorPreimage_size :
+    (Bitcoin.Serialization.bL vectorPreimage.preimageBytes).length = 158 := by
+  decide
+
+structure HtlcWire where
+  version : UInt32
+  commitmentTxid : ByteArray
+  commitmentOutputIndex : UInt32
+  sequence : UInt32
+  valueSat : UInt64
+  scriptPubKey : ByteArray
+  locktime : UInt32
+deriving Repr, BEq
+
+def HtlcWire.toTx (h : HtlcWire) : Bitcoin.Data.Tx :=
+  { version := h.version.toInt32
+    vin := [{ prevout := ⟨h.commitmentTxid, h.commitmentOutputIndex⟩,
+              scriptSig := Script.empty, sequence := h.sequence }]
+    vout := [{ value := (h.valueSat.toNat : Int), scriptPubKey := ⟨h.scriptPubKey⟩ }]
+    locktime := h.locktime
+    witness := [[]] }
+
+def HtlcWire.txBytes (h : HtlcWire) : ByteArray := Bitcoin.Data.serTx h.toTx
+
+theorem hasWitness_toTx_htlc (h : HtlcWire) : hasWitness h.toTx = false := by
+  simp [HtlcWire.toTx, Bitcoin.Serialization.hasWitness]
+
+theorem HtlcWire.txBytes_eq_encTxL (h : HtlcWire) :
+    bL h.txBytes = encTxL h.toTx := by
+  simp [HtlcWire.txBytes, Bitcoin.Serialization.encTxL, hasWitness_toTx_htlc]
+
+def HtlcWire.WellFormed (h : HtlcWire) : Prop :=
+  h.commitmentTxid.size = 32 ∧
+  h.scriptPubKey.size ≤ Bitcoin.Serialization.MAX_SIZE ∧
+  h.valueSat < 9223372036854775808
+
+theorem HtlcWire.wireDomain_toTx (h : HtlcWire) (hw : h.WellFormed) :
+    Bitcoin.Serialization.wireDomain h.toTx := by
+  obtain ⟨hhash, hsz, hval⟩ := hw
+  refine ⟨by simp [HtlcWire.toTx], by simp [HtlcWire.toTx], ?_, ?_, ?_, ?_, ?_⟩
+  · have hv : h.toTx.vin.length = 1 := rfl
+    rw [hv]
+    decide
+  · have hv : h.toTx.vout.length = 1 := rfl
+    rw [hv]
+    decide
+  · intro i hi
+    rw [HtlcWire.toTx, List.mem_singleton] at hi
+    subst hi
+    exact ⟨hhash, by simp [Bitcoin.Data.Script.empty]⟩
+  · intro o ho
+    rw [HtlcWire.toTx, List.mem_singleton] at ho
+    subst ho
+    exact ⟨hsz, Int.natCast_nonneg _, Int.ofNat_lt.mpr hval⟩
+  · intro s hs
+    rw [HtlcWire.toTx, List.mem_singleton] at hs
+    subst hs
+    exact ⟨by simp, by simp⟩
+
+theorem HtlcWire.txBytes_parse (h : HtlcWire) (hw : h.WellFormed) :
+    Bitcoin.Serialization.decTxCore (Bitcoin.Serialization.bL h.txBytes) =
+      .ok (h.toTx, []) := by
+  rw [HtlcWire.txBytes_eq_encTxL]
+  simpa using Bitcoin.Serialization.decTxCore_encTxL h.toTx []
+    (HtlcWire.wireDomain_toTx h hw)
+
+theorem HtlcWire.txBytes_size (h : HtlcWire) :
+    h.txBytes.size =
+      4 + 1 + h.commitmentTxid.size + 4 + 1 + 4 + 1 +
+        8 + compactSizeWidth h.scriptPubKey.size + h.scriptPubKey.size + 4 := by
+  simp [HtlcWire.txBytes, HtlcWire.toTx, Bitcoin.Data.serTx,
+    Bitcoin.Data.serTxIn, Bitcoin.Data.serTxOut, Bitcoin.Data.serU32,
+    Bitcoin.Data.serU64, Bitcoin.Data.Script.empty, compactSizeEnc_size,
+    compactSizeWidth, ByteArray.size_append, Nat.add_assoc]
+  omega
+
+/-! ### 12.2 Refinement of the structural serializer
+
+The structural serializer `commitmentPreimage` was written before the exact
+BOLT 3 byte layout.  The bridge below is deliberately honest:
+
+* `viewOfWire` maps a wire transaction plus the non-wire metadata into the
+  existing `CommitmentSighashView`;
+* the fields the structural view shares with the wire (funding outpoint,
+  output values, obscured commitment number) are proved equal to the wire
+  fields (`viewOfWire_*`, `viewOfWire_obscured`);
+* `SharedEq` implies equality of structural preimages/digests, i.e. the
+  structural serializer is a function of exactly those modelled fields;
+* `structuralView_not_determine_scripts` proves the abstraction is strict:
+  the structural view alone does not determine the wire bytes, because the
+  output `scriptPubKey`s are dropped. -/
+structure CommitmentMeta where
+  commitmentNumber : Nat
+  obscuredCommitmentNumber : Nat
+  fundingValueSat : Nat
+  fundingScript : ByteArray
+  holder : Direction
+  toLocalSat : Nat
+  toRemoteSat : Nat
+  feeSat : Nat
+  contestDelay : Nat
+  anchorOutputs : Bool
+  feeratePerKw : Nat
+  htlcs : List HtlcSighashView
+deriving Repr, BEq
+
+def viewOfWire (w : CommitmentWire) (m : CommitmentMeta) : CommitmentSighashView :=
+  { commitmentNumber := m.commitmentNumber
+    obscuredCommitmentNumber := m.obscuredCommitmentNumber
+    fundingTxid := w.fundingTxid
+    fundingOutputIndex := w.fundingOutputIndex.toNat
+    fundingValueSat := m.fundingValueSat
+    fundingScript := m.fundingScript
+    holder := m.holder
+    toLocalSat := m.toLocalSat
+    toRemoteSat := m.toRemoteSat
+    outputs := w.outputs.map (fun o => o.output)
+    feeSat := m.feeSat
+    contestDelay := m.contestDelay
+    anchorOutputs := m.anchorOutputs
+    feeratePerKw := m.feeratePerKw
+    htlcs := m.htlcs }
+
+@[simp] theorem viewOfWire_fundingTxid (w : CommitmentWire) (m : CommitmentMeta) :
+    (viewOfWire w m).fundingTxid = w.fundingTxid := rfl
+
+@[simp] theorem viewOfWire_fundingOutputIndex (w : CommitmentWire)
+    (m : CommitmentMeta) :
+    (viewOfWire w m).fundingOutputIndex = w.fundingOutputIndex.toNat := rfl
+
+@[simp] theorem viewOfWire_outputs (w : CommitmentWire) (m : CommitmentMeta) :
+    (viewOfWire w m).outputs = w.outputs.map (fun o => o.output) := rfl
+
+@[simp] theorem viewOfWire_commitmentNumber (w : CommitmentWire)
+    (m : CommitmentMeta) :
+    (viewOfWire w m).commitmentNumber = m.commitmentNumber := rfl
+
+@[simp] theorem viewOfWire_htlcs (w : CommitmentWire) (m : CommitmentMeta) :
+    (viewOfWire w m).htlcs = m.htlcs := rfl
+
+/-- The 48-bit BOLT 3 obscured commitment number recovered from the wire
+`nSequence` (high 24 bits) and `nLockTime` (low 24 bits). -/
+def obscuredOfWire (w : CommitmentWire) : Nat :=
+  (w.sequence.toNat % 2 ^ 24) * 2 ^ 24 + (w.locktime.toNat % 2 ^ 24)
+
+/-- The BOLT 3 bit layout of the obscured commitment number in the commitment
+transaction: `nLockTime = 0x20000000 | low24` and
+`nSequence = 0x80000000 | high24`. -/
+def Obscures (w : CommitmentWire) (m : CommitmentMeta) : Prop :=
+  m.obscuredCommitmentNumber < 2 ^ 48 ∧
+  w.locktime.toNat = 0x20000000 + (m.obscuredCommitmentNumber % 2 ^ 24) ∧
+  w.sequence.toNat = 0x80000000 + ((m.obscuredCommitmentNumber / 2 ^ 24) % 2 ^ 24)
+
+theorem obscuredOfWire_eq_of_obscures (w : CommitmentWire) (m : CommitmentMeta)
+    (h : Obscures w m) :
+    obscuredOfWire w = m.obscuredCommitmentNumber % 2 ^ 48 := by
+  obtain ⟨_, hl, hs⟩ := h
+  unfold obscuredOfWire
+  rw [hl, hs]
+  omega
+
+theorem viewOfWire_obscured (w : CommitmentWire) (m : CommitmentMeta)
+    (h : Obscures w m) :
+    (viewOfWire w m).obscuredCommitmentNumber = obscuredOfWire w := by
+  show m.obscuredCommitmentNumber = obscuredOfWire w
+  rw [obscuredOfWire_eq_of_obscures w m h, Nat.mod_eq_of_lt h.1]
+
+/-- Two wires share all fields that the structural serializer models: the
+funding outpoint and the sequence of output values.  Version, sequence,
+locktime and the output scripts are *not* part of this relation. -/
+def SharedEq (w₁ w₂ : CommitmentWire) : Prop :=
+  w₁.fundingTxid = w₂.fundingTxid ∧
+  w₁.fundingOutputIndex = w₂.fundingOutputIndex ∧
+  w₁.outputs.map (fun o => o.output) = w₂.outputs.map (fun o => o.output)
+
+theorem viewOfWire_eq_of_shared (w₁ w₂ : CommitmentWire) (m : CommitmentMeta)
+    (h : SharedEq w₁ w₂) : viewOfWire w₁ m = viewOfWire w₂ m := by
+  obtain ⟨htxid, hidx, hout⟩ := h
+  simp [viewOfWire, htxid, hidx, hout]
+
+theorem commitmentPreimage_eq_of_shared (w₁ w₂ : CommitmentWire)
+    (m : CommitmentMeta) (h : SharedEq w₁ w₂) :
+    commitmentPreimage (viewOfWire w₁ m) = commitmentPreimage (viewOfWire w₂ m) := by
+  rw [viewOfWire_eq_of_shared w₁ w₂ m h]
+
+theorem commitmentDigest_eq_of_shared (M : PrimitiveModel) (w₁ w₂ : CommitmentWire)
+    (m : CommitmentMeta) (h : SharedEq w₁ w₂) :
+    commitmentDigest M (viewOfWire w₁ m) = commitmentDigest M (viewOfWire w₂ m) := by
+  simp [commitmentDigest, commitmentPreimage_eq_of_shared w₁ w₂ m h]
+
+def vectorMeta : CommitmentMeta :=
+  { commitmentNumber := 7
+    obscuredCommitmentNumber := 0x123456789abc
+    fundingValueSat := 3000
+    fundingScript := byteList [0x00, 0x14] ++ byteList (List.replicate 20 0x44)
+    holder := .local
+    toLocalSat := 2000
+    toRemoteSat := 1000
+    feeSat := 0
+    contestDelay := 144
+    anchorOutputs := false
+    feeratePerKw := 253
+    htlcs := [] }
+
+/-- Same transaction fields and output values, but a different `scriptPubKey`
+on the first output. -/
+def vectorWireShortScript : CommitmentWire :=
+  { vectorWire with
+    outputs := [{ vectorOutput1 with scriptPubKey := byteList [0x51] },
+      vectorOutput2] }
+
+theorem vectorView_eq :
+    viewOfWire vectorWire vectorMeta = viewOfWire vectorWireShortScript vectorMeta := by
+  simp [viewOfWire, vectorWire, vectorWireShortScript, vectorOutput1, vectorOutput2]
+
+/-- The structural view is strictly coarser than the exact byte layout: two
+wire transactions with the same structural view can serialize to different
+bytes because output `scriptPubKey`s are not modelled by the structural view. -/
+theorem structuralView_not_determine_scripts :
+    ∃ (w₁ w₂ : CommitmentWire) (m : CommitmentMeta),
+      viewOfWire w₁ m = viewOfWire w₂ m ∧ w₁.txBytes ≠ w₂.txBytes := by
+  refine ⟨vectorWire, vectorWireShortScript, vectorMeta, vectorView_eq, ?_⟩
+  intro hbytes
+  have h₁ := CommitmentWire.txBytes_size vectorWire
+  have h₂ := CommitmentWire.txBytes_size vectorWireShortScript
+  rw [hbytes] at h₁
+  simp [vectorWire, vectorWireShortScript, vectorOutput1, vectorOutput2,
+    compactSizeWidth, byteList] at h₁ h₂
+  omega
 
 end LnLean.Proofs.Channel.SighashTargets

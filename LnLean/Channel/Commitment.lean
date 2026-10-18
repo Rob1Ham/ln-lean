@@ -172,22 +172,20 @@ The commitment output itself is gross (`03-transactions.md:365`), and a trimmed
 output's whole gross value is added to the commitment transaction fee
 (`03-transactions.md:329`).
 
-The legacy `CommitmentHTLCOutput` record carries only `amountSat`; the rich
-`CommitmentTx` extension therefore carries the net projection
-(`netAmountSat`) and the recorded trimmed total (`trimmedSat`) as additive
-fields with identity/zero defaults, so every existing record literal is
-unchanged.  Adding the net projection to `CommitmentHTLCOutput` itself would
-require editing `LnLean/Channel/Types.lean`, which is outside this lane's
-ownership; the exact patch is recorded in
-`agents/reports/swarm5/S5-CH-GROSSNET.md`.
+The record boundary now carries both values: `CommitmentHTLCOutput.amountSat`
+is gross and `CommitmentHTLCOutput.netAmountSat` (default `amountSat`) is the
+second-stage value used by the dust test; `Commitment.trimmedTotalSat`
+(default `0`) records the gross value removed by trimming.  Those fields are
+defined in `LnLean/Channel/Types.lean` and are carried by every literal
+unchanged through their defaults.
 
-`Commitment.trimmedSat` and `Commitment.effectiveFeeSat` are functions rather
-than stored fields, because the legacy `Commitment` has no dust limit and no
-net projection.  `trimmedSat` computes the gross value that a given dust limit
-and net view remove from a nominal record; the rich record stores the result in
-`CommitmentTx.trimmedSat`.  `effectiveFeeSat` is the actual commitment fee,
+`Commitment.trimmedSat` below is the *computed* nominal trimmed value for a
+given dust limit and net projection; the stored field is therefore named
+`trimmedTotalSat` to avoid the name collision.  `Commitment.trimmedValueFor`
+is the future-facing alias recommended by the wave-5 integration note.
+`effectiveFeeSat` is the actual commitment fee,
 `fundingValueSat - totalOutputValue`; when `totalOutputValue` is the emitted
-(survivor) value, it is exactly `feeSat + trimmedSat`. -/
+(survivor) value, it is exactly `feeSat + trimmedTotalSat`. -/
 
 /-- The gross satoshi value that BOLT 3 trims from a nominal commitment record
 under an owner's dust limit and a net-value projection.  A trimmed
@@ -199,6 +197,18 @@ def Commitment.trimmedSat (c : Commitment) (dustLimitSat : Nat)
   (if dustLimitSat ≤ c.toRemoteSat then 0 else c.toRemoteSat) +
   (c.htlcs.map (fun h =>
     if dustLimitSat ≤ netAmountSat h then 0 else h.amountSat)).sum
+
+/-- Future-facing alias for the computed nominal trimmed value.  The stored
+record field is `Commitment.trimmedTotalSat`; this alias keeps the computation
+available under the name recommended for a later rename. -/
+def Commitment.trimmedValueFor (c : Commitment) (dustLimitSat : Nat)
+    (netAmountSat : CommitmentHTLCOutput → Nat) : Nat :=
+  c.trimmedSat dustLimitSat netAmountSat
+
+theorem Commitment.trimmedValueFor_eq_trimmedSat (c : Commitment)
+    (dustLimitSat : Nat) (netAmountSat : CommitmentHTLCOutput → Nat) :
+    c.trimmedValueFor dustLimitSat netAmountSat =
+      c.trimmedSat dustLimitSat netAmountSat := rfl
 
 /-- The **effective** commitment fee: everything in the funding value that the
 commitment transaction does not pay to an output.  With a BOLT-3-migrated
@@ -222,6 +232,65 @@ theorem Commitment.effectiveFeeSat_eq_feeSat (c : Commitment)
     c.effectiveFeeSat = c.feeSat := by
   unfold Commitment.effectiveFeeSat
   omega
+
+/-- The BOLT 3 net-value dust test on a record: the HTLC survives exactly when
+`dustLimitSat ≤ netAmountSat`.  This is the record-field counterpart of the
+`CommitmentTx.htlcOutputNet` test and of the computed `trimmedSat` predicate. -/
+def CommitmentHTLCOutput.keepAtDust (dustLimitSat : Nat)
+    (h : CommitmentHTLCOutput) : Bool :=
+  decide (dustLimitSat ≤ h.netAmountSat)
+
+theorem CommitmentHTLCOutput.keepAtDust_eq_true_iff
+    {dustLimitSat : Nat} {h : CommitmentHTLCOutput} :
+    h.keepAtDust dustLimitSat = true ↔ dustLimitSat ≤ h.netAmountSat :=
+  decide_eq_true_iff
+
+theorem CommitmentHTLCOutput.keepAtDust_eq_false_iff
+    {dustLimitSat : Nat} {h : CommitmentHTLCOutput} :
+    h.keepAtDust dustLimitSat = false ↔ ¬ dustLimitSat ≤ h.netAmountSat :=
+  decide_eq_false_iff_not
+
+/-- Copy a gross record with an explicit net second-stage value. -/
+def CommitmentHTLCOutput.withNet (h : CommitmentHTLCOutput) (netAmountSat : Nat) :
+    CommitmentHTLCOutput :=
+  { h with netAmountSat := netAmountSat }
+
+theorem CommitmentHTLCOutput.withNet_netAmountSat (h : CommitmentHTLCOutput)
+    (netAmountSat : Nat) :
+    (h.withNet netAmountSat).netAmountSat = netAmountSat := rfl
+
+theorem CommitmentHTLCOutput.withNet_amountSat (h : CommitmentHTLCOutput)
+    (netAmountSat : Nat) :
+    (h.withNet netAmountSat).amountSat = h.amountSat := rfl
+
+/-- The default net projection is the identity (`netAmountSat = amountSat`). -/
+theorem CommitmentHTLCOutput.withNet_amountSat_self (h : CommitmentHTLCOutput) :
+    (h.withNet h.amountSat).netAmountSat = h.amountSat := rfl
+
+/-- A nominal commitment with the BOLT 3 net-based dust filter applied:
+below-dust `to_local`/`to_remote` are zeroed, below-dust HTLCs are removed, and
+the removed gross value is recorded in `trimmedTotalSat`.  The net projection
+is the record's own `CommitmentHTLCOutput.netAmountSat` field. -/
+def Commitment.migrateNet (c : Commitment) (dustLimitSat : Nat) : Commitment :=
+  { c with
+    toLocalSat := if dustLimitSat ≤ c.toLocalSat then c.toLocalSat else 0
+    toRemoteSat := if dustLimitSat ≤ c.toRemoteSat then c.toRemoteSat else 0
+    htlcs := c.htlcs.filter (fun h => h.keepAtDust dustLimitSat)
+    trimmedTotalSat := c.trimmedSat dustLimitSat (fun h => h.netAmountSat) }
+
+theorem Commitment.migrateNet_feeSat (c : Commitment) (dustLimitSat : Nat) :
+    (c.migrateNet dustLimitSat).feeSat = c.feeSat := rfl
+
+theorem Commitment.migrateNet_fundingValueSat (c : Commitment) (dustLimitSat : Nat) :
+    (c.migrateNet dustLimitSat).fundingValueSat = c.fundingValueSat := rfl
+
+theorem Commitment.migrateNet_htlcs (c : Commitment) (dustLimitSat : Nat) :
+    (c.migrateNet dustLimitSat).htlcs =
+      c.htlcs.filter (fun h => h.keepAtDust dustLimitSat) := rfl
+
+theorem Commitment.migrateNet_trimmedTotalSat (c : Commitment) (dustLimitSat : Nat) :
+    (c.migrateNet dustLimitSat).trimmedTotalSat =
+      c.trimmedSat dustLimitSat (fun h => h.netAmountSat) := rfl
 
 /-- The weight of a concrete commitment record. -/
 def Commitment.weight (c : Commitment) : Weight :=
@@ -761,10 +830,12 @@ structure CommitmentTx where
   /-- The **net** (second-stage) satoshi value of an HTLC output.  BOLT 3 runs
   the dust test on `amount - second_stage_fee`
   (`03-transactions.md:330-346`), while the commitment output itself carries
-  the **gross** `amountSat`.  The identity default preserves every existing
-  `CommitmentTx` literal and every legacy record whose `amountSat` is already
-  net of the second-stage fee. -/
-  netAmountSat : CommitmentHTLCOutput → Nat := fun h => h.amountSat
+  the **gross** `amountSat`.  The default delegates to the record field
+  `CommitmentHTLCOutput.netAmountSat`, whose own default is the identity
+  `amountSat`, so every existing `CommitmentTx` literal keeps its legacy
+  gross-equals-net semantics while a BOLT-3-exact record can set the net value
+  once at the `CommitmentHTLCOutput` boundary. -/
+  netAmountSat : CommitmentHTLCOutput → Nat := fun h => h.netAmountSat
   /-- Gross satoshi value removed by the BOLT 3 dust filter.  BOLT 3 adds a
   trimmed output's value to the commitment transaction fee, so this is the
   difference between the nominal output value and the value the commitment
@@ -878,6 +949,62 @@ def CommitmentTx.trimmedValue (tx : CommitmentTx) : Nat :=
 
 theorem CommitmentTx.trimmedValue_eq_trimmedSat (tx : CommitmentTx) :
     tx.trimmedValue = tx.commitment.trimmedSat tx.dustLimitSat tx.netAmountSat := rfl
+
+theorem CommitmentTx.trimmedValue_eq_trimmedValueFor (tx : CommitmentTx) :
+    tx.trimmedValue =
+      tx.commitment.trimmedValueFor tx.dustLimitSat tx.netAmountSat := rfl
+
+/-- The net projection is exactly the record-level field.  The default of
+`CommitmentTx.netAmountSat` has this shape; a caller that overrides it records
+a transaction-specific projection. -/
+def CommitmentTx.UsesRecordNet (tx : CommitmentTx) : Prop :=
+  ∀ h : CommitmentHTLCOutput, tx.netAmountSat h = h.netAmountSat
+
+theorem CommitmentTx.usesRecordNet_default (tx : CommitmentTx) :
+    ({ tx with netAmountSat := fun h => h.netAmountSat }).UsesRecordNet :=
+  fun _ => rfl
+
+/-- The gross value removed by trimming computed from the record fields. -/
+def CommitmentTx.recordTrimmedValue (tx : CommitmentTx) : Nat :=
+  tx.commitment.trimmedSat tx.dustLimitSat (fun h => h.netAmountSat)
+
+theorem CommitmentTx.recordTrimmedValue_eq_trimmedValueFor (tx : CommitmentTx) :
+    tx.recordTrimmedValue =
+      tx.commitment.trimmedValueFor tx.dustLimitSat (fun h => h.netAmountSat) := rfl
+
+/-- The BOLT 3 migration at the record-field boundary.  It applies the same
+trim filter as `CommitmentTx.migratedFrom`, but reads `netAmountSat` from each
+`CommitmentHTLCOutput` and records the removed gross value in both the stored
+`Commitment.trimmedTotalSat` field and the rich `CommitmentTx.trimmedSat`
+field. -/
+def CommitmentTx.migrateNet (tx : CommitmentTx) : CommitmentTx :=
+  { tx with
+    commitment := tx.commitment.migrateNet tx.dustLimitSat
+    netAmountSat := fun h => h.netAmountSat
+    trimmedSat := tx.recordTrimmedValue }
+
+theorem CommitmentTx.migrateNet_commitment (tx : CommitmentTx) :
+    (tx.migrateNet).commitment =
+      tx.commitment.migrateNet tx.dustLimitSat := rfl
+
+theorem CommitmentTx.migrateNet_netAmountSat (tx : CommitmentTx)
+    (h : CommitmentHTLCOutput) :
+    (tx.migrateNet).netAmountSat h = h.netAmountSat := rfl
+
+theorem CommitmentTx.migrateNet_usesRecordNet (tx : CommitmentTx) :
+    (tx.migrateNet).UsesRecordNet :=
+  fun _ => rfl
+
+theorem CommitmentTx.migrateNet_trimmedSat (tx : CommitmentTx) :
+    (tx.migrateNet).trimmedSat = tx.recordTrimmedValue := rfl
+
+theorem CommitmentTx.migrateNet_htlcs (tx : CommitmentTx) :
+    (tx.migrateNet).commitment.htlcs =
+      tx.commitment.htlcs.filter
+        (fun h => h.keepAtDust tx.dustLimitSat) := rfl
+
+theorem CommitmentTx.migrateNet_commitment_trimmedTotalSat (tx : CommitmentTx) :
+    (tx.migrateNet).commitment.trimmedTotalSat = tx.recordTrimmedValue := rfl
 
 theorem CommitmentTx.outputsNet_perm (tx : CommitmentTx) :
     tx.outputsNet.Perm tx.outputsUnsortedNet :=

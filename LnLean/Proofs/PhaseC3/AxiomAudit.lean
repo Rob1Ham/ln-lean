@@ -58,6 +58,13 @@ import LnLean.Proofs.Channel.StateTransitionTargets
 import LnLean.Proofs.Bitcoin.FundingLinkTargets
 import LnLean.Proofs.Routing.GossipKeyConsistencyTargets
 import LnLean.Proofs.Security.SecurityGameTargets
+import LnLean.Bitcoin.Sighash
+import LnLean.Proofs.Bitcoin.SighashBridgeTargets
+import LnLean.Proofs.Bitcoin.InterpreterRevocationTargets
+import LnLean.Proofs.Channel.CommitmentTypesTargets
+import LnLean.Proofs.Channel.SighashViewBindingTargets
+import LnLean.Proofs.Channel.CommitmentDanceTargets
+import LnLean.Proofs.Routing.GossipCanonicalTargets
 
 set_option autoImplicit false
 
@@ -225,7 +232,7 @@ set_option autoImplicit false
 #print axioms LnLean.Proofs.Channel.SighashTargets.funding_and_commitment_signing_contract
 #print axioms LnLean.Proofs.Channel.SighashTargets.producedFrom_not_sighashProduces
 #print axioms LnLean.Proofs.Conformance.Diff.Transport.transportFrame_size
-#print axioms LnLean.Proofs.Conformance.Diff.unframeTransport_transportFrame
+#print axioms LnLean.Wire.Transport.unframeTransport_transportFrame
 #print axioms LnLean.Proofs.Conformance.Diff.payload_decoder_rejects_transport_frame
 #print axioms LnLean.Proofs.Conformance.Diff.diff_bigsize_decode_65535
 #print axioms LnLean.Proofs.Channel.StateTransitionTargets.updateStep_preserves_ledger
@@ -244,6 +251,39 @@ set_option autoImplicit false
 #print axioms LnLean.Proofs.Security.Limits.algebraic_c3_no_binding_failure
 #print axioms LnLean.Proofs.Security.Limits.algebraic_c8_no_tag_collision
 #print axioms LnLean.Proofs.Security.Limits.secure_game_unbounded_advantage
+
+/-! ## 19. Wave 6 sighash, revocation, commitment, and canonical gossip targets -/
+
+#print axioms LnLean.Bitcoin.Sighash.sighashWitnessV0_eq_vendorImpl
+#print axioms LnLean.Bitcoin.Sighash.sighashWitnessV0_eq_interface
+#print axioms LnLean.Bitcoin.Sighash.sighashWitnessV0_size
+#print axioms LnLean.Proofs.Bitcoin.SighashBridgeTargets.checker_consumes_model_digest
+#print axioms LnLean.Proofs.Bitcoin.SighashBridgeTargets.funding_sighash_interpreters_agree
+#print axioms LnLean.Proofs.Bitcoin.SighashBridgeTargets.toLocal_sighash_interpreters_agree
+#print axioms LnLean.Proofs.Bitcoin.SighashBridgeTargets.digest_commits_scriptCode
+#print axioms LnLean.Proofs.Bitcoin.InterpreterRevocationTargets.toLocal_revocation_interpreters_agree
+#print axioms LnLean.Proofs.Bitcoin.InterpreterRevocationTargets.toLocal_revocation_wrong_key_rejected
+#print axioms LnLean.Proofs.Bitcoin.InterpreterRevocationTargets.toLocal_revocation_delayed_key_sig_rejected
+#print axioms LnLean.Proofs.Bitcoin.InterpreterRevocationTargets.toLocal_delayed_csv_failure_agree
+#print axioms LnLean.Proofs.Channel.CommitmentTypes.Commitment.migrateNet_conservation
+#print axioms LnLean.Proofs.Channel.CommitmentTypes.CommitmentTx.migrateNet_outputsNet_perm_commitmentOutputs
+#print axioms LnLean.Proofs.Channel.CommitmentTypes.CommitmentTx.migrateNet_canonicalOutputs_eq_commitmentOutputs
+#print axioms LnLean.Proofs.Channel.CommitmentTypes.Commitment.effectiveFee_eq_feeSat_add_trimmedTotalSat
+#print axioms LnLean.Proofs.Channel.SighashTargets.CommitmentWire.txBytes_parse
+#print axioms LnLean.Proofs.Channel.SighashTargets.exactSighashDigest_size
+#print axioms LnLean.Proofs.Channel.SighashTargets.commitmentDigest_eq_of_shared
+#print axioms LnLean.Proofs.Channel.SighashTargets.vectorCommitmentTx_size
+#print axioms LnLean.Proofs.Channel.SighashTargets.Bip143Preimage.preimageBytes_size
+#print axioms LnLean.Proofs.Channel.SighashViewBindingTargets.commitmentSignature_binds_view
+#print axioms LnLean.Proofs.Channel.SighashViewBindingTargets.commitmentSignature_binds_viewOfState
+#print axioms LnLean.Proofs.Channel.SighashViewBindingTargets.htlcSignature_binds_htlcView
+#print axioms LnLean.Proofs.Channel.SighashViewBindingTargets.digest_binding_not_view_binding
+#print axioms LnLean.Proofs.Channel.CommitmentDanceTargets.danceReachable_revoked_never_current
+#print axioms LnLean.Proofs.Channel.CommitmentDanceTargets.danceReachable_preserves_ledger
+#print axioms LnLean.Proofs.Channel.CommitmentDanceTargets.dance_round_closes
+#print axioms LnLean.Proofs.Routing.GossipCanonicalTargets.reachableCanonical_nodeKeyConsistent
+#print axioms LnLean.Proofs.Routing.GossipCanonicalTargets.reachableCanonical_directional_key_endpoint
+#print axioms LnLean.Proofs.Routing.GossipCanonicalTargets.reachableCanonical_attribution_unique
 
 /-! ## 15. Registry
 
@@ -367,7 +407,7 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Proofs.Channel.SighashTargets.funding_and_commitment_signing_contract,
     `LnLean.Proofs.Channel.SighashTargets.producedFrom_not_sighashProduces,
     `LnLean.Proofs.Conformance.Diff.Transport.transportFrame_size,
-    `LnLean.Proofs.Conformance.Diff.unframeTransport_transportFrame,
+    `LnLean.Wire.Transport.unframeTransport_transportFrame,
     `LnLean.Proofs.Conformance.Diff.payload_decoder_rejects_transport_frame,
     `LnLean.Proofs.Conformance.Diff.diff_bigsize_decode_65535,
     `LnLean.Proofs.Channel.StateTransitionTargets.updateStep_preserves_ledger,
@@ -386,7 +426,37 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Proofs.Security.Limits.algebraic_c3_no_binding_failure,
     `LnLean.Proofs.Security.Limits.algebraic_c8_no_tag_collision,
     `LnLean.Proofs.Security.Limits.secure_game_unbounded_advantage,
+    `LnLean.Bitcoin.Sighash.sighashWitnessV0_eq_vendorImpl,
+    `LnLean.Bitcoin.Sighash.sighashWitnessV0_eq_interface,
+    `LnLean.Bitcoin.Sighash.sighashWitnessV0_size,
+    `LnLean.Proofs.Bitcoin.SighashBridgeTargets.checker_consumes_model_digest,
+    `LnLean.Proofs.Bitcoin.SighashBridgeTargets.funding_sighash_interpreters_agree,
+    `LnLean.Proofs.Bitcoin.SighashBridgeTargets.toLocal_sighash_interpreters_agree,
+    `LnLean.Proofs.Bitcoin.SighashBridgeTargets.digest_commits_scriptCode,
+    `LnLean.Proofs.Bitcoin.InterpreterRevocationTargets.toLocal_revocation_interpreters_agree,
+    `LnLean.Proofs.Bitcoin.InterpreterRevocationTargets.toLocal_revocation_wrong_key_rejected,
+    `LnLean.Proofs.Bitcoin.InterpreterRevocationTargets.toLocal_revocation_delayed_key_sig_rejected,
+    `LnLean.Proofs.Bitcoin.InterpreterRevocationTargets.toLocal_delayed_csv_failure_agree,
+    `LnLean.Proofs.Channel.CommitmentTypes.Commitment.migrateNet_conservation,
+    `LnLean.Proofs.Channel.CommitmentTypes.CommitmentTx.migrateNet_outputsNet_perm_commitmentOutputs,
+    `LnLean.Proofs.Channel.CommitmentTypes.CommitmentTx.migrateNet_canonicalOutputs_eq_commitmentOutputs,
+    `LnLean.Proofs.Channel.CommitmentTypes.Commitment.effectiveFee_eq_feeSat_add_trimmedTotalSat,
+    `LnLean.Proofs.Channel.SighashTargets.CommitmentWire.txBytes_parse,
+    `LnLean.Proofs.Channel.SighashTargets.exactSighashDigest_size,
+    `LnLean.Proofs.Channel.SighashTargets.commitmentDigest_eq_of_shared,
+    `LnLean.Proofs.Channel.SighashTargets.vectorCommitmentTx_size,
+    `LnLean.Proofs.Channel.SighashTargets.Bip143Preimage.preimageBytes_size,
+    `LnLean.Proofs.Channel.SighashViewBindingTargets.commitmentSignature_binds_view,
+    `LnLean.Proofs.Channel.SighashViewBindingTargets.commitmentSignature_binds_viewOfState,
+    `LnLean.Proofs.Channel.SighashViewBindingTargets.htlcSignature_binds_htlcView,
+    `LnLean.Proofs.Channel.SighashViewBindingTargets.digest_binding_not_view_binding,
+    `LnLean.Proofs.Channel.CommitmentDanceTargets.danceReachable_revoked_never_current,
+    `LnLean.Proofs.Channel.CommitmentDanceTargets.danceReachable_preserves_ledger,
+    `LnLean.Proofs.Channel.CommitmentDanceTargets.dance_round_closes,
+    `LnLean.Proofs.Routing.GossipCanonicalTargets.reachableCanonical_nodeKeyConsistent,
+    `LnLean.Proofs.Routing.GossipCanonicalTargets.reachableCanonical_directional_key_endpoint,
+    `LnLean.Proofs.Routing.GossipCanonicalTargets.reachableCanonical_attribution_unique,
     ]
 
-set_option maxRecDepth 4000 in
-theorem auditedTheorems_length : auditedTheorems.length = 133 := rfl
+set_option maxRecDepth 6000 in
+theorem auditedTheorems_length : auditedTheorems.length = 163 := rfl
