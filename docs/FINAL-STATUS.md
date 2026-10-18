@@ -2,8 +2,8 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `2052425` (`[PROOF] integrate wave 8: 43 green modules and
-319-byte open_channel`). This is the local Wave H integration commit; push to
+**Gate HEAD:** `3fdf61b` (`[PROOF] restore wave 8 H08 scriptCode and HTLC
+preimage lane`). This is the local Wave H integration commit; push to
 `origin/repair/integrated` is pending valid credentials. Status commits may
 advance the branch tip. Proof-wave 7 code was `b48d041`; wave 8 launched from
 `50d78ed`.
@@ -41,7 +41,7 @@ added seven files (one model and six proof modules) and strengthened four rows
 to 73 resolved targets. Proof-wave 7 added seven more files (one crypto model
 and six proof modules), strengthened six rows to 79 resolved targets, and
 closed the consumer, raw-gossip, live-conformance, and fold questions, again
-without changing the 48-row count. Wave 8 adds **43** green Lean modules across
+without changing the 48-row count. Wave 8 adds **45** green Lean modules across
 the L1, PR, CH, RT, NET, SEC, and artifact lanes; it corrects the BOLT 2
 `open_channel` mandatory payload to **319 bytes**, keeps the 48-row catalog at
 79 targets, and extends the axiom audit to **204** headline theorems.
@@ -100,21 +100,21 @@ are retained.
 
 | Check | Command | Result |
 |---|---|---|
-| Full build | `LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (286 jobs).` |
+| Full build | `LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (288 jobs).` |
 | Actual `sorry` | `grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` | **0 matches** (grep RC 1: no lines) |
-| Policy checker | `./scripts/check.sh` | **RC 0**, `files=247 obligations=82 sorry_in_proofs=0`, `check: OK` |
-| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 247 Lean files, 245 root imports |
+| Policy checker | `./scripts/check.sh` | **RC 0**, `files=249 obligations=82 sorry_in_proofs=0`, `check: OK` |
+| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 249 Lean files, 247 root imports |
 | Vendor integrity | `./scripts/verify-vendor.sh` | **RC 0**, `OK (119 files)` |
 | Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=308 bad=0 unanchored_rows=2` |
 | Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 48 proved, 0 statement-only, 79 targets, 0 unresolved, 0 proved failures, 0 candidates |
 | Catalog, planned-aware | `python3 scripts/check-catalog.py --allow-planned` | **RC 0**, `rows=48 proved=48 statementOnly=0 planned=0 proved_failures=0` |
-| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 204 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 206 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
 | Generated index | `python3 scripts/collect-obligations.py` | not rerun in wave 8; regenerate deliberately with the integration commit |
 | Conformance | `python3 scripts/check-conformance.py` | **RC 0**, 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 146 Lean theorem references, 9 mutation controls, live 26 BigSize + 3 TLV + 4 wire |
 
-Tree size: **247 Lean files** under `LnLean/`, **245** root imports in
+Tree size: **249 Lean files** under `LnLean/`, **247** root imports in
 `LnLean.lean`; `LnLean.Proofs.All` and the `LnLean.Proofs.PhaseC2` aggregator
-are not root-imported. The full build covers 286 Lake jobs.
+are not root-imported. The full build covers 288 Lake jobs.
 
 The `sorry` grep result is exact: **there are no lines consisting only of
 `sorry` (modulo whitespace) in any `LnLean/**/*.lean` file.** Prose mentions of
@@ -279,9 +279,10 @@ is [`docs/OPEN-ISSUES.md`](OPEN-ISSUES.md). The P0 blockers are:
 * `L1-01`/`L1-02`/`L1-07` — the positive funding, delayed, and revocation
   branches now execute through the vendored interpreter with a constructed BIP
   143 digest, an exact decoded sequence context, and the
-  `TxValidation.Full`/`txCheckerFor` transfer at the per-input checker. A
-  concrete EC positive witness, the `verifyScriptFull`/`txVerdictFull`
-  composition guard (H04 dropped), block-flag edges, and unconditional
+  `TxValidation.Full`/`txCheckerFor` transfer at the per-input checker. H04
+  reduces `scriptLaneTx`/`txVerdictFull` for the concrete one-input P2WSH
+  transaction at standard flags; a concrete EC positive witness, the general
+  block-flag/full-transaction composition, and unconditional
   `ConsensusSpendBridge` remain open.
 
 Wave 7 closed `CH-01` (consumer path), `RT-01` (canonical wrapper and raw
@@ -290,29 +291,32 @@ non-refinement), `CONF-02` (live finite comparison), and `MODEL-02`/`MODEL-03`
 `PR-06`, `RT-02`, and `CONF-03` remain closed on their recorded conditional
 boundaries.
 
-Wave 8 **close** `L1-04` (the 8 WU anchor gap is the Appendix A
+Wave 8 **closes** `L1-04` (the 8 WU anchor gap is the Appendix A
 `count_tx_out` field; H33 proves the literal 1116 + 172*k witness-inclusive
 weight and the 1124 + 172*k fee basis) and `L1-05` (C1 is proved insufficient
 for 71-byte script injectivity, and a domain-separated script commitment is
 proved binding under the retained finite pair admission). It narrows `L1-02`
-and `L1-07` to the full `verifyScriptFull` composition guard and block-flag
-edges; H01 proves the unconditional whole-record equality
-`txCheckerFor tx nIn (some amount) = realCheckerOf tx nIn amount`, H06 fixes the
-exact `csv < 32768` domain, and H32 instantiates the revocation branch with
-`verifyImpl`. H13/H14/H15/H17/H18/H19 independently fix the BOLT 2 type-32
+and `L1-07` to the general `verifyScriptFull`/block-flag boundary: H04 proves
+the concrete one-input P2WSH `scriptLaneTx`/`txVerdictFull` composition with
+positive, bad-signature, and CSV-false cases; H01 proves the unconditional
+whole-record equality `txCheckerFor tx nIn (some amount) = realCheckerOf tx nIn
+amount`, H06 fixes the exact `csv < 32768` domain, and H32 instantiates the
+revocation branch with `verifyImpl`. H13/H14/H15/H17/H18/H19 independently fix the BOLT 2 type-32
 `open_channel` mandatory payload at **319 bytes** and provide encode/decode
 round-trips; the `Messages.lean` patch remains parent-owned and unapplied.
-H33/H34/H39–H42/H43/H44/H45 add the anchor, script-commitment, epoch-gossip,
-schedule/fairness, reduction-arithmetic, and reorg results.
+H07/H08 instantiate the HTLC BIP 143 preimage and scriptCode path, with the
+four BOLT 3 witness scripts, exact preimage sizes, and vendor
+`bip143MsgL`/`signatureHashBip143Impl` equalities. H33/H34/H39–H42/H43/H44/H45
+add the anchor, script-commitment, epoch-gossip, schedule/fairness,
+reduction-arithmetic, and reorg results.
 
-Still open: the `Messages.openChannel` wire patch (`L1-03`), the `HtlcWire`
-scriptCode synthesis (H08 dropped; `PR-05`), `AcceptChannel` registration/
-proof-of-possession game (`PR-01`), the commitment-signed site/wire-only
-coverage boundary (`PR-02`), computational C1/C3/C8 reductions (`CR-01`,
-`SEC-01`), unconditional network liveness (`NET-01`), the concrete EC positive
-witness and `verifyScriptFull` composition (`L1-01`, `L1-02`, `L1-07`), and
-release packaging (`OPS-01`–`OPS-04`, including the absolute vendor symlink
-`OPS-04`).
+Still open: the `Messages.openChannel` wire patch (`L1-03`), `AcceptChannel`
+registration/proof-of-possession game (`PR-01`), the commitment-signed
+site/wire-only coverage boundary (`PR-02`), computational C1/C3/C8 reductions
+(`CR-01`, `SEC-01`), unconditional network liveness (`NET-01`), the concrete EC
+positive witness and general block-flag/full-transaction composition (`L1-01`,
+`L1-02`, `L1-07`), and release packaging (`OPS-01`–`OPS-04`, including the
+absolute vendor symlink `OPS-04`).
 
 ## Reproduce
 

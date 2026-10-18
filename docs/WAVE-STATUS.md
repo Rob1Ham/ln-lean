@@ -100,18 +100,19 @@ audit to 194 headline theorems, and closed `CH-01`, `RT-01`, `CONF-02`,
 
 ## Wave 8 lanes
 
-Wave 8 launched 48 lanes from `50d78ed`. **43 Lean modules** and the three
-artifact lanes H46–H48 are integrated; **H04** produced no module in the
-worktree and **H08** did not build, so both are recorded as dropped rather than
-carried as false green claims. The full gate is **286 Lake jobs, RC 0**, with
-**247 Lean files**, **245 root imports**, **48/48 catalog rows proved**, **79
-targets**, **204 audited headline theorems**, and zero actual `sorry`.
+Wave 8 launched 48 lanes from `50d78ed`. **45 Lean modules** and the three
+artifact lanes H46–H48 are integrated. H04 and H08 were initially absent/red
+during integration; both were re-written by their lanes and parent-verified
+green, so the final tree carries them. The full gate is **288 Lake jobs, RC 0**,
+with **249 Lean files**, **247 root imports**, **48/48 catalog rows proved**,
+**79 targets**, **206 audited headline theorems**, and zero actual `sorry`.
 
 | Lane group | Issues | Result |
 |---|---|---|
-| `H01`, `H02`, `H03`, `H05`, `H06`, `H31`, `H32` | `L1-02`, `L1-07` | Unconditional `txCheckerFor (some amount) = realCheckerOf` equality; delayed/revocation branches at `txCheckerFor`; exact `csv < 32768` boundary and `MINIMALDATA` policy split; full-script composition guard remains open |
+| `H01`, `H02`, `H03`, `H05`, `H06`, `H31`, `H32` | `L1-02`, `L1-07` | Unconditional `txCheckerFor (some amount) = realCheckerOf` equality; delayed/revocation branches at `txCheckerFor`; exact `csv < 32768` boundary and `MINIMALDATA` policy split; the general full-script/block-flag composition remains open |
+| `H04` | `L1-02`, `L1-07` | Concrete one-input P2WSH `scriptLaneTx`/`txVerdictFull` reduction to the vendored witness verifier at standard flags, with positive, bad-signature, and CSV-false cases and fuel inertness; unconditional consensus/general composition remains open |
 | `H29`, `H30`, `H31` | `L1-01`, `L1-07` | Concrete `verifyImpl` interface and funding 2-of-2 checker instantiation; positive EC witness remains open |
-| `H07`, `H09`, `H11`, `H12`, `H37` | `PR-05`, `PR-02` | HTLC BIP 143 preimage/digest equality, wire serialization domain, conditional wire-view binding, and exact 65533/65535 framing boundary; scriptCode synthesis (H08) dropped |
+| `H07`, `H08`, `H09`, `H11`, `H12`, `H37` | `PR-05`, `PR-02` | HTLC BIP 143 preimage/digest equality, the four BOLT 3 witness scripts and exact scriptCode synthesis (H08), wire serialization domain, conditional wire-view binding, and exact 65533/65535 framing boundary |
 | `H13`, `H14`, `H15`, `H16`, `H17`, `H18`, `H19` | `L1-03`, `PR-01` | BOLT 2 type-32 `open_channel` mandatory payload fixed at **319 bytes** (not 313), encode/decode round-trip, field projections; `accept_channel` 270-byte payload; `Messages.lean` patch remains unapplied |
 | `H20`, `H21`, `H22` | `PR-01` | Accept payload carried through the handshake extension; registration + PoP contract and attribution under `KeyBinding`; PoP game remains open |
 | `H23`, `H24`, `H25`, `H26`, `H27`, `H28` | `CH-01`, `CH-02`, `PR-02` | Commitment/tx view adapters, transaction view, consumer boundary, downstream accounting, and the construction-site coverage-loss counterexample |
@@ -140,7 +141,7 @@ H46’s strict vendor check still fails on the absolute symlink
 | Proof-wave 5 (8 lanes) | Vendored L1 bridge, gross/net, sighash, differential conformance, update step, funding link, gossip consistency, crypto limits | **8 modules; 67 targets; 204-job gate** |
 | Proof-wave 6 (8 lanes) | BIP 143/revocation, five-field commitment, bit-exact wire, conditional view binding, dance, canonical gossip, transport promotion | **7 files; 73 targets; 218-job gate** |
 | Proof-wave 7 (8 lanes) | Sequence context, preimage equality, consumer migration, guarded fold, raw gossip, live conformance, open_channel auth, key model | **7 files; 79 targets; 233-job gate** |
-| Proof-wave 8 (48 lanes) | Per-input L1 checker, HTLC preimage/wire, 319-byte `open_channel`, accept/PoP, commitment sites, anchor/script-commitment, epoch gossip, liveness, security arithmetic, reorg, release artifacts | **43 files; 79 targets; 204 audited; 286-job gate; H04/H08 dropped** |
+| Proof-wave 8 (48 lanes) | Per-input L1 checker, HTLC preimage/wire/scriptCode, 319-byte `open_channel`, accept/PoP, commitment sites, anchor/script-commitment, epoch gossip, liveness, security arithmetic, reorg, release artifacts | **45 files; 79 targets; 206 audited; 288-job gate** |
 
 ## Reproduce
 
