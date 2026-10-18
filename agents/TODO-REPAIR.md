@@ -271,7 +271,7 @@ Five disjoint lanes extended the model and promoted eight more exact targets.
 - [x] Parent — merge `repair/pubbump`, pin `scripts/fetch-vendor.sh` to
   `4f5c4f8`, make CI fall back to `--from-git` instead of skipping the build,
   and retire the merged branch.
-- [x] `OPS-01` closed at source (first hosted CI run pending); `OPS-04` closed.
+- [x] `OPS-01` closed with hosted CI run `39175507618` executing the pinned-vendor full build; `OPS-04` closed.
 
 ### Proof-wave 8 — residual transfer, wire, registration, EC, and store epochs
 

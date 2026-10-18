@@ -273,8 +273,8 @@ rows from 73 to 79 targets, and kept the 48-row catalog gate:
 The catalog is closed, but the repository is not release-ready. The living list
 is [`docs/OPEN-ISSUES.md`](OPEN-ISSUES.md). The P0 blockers are:
 
-* `OPS-01` — the public `--from-git` vendor path is tested locally; the first
-  hosted CI run remains to be observed;
+* `OPS-01` — the public `--from-git` vendor path is tested locally and hosted
+  CI run `39175507618` executed the pinned-vendor full build;
 * `OPS-02` — no `LICENSE`; a neutral decision matrix is ready;
 * `OPS-03` — no release tag and `main` is behind; a release checklist is ready;
 * `L1-01`/`L1-02`/`L1-07` — the positive funding, delayed, and revocation

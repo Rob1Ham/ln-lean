@@ -43,7 +43,7 @@ Evidence labels used below:
 | Vendor integrity | `OK (149 files)` | `./scripts/verify-vendor.sh` — **Verified** |
 | Anchors | 306 anchors, 0 bad, 2 unanchored rows | `python3 scripts/verify-anchors.py` — **Verified** |
 | Full build | **Verified at the wave-8 code gate: 250 jobs, RC 0.** | See build gate below |
-| Public CI | Build provisioning now falls back to exact public commit `4f5c4f8`; first run on this path is pending. Historical run #3 at `f2123ef` skipped `lake build`/`verify-vendor.sh`. | `.github/workflows/ci.yml`; GitHub Actions API run `39138200828` (historical) |
+| Public CI | Build provisioning now falls back to exact public commit `4f5c4f8`; hosted run `39175507618` completed the source gates and the pinned-vendor `lake build`. | `.github/workflows/ci.yml`; GitHub Actions run `39175507618` |
 
 The working tree at the snapshot was clean except for the pre-existing untracked
 `agents/status/REPAIR.status`. Other Wave-4 lanes may add unrelated changes in
