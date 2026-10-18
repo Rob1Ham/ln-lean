@@ -2,7 +2,7 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**HEAD:** `68c236da89b6063dd884799453f076bdc006de2f` (`[INTEGRATION] promote
+**Gate HEAD:** `68c236da89b6063dd884799453f076bdc006de2f` (`[INTEGRATION] promote
 catalog proofs, add planned-aware audit, refresh gate docs`)
 **Catalog state:** committed at this HEAD: 18 `proved` / 30 `statementOnly`.
 **Toolchain:** `leanprover/lean4:v4.35.0`
@@ -34,8 +34,9 @@ elaboration blowup (`CCR01`).
 
 ## Verified state
 
-Commands were run by G01 at the committed HEAD above. The only remaining
-action is the non-force push of this branch.
+Commands were run by G01 at the committed HEAD above. The branch was then
+pushed non-force to `origin/repair/integrated`; no existing branch was
+rewritten.
 
 | Check | Command | Result |
 |---|---|---|

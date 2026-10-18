@@ -2,11 +2,12 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**HEAD:** `68c236da89b6063dd884799453f076bdc006de2f`
+**Gate HEAD:** `68c236da89b6063dd884799453f076bdc006de2f`
 **Toolchain:** `leanprover/lean4:v4.35.0`
 **Author:** D02 (integration documentation lane), finalized by the integration lane
 **Status:** repair lanes complete; **final gate PASS at this HEAD**
-**Commit/push:** integrated commit `68c236d`; push is the remaining action.
+**Commit/push:** integrated commit `68c236d`; pushed non-force to
+`origin/repair/integrated`.
 
 ## 1. Starting point
 
@@ -287,4 +288,5 @@ as statement-only.
 It is still a conditional scaffold. Zero `sorry` is not zero assumptions: C1
 and C8 are explicit finite/algebraic boundaries, L1 spendability depends on the
 Phase-C2 bridges, and computational cryptographic security is not modelled. The
-final gate is green at `68c236d`; the non-force push is the remaining action.
+final gate is green at `68c236d`, and the branch is on
+`origin/repair/integrated`.

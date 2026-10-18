@@ -83,8 +83,9 @@ delete the negative result.
   statementOnly, 23 planned, 0 proved failures; `--allow-planned` RC 0.
 - [x] Update `docs/FINAL-STATUS.md`, `docs/WAVE-STATUS.md`, and
   `agents/reports/FINAL-REPAIR.md` at final HEAD `68c236d`.
-- [ ] Non-force push of `repair/integrated` to the remote; never rewrite
-  `main` or the other worker's branches.
+- [x] Non-force push of `repair/integrated` to `origin`; new remote branch
+  created, no rewrite of `main` or another worker's branch. The isolated
+  `repair/pubbump` compatibility branch was also pushed separately.
 
 ## Commands
 
