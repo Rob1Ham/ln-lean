@@ -1,6 +1,6 @@
 # Wave 7 — sequence context, preimage equality, consumer migration, and fold refinement
 
-**Status:** complete; all eight lanes integrated and gated.
+**Status:** complete; all eight lanes integrated and gated at `b48d041`.
 
 **Launch commit:** `3180581` (`[STATUS] define and launch wave 7 residual lanes`)
 **Branch:** `repair/integrated`

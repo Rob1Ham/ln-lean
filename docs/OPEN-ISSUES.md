@@ -3,9 +3,9 @@
 **Status:** living roadmap after proof-wave 7; wave 7 is integrated and wave 8
 candidates are listed below.
 **Branch:** `repair/integrated`.
-**Base commit:** `3180581` (wave 7 launch); proof-wave 7 code is recorded in
-the current gate section; proof-wave 6 code is `0a3a5fb` (proof-wave 5 code is
-`6389baa`; proof-wave 4 code at `26ced90`).
+**Base commit:** `3180581` (wave 7 launch); proof-wave 7 code is `b48d041`;
+proof-wave 6 code is `0a3a5fb` (proof-wave 5 code is `6389baa`; proof-wave 4
+code at `26ced90`).
 **Catalog gate:** 48/48 rows `proved`, 0 `statement-only`, 0 unresolved,
 79 targets.
 **Full build:** 233 jobs, RC 0.

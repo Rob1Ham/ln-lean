@@ -2,7 +2,8 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** proof-wave 7 integration is recorded in the final status commit.
+**Gate HEAD:** `b48d041` (`[PROOF] integrate proof-wave 7 sequence, preimage,
+consumer, fold, and key lanes`). Status commits may advance the branch tip.
 Proof-wave 6 code was `0a3a5fb`; wave 7 launched from `3180581`.
 **Catalog state:** **48 `proved` / 0 `statementOnly` / 0 unresolved / 79
 targets**.
