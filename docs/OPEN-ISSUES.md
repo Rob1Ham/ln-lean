@@ -2,6 +2,7 @@
 
 **Status:** living roadmap after proof-wave 3.
 **Branch:** `repair/integrated`.
+**Base commit:** `0c99c92` (proof-wave 3 integration).
 **Catalog gate:** 48/48 rows `proved`, 0 `statement-only`, 0 unresolved.
 **Full build:** 182 jobs, RC 0.
 **Rule:** this file is updated by every wave. Closed issues keep their id and

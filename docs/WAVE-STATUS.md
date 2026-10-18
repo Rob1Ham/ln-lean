@@ -2,8 +2,8 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** this proof-wave 3 working tree; the status commit records the
-exact hash.
+**Gate HEAD:** `0c99c92` (`[PROOF] integrate proof-wave 3 and close the
+48-row catalog`). Status commits may advance the branch tip.
 **Catalog:** 48 proved / 0 statementOnly / 0 unresolved.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 

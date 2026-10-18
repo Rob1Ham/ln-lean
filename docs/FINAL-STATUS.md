@@ -2,8 +2,8 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** this proof-wave 3 working tree; the following status commit
-records the exact hash.
+**Gate HEAD:** `0c99c92` (`[PROOF] integrate proof-wave 3 and close the
+48-row catalog`). Status commits may advance the branch tip.
 **Catalog state:** **48 `proved` / 0 `statementOnly` / 0 unresolved**.
 **Remote refs:** push is non-force to `origin/repair/integrated`. `origin/main`
 is not touched by this work. `origin/repair/pubbump` remains a separate
@@ -179,6 +179,6 @@ integration commit.
   part of their meaning.
 - No differential conformance against `rust-lightning` or BOLT test vectors is
   claimed.
-- The 29 proof-wave promotions (eleven in wave 1, eight in wave 2, eleven in
+- The 30 proof-wave promotions (eleven in wave 1, eight in wave 2, eleven in
   wave 3) are exact model-level targets; describing them as full protocol
   verification would be false.
