@@ -1,7 +1,6 @@
 # Wave 5 — bridge and completeness attack plan (launched)
 
-**Status:** complete — all eight lanes integrated in the proof-wave 5
-checkpoint.
+**Status:** complete — all eight lanes integrated at `6389baa`.
 
 **Launch commit:** `11a460c` (`[STATUS] note wave 5 launch from 79a92ce`)
 **Branch:** `repair/integrated`
