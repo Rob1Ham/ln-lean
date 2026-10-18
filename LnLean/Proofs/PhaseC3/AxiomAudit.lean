@@ -72,6 +72,7 @@ import LnLean.Proofs.Routing.GossipRawRefinementTargets
 import LnLean.Proofs.Bitcoin.FundingAuthTargets
 import LnLean.Proofs.Crypto.KeyModelTargets
 import LnLean.Proofs.WaveH.H01
+import LnLean.Proofs.WaveH.H04
 import LnLean.Proofs.WaveH.H07
 import LnLean.Proofs.WaveH.H09
 import LnLean.Proofs.WaveH.H13
@@ -338,6 +339,7 @@ set_option autoImplicit false
 /-! ## 21. Wave 8 headline targets -/
 
 #print axioms LnLean.Proofs.WaveH.H01.txCheckerFor_some_eq_realCheckerOf
+#print axioms LnLean.Proofs.WaveH.H04.scriptLaneTx_oneInput_ok_iff
 #print axioms LnLean.Proofs.WaveH.H07.htlcBip143Preimage_eq_bip143MsgL
 #print axioms LnLean.Proofs.WaveH.H09.htlcBip143Preimage_digest_eq_signatureHashBip143Impl
 #print axioms LnLean.Proofs.WaveH.H13.fixedPayloadLength_eq_319
@@ -551,6 +553,7 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Proofs.Crypto.KeyModelTargets.attribution_contract_nonvacuous,
     `LnLean.Proofs.Crypto.KeyModelTargets.fundingSigningLaw_sign_injective,
     `LnLean.Proofs.WaveH.H01.txCheckerFor_some_eq_realCheckerOf,
+    `LnLean.Proofs.WaveH.H04.scriptLaneTx_oneInput_ok_iff,
     `LnLean.Proofs.WaveH.H07.htlcBip143Preimage_eq_bip143MsgL,
     `LnLean.Proofs.WaveH.H09.htlcBip143Preimage_digest_eq_signatureHashBip143Impl,
     `LnLean.Proofs.WaveH.H13.fixedPayloadLength_eq_319,
@@ -563,4 +566,4 @@ def auditedTheorems : List Lean.Name :=
     ]
 
 set_option maxRecDepth 6000 in
-theorem auditedTheorems_length : auditedTheorems.length = 204 := rfl
+theorem auditedTheorems_length : auditedTheorems.length = 205 := rfl
