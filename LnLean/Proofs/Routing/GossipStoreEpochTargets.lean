@@ -35,9 +35,9 @@ This module supplies an explicit epoch layer:
   epoch store is the canonical observation of the initial raw store, every
   message is canonically admitted at its epoch, and the raw global clock admits
   every update at the actual raw state.  Both remaining hypotheses are shown
-  necessary by concrete sequences in §7 (rejected announcement versus clock
-  boundary), and the wave-7 one-step boundary/impossibility results are
-  re-exported unchanged.
+  necessary by concrete sequences in §7 and §8 (rejected announcement versus
+  clock boundary), and the wave-7 one-step boundary/impossibility results are
+  re-exported unchanged in §6.
 
 What is **not** claimed:
 
@@ -914,5 +914,745 @@ theorem epochFold_gossip_eq_canonicalStoreView_rawFold
       change (epochFold verify (epochStep verify e m) ms).store.gossip =
         canonicalStoreView (rawFold (applyGossip s m) ms)
       exact hfold
+
+/-! ## 6. Preserved wave-7 results -/
+
+/-- Wave-7 boundary, re-exported under the wave-8 namespace.  Canonical
+per-slot admission is strictly weaker than the raw global clock. -/
+theorem canonical_admission_strictly_weaker_than_raw_clock :
+    ∃ (verify : SigVerifier) (cs : CanonicalStore) (u : ChannelUpdate),
+      ReachableCanonicalStore verify cs ∧
+        CanonicalMessageAdmitted verify cs (.channelUpdate u) ∧
+          ¬ RawClockAdmits cs.gossip (.channelUpdate u) ∧
+            (applyGossipCanonicalStore verify cs (.channelUpdate u)).gossip.updates =
+              u :: cs.gossip.updates ∧
+              applyGossip cs.gossip (.channelUpdate u) = cs.gossip ∧
+                u ∉ cs.gossip.updates :=
+  GossipRawRefinementTargets.canonical_admission_strictly_weaker_than_raw_clock
+
+/-- Wave-7 impossibility, re-exported under the wave-8 namespace: no raw
+append extension of `channel_announcement` can preserve canonicality. -/
+theorem no_canonical_preserving_raw_announcement_extension :
+    ¬ ∃ F : GossipState → GossipMessage → GossipState,
+      (∀ (s : GossipState) (a : ChannelAnnellation),
+        F s (.channelAnnouncement a) = applyGossip s (.channelAnnouncement a)) ∧
+      (∀ s : GossipState, CanonicalAnnouncements s.announcements →
+        ∀ m : GossipMessage,
+          CanonicalAnnouncements (F s m).announcements) :=
+  GossipRawRefinementTargets.no_canonical_preserving_raw_announcement_extension
+
+/-- Wave-7 raw conflict counterexample, preserved unchanged. -/
+theorem raw_conflicting_announcement_counterexample_preserved :
+    ∃ (s : GossipState) (a : ChannelAnnellation),
+      ¬ CanonicalAnnouncements
+        (applyGossip s (.channelAnnouncement a)).announcements :=
+  GossipRawRefinementTargets.raw_conflicting_announcement_counterexample_preserved
+
+/-- Wave-7 ambiguity counterexample without a canonical selector, preserved
+unchanged. -/
+theorem ambiguous_without_canonical_preserved :
+    ∃ (s : GossipState) (u v : ChannelUpdate),
+      ¬ CanonicalAnnouncements s.announcements ∧
+        u.shortChannelId = v.shortChannelId ∧ u.direction = v.direction ∧
+          s.updateKeyAnnouncedDirectional u ∧
+            s.updateKeyAnnouncedDirectional v ∧ u.signingKey ≠ v.signingKey :=
+  GossipRawRefinementTargets.ambiguous_without_canonical_preserved
+
+/-- Wave-7 canonical rejection of the conflicting re-announcement, preserved
+unchanged. -/
+theorem canonical_conflicting_announcement_rejection_preserved :
+    ∃ (verify : SigVerifier) (cs : CanonicalNetwork)
+      (a : ChannelAnnellation),
+      ReachableCanonical verify cs ∧
+        ¬ cs.gossip.CompatibleWithStore a ∧
+          admitGossipCanonical verify cs (.channelAnnouncement a) = cs :=
+  GossipRawRefinementTargets.canonical_conflicting_announcement_rejection_preserved
+
+/-! ## 7. A concrete realistic sequence -/
+
+private def acceptAll : SigVerifier := fun _ _ _ => true
+private def kA : PubKey := ⟨ByteArray.mk #[1]⟩
+private def kB : PubKey := ⟨ByteArray.empty⟩
+private def kC : PubKey := ⟨ByteArray.mk #[1, 2]⟩
+private def nA : NodeId := ⟨0⟩
+private def nB : NodeId := ⟨1⟩
+private def nC : NodeId := ⟨2⟩
+private def nD : NodeId := ⟨3⟩
+private def sc1 : ShortChannelId := ⟨1, 2, 3⟩
+private def sc2 : ShortChannelId := ⟨4, 5, 6⟩
+private def emptySig : GossipSignature := ⟨ByteArray.empty⟩
+private def mkAnn (scid : ShortChannelId) (u v : NodeId) (ka kb : PubKey)
+    (cap : Nat) : ChannelAnnellation :=
+  { shortChannelId := scid
+    node1 := u
+    node2 := v
+    nodeKey1 := ka
+    nodeKey2 := kb
+    bitcoinKey1 := ka
+    bitcoinKey2 := kb
+    capacitySat := cap
+    digest := ByteArray.empty
+    nodeSignature1 := emptySig
+    nodeSignature2 := emptySig
+    bitcoinSignature1 := emptySig
+    bitcoinSignature2 := emptySig }
+private def mkUpd (scid : ShortChannelId) (ts : Nat) (k : PubKey) :
+    ChannelUpdate :=
+  { shortChannelId := scid
+    timestamp := ts
+    messageFlags := 0
+    channelFlags := 0
+    cltvDelta := 1
+    htlcMinimumMsat := Msat.zero
+    feeBaseMsat := Msat.zero
+    feeProportionalMillionths := 0
+    htlcMaximumMsat := Msat.MAX
+    signingKey := k
+    digest := ByteArray.empty
+    signature := emptySig }
+private theorem nA_ne_nB : nA ≠ nB := by decide
+private theorem nC_ne_nD : nC ≠ nD := by decide
+private theorem nA_ne_nC : nA ≠ nC := by decide
+private theorem nA_ne_nD : nA ≠ nD := by decide
+private theorem nB_ne_nC : nB ≠ nC := by decide
+private theorem nB_ne_nD : nB ≠ nD := by decide
+private theorem sc1_ne_sc2 : sc1 ≠ sc2 := by decide
+private def annA : ChannelAnnellation := mkAnn sc1 nA nB kA kB 1000
+private def annB : ChannelAnnellation := mkAnn sc2 nC nD kC kB 2000
+private def annA' : ChannelAnnellation := mkAnn sc1 nA nB kA kB 1500
+private def annConflict : ChannelAnnellation := mkAnn sc1 nA nB kC kB 1000
+private def u0 : ChannelUpdate := mkUpd sc1 10 kA
+private def u1 : ChannelUpdate := mkUpd sc1 20 kA
+private def v0 : ChannelUpdate := mkUpd sc2 30 kC
+private def uStale : ChannelUpdate := mkUpd sc1 15 kA
+private theorem kA_ne_kC : kA ≠ kC := by
+  intro h
+  have hs := congrArg (fun k => k.bytes.size) h
+  have h1 : kA.bytes.size = 1 := by decide
+  have h2 : kC.bytes.size = 2 := by decide
+  rw [h1, h2] at hs
+  omega
+private theorem sc2_ne_sc1 : sc2 ≠ sc1 := fun h => sc1_ne_sc2 h.symm
+private theorem u0_direction_eq_u1 : u0.direction = u1.direction := by rfl
+private theorem u0_scid_eq_u1 : u0.shortChannelId = u1.shortChannelId := rfl
+private theorem kC_ne_kA : kC ≠ kA := fun h => kA_ne_kC h.symm
+private theorem annConflict_ne_annA : annConflict ≠ annA := by
+  intro h
+  have hk := congrArg ChannelAnnellation.nodeKey1 h
+  exact kC_ne_kA (by simpa [annA, annConflict, mkAnn] using hk)
+private theorem u0_ne_v0 : u0 ≠ v0 := by
+  intro h
+  have hs := congrArg ChannelUpdate.shortChannelId h
+  exact sc1_ne_sc2 (by simpa [u0, v0, mkUpd] using hs)
+private theorem annA_scid : annA.shortChannelId = sc1 := rfl
+private theorem annB_scid : annB.shortChannelId = sc2 := rfl
+private theorem annA'_scid : annA'.shortChannelId = sc1 := rfl
+private theorem nC_ne_nA : nC ≠ nA := fun h => nA_ne_nC h.symm
+private theorem nD_ne_nA : nD ≠ nA := fun h => nA_ne_nD h.symm
+private theorem nC_ne_nB : nC ≠ nB := fun h => nB_ne_nC h.symm
+private theorem nB_ne_nA : nB ≠ nA := fun h => nA_ne_nB h.symm
+private def nodeAnn : NodeAnnouncement :=
+  { nodeId := kA
+    timestamp := 40
+    rgbColor := ByteArray.empty
+    alias := ByteArray.empty
+    addresses := []
+    digest := ByteArray.empty
+    signature := emptySig }
+private def nodeKeyOf0 : NodeId → PubKey := fun _ => kB
+private noncomputable def rE0 : StoreEpoch := StoreEpoch.empty nodeKeyOf0
+private noncomputable def rE1 : StoreEpoch :=
+  epochStep acceptAll rE0 (.channelAnnouncement annA)
+private noncomputable def rE2 : StoreEpoch :=
+  epochStep acceptAll rE1 (.channelAnnouncement annB)
+private noncomputable def rE3 : StoreEpoch :=
+  epochStep acceptAll rE2 (.channelUpdate u0)
+
+private theorem gateA : CanonicalMessageAdmitted acceptAll rE0.store
+    (.channelAnnouncement annA) := by
+  simp [CanonicalMessageAdmitted, rE0, StoreEpoch.empty,
+    ChannelAnnellation.signaturesValid, signatureValid, acceptAll, annA, mkAnn,
+    GossipState.CompatibleWithStore, UpdatesAuthorizedBy, nA_ne_nB]
+
+private theorem rE1_ann : rE1.store.gossip.announcements = [annA] := by
+  rw [rE1, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_announcement_of_admitted acceptAll rE0.store annA gateA]
+  simp [rE0, StoreEpoch.empty, insertReplacing]
+
+private theorem rE1_upd : rE1.store.gossip.updates = [] := by
+  rw [rE1, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_announcement_of_admitted acceptAll rE0.store annA gateA]
+  simp [rE0, StoreEpoch.empty]
+
+private theorem gateB : CanonicalMessageAdmitted acceptAll rE1.store
+    (.channelAnnouncement annB) := by
+  simp [CanonicalMessageAdmitted, ChannelAnnellation.signaturesValid,
+    signatureValid, acceptAll, annA, annB, mkAnn, GossipState.CompatibleWithStore,
+    UpdatesAuthorizedBy, rE1_ann, rE1_upd, nC_ne_nD,
+    nA_ne_nC, nA_ne_nD, nB_ne_nC, nB_ne_nD]
+
+private theorem rE2_ann : rE2.store.gossip.announcements = [annB, annA] := by
+  rw [rE2, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_announcement_of_admitted acceptAll rE1.store annB gateB]
+  simp [rE1_ann, insertReplacing, annA, annB, mkAnn, sc1_ne_sc2]
+
+private theorem rE2_upd : rE2.store.gossip.updates = [] := by
+  rw [rE2, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_announcement_of_admitted acceptAll rE1.store annB gateB]
+  simp [rE1_upd]
+
+private theorem gateU0 : CanonicalMessageAdmitted acceptAll rE2.store
+    (.channelUpdate u0) := by
+  refine ⟨?_, ?_, ?_⟩
+  · simp [ChannelUpdate.signatureValid, signatureValid, acceptAll, u0, mkUpd]
+  · refine GossipState.updateKeyAnnouncedDirectional_of_mem (a := annA) ?_ rfl ?_
+    · rw [rE2_ann]; simp
+    · rw [ChannelUpdate.direction_of_channelFlags_zero (by rfl : u0.channelFlags = 0)]
+      exact ChannelAnnellation.attributesKeyForDirection_node1 annA
+  · intro v hv
+    rw [rE2_upd] at hv
+    simp at hv
+
+private theorem rE3_ann : rE3.store.gossip.announcements = [annB, annA] := by
+  rw [rE3, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_update_of_admitted acceptAll rE2.store u0 gateU0]
+  exact rE2_ann
+
+private theorem rE3_upd : rE3.store.gossip.updates = [u0] := by
+  rw [rE3, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_update_of_admitted acceptAll rE2.store u0 gateU0]
+  simp [rE2_upd, insertUpdateCanonical]
+
+private noncomputable def rE4 : StoreEpoch :=
+  epochStep acceptAll rE3 (.channelUpdate u1)
+private noncomputable def rE5 : StoreEpoch :=
+  epochStep acceptAll rE4 (.channelUpdate v0)
+private noncomputable def rE6 : StoreEpoch :=
+  epochStep acceptAll rE5 (.channelAnnouncement annA')
+private noncomputable def rE7 : StoreEpoch :=
+  epochStep acceptAll rE6 (.channelAnnouncement annConflict)
+private noncomputable def rE8 : StoreEpoch :=
+  epochStep acceptAll rE7 (.channelUpdate uStale)
+private noncomputable def rE9 : StoreEpoch :=
+  epochStep acceptAll rE8 (.nodeAnnouncement nodeAnn)
+
+private theorem gateU1 : CanonicalMessageAdmitted acceptAll rE3.store
+    (.channelUpdate u1) := by
+  refine ⟨?_, ?_, ?_⟩
+  · simp [ChannelUpdate.signatureValid, signatureValid, acceptAll]
+  · refine GossipState.updateKeyAnnouncedDirectional_of_mem (a := annA) ?_ rfl ?_
+    · rw [rE3_ann]; simp
+    · rw [ChannelUpdate.direction_of_channelFlags_zero (by rfl : u1.channelFlags = 0)]
+      exact ChannelAnnellation.attributesKeyForDirection_node1 annA
+  · intro v hv hscid hdir
+    rw [rE3_upd] at hv
+    simp only [List.mem_singleton] at hv
+    subst v
+    simp [u0, u1, mkUpd]
+
+private theorem rE4_ann : rE4.store.gossip.announcements = [annB, annA] := by
+  rw [rE4, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_update_of_admitted acceptAll rE3.store u1 gateU1]
+  exact rE3_ann
+
+private theorem rE4_upd : rE4.store.gossip.updates = [u1] := by
+  rw [rE4, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_update_of_admitted acceptAll rE3.store u1 gateU1]
+  simp [rE3_upd, insertUpdateCanonical, u0_scid_eq_u1, u0_direction_eq_u1]
+
+private theorem gateV0 : CanonicalMessageAdmitted acceptAll rE4.store
+    (.channelUpdate v0) := by
+  refine ⟨?_, ?_, ?_⟩
+  · simp [ChannelUpdate.signatureValid, signatureValid, acceptAll]
+  · refine GossipState.updateKeyAnnouncedDirectional_of_mem (a := annB) ?_ rfl ?_
+    · rw [rE4_ann]; simp
+    · rw [ChannelUpdate.direction_of_channelFlags_zero (by rfl : v0.channelFlags = 0)]
+      exact ChannelAnnellation.attributesKeyForDirection_node1 annB
+  · intro v hv hscid hdir
+    rw [rE4_upd] at hv
+    simp only [List.mem_singleton] at hv
+    subst v
+    exact absurd hscid sc1_ne_sc2
+
+private theorem rE5_ann : rE5.store.gossip.announcements = [annB, annA] := by
+  rw [rE5, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_update_of_admitted acceptAll rE4.store v0 gateV0]
+  exact rE4_ann
+
+private theorem rE5_upd : rE5.store.gossip.updates = [v0, u1] := by
+  rw [rE5, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_update_of_admitted acceptAll rE4.store v0 gateV0]
+  simp [rE4_upd, insertUpdateCanonical, u1, v0, mkUpd, sc1_ne_sc2]
+
+private theorem gateA' : CanonicalMessageAdmitted acceptAll rE5.store
+    (.channelAnnouncement annA') := by
+  simp [CanonicalMessageAdmitted, ChannelAnnellation.signaturesValid,
+    signatureValid, acceptAll, annA, annA', annB, mkAnn,
+    GossipState.CompatibleWithStore, UpdatesAuthorizedBy, rE5_ann, rE5_upd,
+    u1, v0, mkUpd, ChannelUpdate.direction,
+    ChannelAnnellation.attributesKeyForDirection, nA_ne_nB,
+    nA_ne_nC, nA_ne_nD, nB_ne_nC, nB_ne_nD, nC_ne_nA, nD_ne_nA,
+    nC_ne_nB, nB_ne_nA, sc1_ne_sc2, sc2_ne_sc1]
+
+private theorem rE6_ann : rE6.store.gossip.announcements = [annA', annB] := by
+  rw [rE6, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_announcement_of_admitted acceptAll rE5.store annA' gateA']
+  simp [rE5_ann, insertReplacing, annA, annA', annB, mkAnn, sc1_ne_sc2,
+    sc2_ne_sc1]
+
+private theorem rE6_upd : rE6.store.gossip.updates = [v0, u1] := by
+  rw [rE6, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_announcement_of_admitted acceptAll rE5.store annA' gateA']
+  exact rE5_upd
+
+private theorem rE6_node : rE6.store.gossip.nodeAnnouncements = [] := by
+  rw [rE6, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_announcement_of_admitted acceptAll rE5.store annA' gateA']
+  rw [rE5, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_update_of_admitted acceptAll rE4.store v0 gateV0]
+  rw [rE4, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_update_of_admitted acceptAll rE3.store u1 gateU1]
+  rw [rE3, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_update_of_admitted acceptAll rE2.store u0 gateU0]
+  rw [rE2, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_announcement_of_admitted acceptAll rE1.store annB gateB]
+  rw [rE1, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_announcement_of_admitted acceptAll rE0.store annA gateA]
+  simp [rE0, StoreEpoch.empty]
+
+private theorem notGateConflict : ¬ CanonicalMessageAdmitted acceptAll rE6.store
+    (.channelAnnouncement annConflict) := by
+  intro h
+  rcases h with ⟨_, _, hcompat, _⟩
+  have hmem : annA' ∈ rE6.store.gossip.announcements := by
+    rw [rE6_ann]; simp
+  have hkey := (hcompat annA' hmem).1 rfl
+  exact kA_ne_kC (by simpa [annA', annConflict, mkAnn] using hkey)
+
+private theorem rE7_eq : rE7 = rE6 := by
+  rw [rE7, StoreEpoch.epochStep_of_rejected (verify := acceptAll) (e := rE6)
+    (m := .channelAnnouncement annConflict) notGateConflict]
+
+private theorem notGateStale : ¬ CanonicalMessageAdmitted acceptAll rE6.store
+    (.channelUpdate uStale) := by
+  intro h
+  rcases h with ⟨_, _, hsup⟩
+  have hmem : u1 ∈ rE6.store.gossip.updates := by
+    rw [rE6_upd]; simp
+  have hdir : u1.direction = uStale.direction := by
+    simp [u1, uStale, mkUpd, ChannelUpdate.direction]
+  have hlt := hsup u1 hmem rfl hdir
+  simp [u1, uStale, mkUpd] at hlt
+
+private theorem rE8_eq : rE8 = rE7 := by
+  rw [rE8, StoreEpoch.epochStep_of_rejected (verify := acceptAll) (e := rE7)
+    (m := .channelUpdate uStale) (by rw [rE7_eq]; exact notGateStale)]
+
+private theorem gateNode : CanonicalMessageAdmitted acceptAll rE6.store
+    (.nodeAnnouncement nodeAnn) := by
+  simp [CanonicalMessageAdmitted, NodeAnnouncement.signatureValid,
+    signatureValid, acceptAll]
+
+private theorem rE9_ann : rE9.store.gossip.announcements = [annA', annB] := by
+  rw [rE9, StoreEpoch.epochStep_store, rE8_eq, rE7_eq,
+    applyGossipCanonicalStore_node_of_valid acceptAll rE6.store nodeAnn gateNode]
+  exact rE6_ann
+
+private theorem rE9_upd : rE9.store.gossip.updates = [v0, u1] := by
+  rw [rE9, StoreEpoch.epochStep_store, rE8_eq, rE7_eq,
+    applyGossipCanonicalStore_node_of_valid acceptAll rE6.store nodeAnn gateNode]
+  exact rE6_upd
+
+private theorem rE9_node : rE9.store.gossip.nodeAnnouncements = [nodeAnn] := by
+  rw [rE9, StoreEpoch.epochStep_store, rE8_eq, rE7_eq,
+    applyGossipCanonicalStore_node_of_valid acceptAll rE6.store nodeAnn gateNode]
+  simp [rE6_node]
+
+private theorem rE1_epoch : rE1.epoch = 1 := by
+  rw [rE1, StoreEpoch.epochStep_epoch_of_admitted (verify := acceptAll) (e := rE0)
+    (m := .channelAnnouncement annA) gateA]
+  rfl
+
+private theorem rE2_epoch : rE2.epoch = 2 := by
+  rw [rE2, StoreEpoch.epochStep_epoch_of_admitted (verify := acceptAll) (e := rE1)
+    (m := .channelAnnouncement annB) gateB, rE1_epoch]
+
+private theorem rE3_epoch : rE3.epoch = 3 := by
+  rw [rE3, StoreEpoch.epochStep_epoch_of_admitted (verify := acceptAll) (e := rE2)
+    (m := .channelUpdate u0) gateU0, rE2_epoch]
+
+private theorem rE4_epoch : rE4.epoch = 4 := by
+  rw [rE4, StoreEpoch.epochStep_epoch_of_admitted (verify := acceptAll) (e := rE3)
+    (m := .channelUpdate u1) gateU1, rE3_epoch]
+
+private theorem rE5_epoch : rE5.epoch = 5 := by
+  rw [rE5, StoreEpoch.epochStep_epoch_of_admitted (verify := acceptAll) (e := rE4)
+    (m := .channelUpdate v0) gateV0, rE4_epoch]
+
+private theorem rE6_epoch : rE6.epoch = 6 := by
+  rw [rE6, StoreEpoch.epochStep_epoch_of_admitted (verify := acceptAll) (e := rE5)
+    (m := .channelAnnouncement annA') gateA', rE5_epoch]
+
+private theorem rE7_epoch : rE7.epoch = 6 := by
+  rw [rE7_eq, rE6_epoch]
+
+private theorem rE8_epoch : rE8.epoch = 6 := by
+  rw [rE8_eq, rE7_epoch]
+
+private theorem rE9_epoch : rE9.epoch = 7 := by
+  rw [rE9, StoreEpoch.epochStep_epoch_of_admitted (verify := acceptAll) (e := rE8)
+    (m := .nodeAnnouncement nodeAnn) gateNode, rE8_epoch]
+
+private theorem rE1_history : rE1.history =
+    [ReplacementEvent.announcement 1 annA []] := by
+  rw [rE1, StoreEpoch.epochStep_history_of_admitted (verify := acceptAll) (e := rE0)
+    (m := .channelAnnouncement annA) gateA]
+  simp [StoreEpoch.eventOf, rE0, StoreEpoch.empty, replacedAnnouncements]
+
+private theorem rE2_history : rE2.history =
+    ReplacementEvent.announcement 2 annB [] :: rE1.history := by
+  rw [rE2, StoreEpoch.epochStep_history_of_admitted (verify := acceptAll) (e := rE1)
+    (m := .channelAnnouncement annB) gateB]
+  simp [StoreEpoch.eventOf, rE1_ann, replacedAnnouncements, annA, annB, mkAnn,
+    sc1_ne_sc2, rE1_epoch]
+
+private theorem rE3_history : rE3.history =
+    ReplacementEvent.update 3 u0 [] :: rE2.history := by
+  rw [rE3, StoreEpoch.epochStep_history_of_admitted (verify := acceptAll) (e := rE2)
+    (m := .channelUpdate u0) gateU0]
+  simp [StoreEpoch.eventOf, rE2_upd, replacedUpdates, rE2_epoch]
+
+private theorem rE4_history : rE4.history =
+    ReplacementEvent.update 4 u1 [u0] :: rE3.history := by
+  rw [rE4, StoreEpoch.epochStep_history_of_admitted (verify := acceptAll) (e := rE3)
+    (m := .channelUpdate u1) gateU1]
+  simp [StoreEpoch.eventOf, rE3_upd, replacedUpdates, u0_scid_eq_u1,
+    u0_direction_eq_u1, rE3_epoch]
+
+private theorem rE5_history : rE5.history =
+    ReplacementEvent.update 5 v0 [] :: rE4.history := by
+  rw [rE5, StoreEpoch.epochStep_history_of_admitted (verify := acceptAll) (e := rE4)
+    (m := .channelUpdate v0) gateV0]
+  simp [StoreEpoch.eventOf, rE4_upd, replacedUpdates, u1, v0, mkUpd, sc1_ne_sc2,
+    rE4_epoch]
+
+private theorem rE6_history : rE6.history =
+    ReplacementEvent.announcement 6 annA' [annA] :: rE5.history := by
+  rw [rE6, StoreEpoch.epochStep_history_of_admitted (verify := acceptAll) (e := rE5)
+    (m := .channelAnnouncement annA') gateA']
+  simp [StoreEpoch.eventOf, rE5_ann, replacedAnnouncements, annA_scid,
+    annB_scid, annA'_scid, sc2_ne_sc1, rE5_epoch]
+
+private theorem rE9_history : rE9.history =
+    [ReplacementEvent.node 7 nodeAnn,
+     ReplacementEvent.announcement 6 annA' [annA],
+     ReplacementEvent.update 5 v0 [],
+     ReplacementEvent.update 4 u1 [u0],
+     ReplacementEvent.update 3 u0 [],
+     ReplacementEvent.announcement 2 annB [],
+     ReplacementEvent.announcement 1 annA []] := by
+  rw [rE9, StoreEpoch.epochStep_history_of_admitted (verify := acceptAll) (e := rE8)
+      (m := .nodeAnnouncement nodeAnn) gateNode,
+    rE8_eq, rE7_eq, rE6_history, rE5_history, rE4_history, rE3_history,
+    rE2_history, rE1_history]
+  simp [StoreEpoch.eventOf, rE8_epoch, rE6_epoch]
+
+
+private def admittedMsgs : List GossipMessage :=
+  [.channelAnnouncement annA, .channelAnnouncement annB,
+   .channelUpdate u0, .channelUpdate u1, .channelUpdate v0,
+   .channelAnnouncement annA', .nodeAnnouncement nodeAnn]
+
+private noncomputable def admittedEpoch : StoreEpoch :=
+  epochFold acceptAll rE0 admittedMsgs
+
+private theorem rE9_eq_node : rE9 = epochStep acceptAll rE6
+    (.nodeAnnouncement nodeAnn) := by
+  rw [rE9, rE8_eq, rE7_eq]
+
+private theorem admittedEpoch_eq : admittedEpoch = rE9 := by
+  rw [rE9_eq_node]
+  rfl
+
+private theorem admittedAlong : EpochAdmittedAlong acceptAll rE0 admittedMsgs := by
+  refine ⟨gateA, ?_⟩
+  change EpochAdmittedAlong acceptAll rE1
+    [.channelAnnouncement annB, .channelUpdate u0, .channelUpdate u1,
+     .channelUpdate v0, .channelAnnouncement annA', .nodeAnnouncement nodeAnn]
+  refine ⟨gateB, ?_⟩
+  change EpochAdmittedAlong acceptAll rE2
+    [.channelUpdate u0, .channelUpdate u1, .channelUpdate v0,
+     .channelAnnouncement annA', .nodeAnnouncement nodeAnn]
+  refine ⟨gateU0, ?_⟩
+  change EpochAdmittedAlong acceptAll rE3
+    [.channelUpdate u1, .channelUpdate v0, .channelAnnouncement annA',
+     .nodeAnnouncement nodeAnn]
+  refine ⟨gateU1, ?_⟩
+  change EpochAdmittedAlong acceptAll rE4
+    [.channelUpdate v0, .channelAnnouncement annA', .nodeAnnouncement nodeAnn]
+  refine ⟨gateV0, ?_⟩
+  change EpochAdmittedAlong acceptAll rE5
+    [.channelAnnouncement annA', .nodeAnnouncement nodeAnn]
+  refine ⟨gateA', ?_⟩
+  change EpochAdmittedAlong acceptAll rE6 [.nodeAnnouncement nodeAnn]
+  exact ⟨gateNode, trivial⟩
+
+private theorem admittedRaw : RawAdmittedAlong ⟨[], [], []⟩ admittedMsgs := by
+  simp [RawAdmittedAlong, RawClockAdmits, admittedMsgs, rawFold, applyGossip,
+    GossipState.applyUpdate, GossipState.latestUpdateTimestamp, latestTimestamp,
+    u0, u1, v0, mkUpd]
+
+private theorem admittedSquare :
+    admittedEpoch.store.gossip =
+      canonicalStoreView (rawFold ⟨[], [], []⟩ admittedMsgs) := by
+  exact epochFold_gossip_eq_canonicalStoreView_rawFold acceptAll rE0 ⟨[], [], []⟩
+    admittedMsgs (by simp [rE0, StoreEpoch.empty, canonicalStoreView])
+    admittedAlong admittedRaw
+
+private theorem rE9_empty_view : canonicalStoreView ⟨[], [], []⟩ =
+    rE0.store.gossip := by
+  simp [rE0, StoreEpoch.empty, canonicalStoreView]
+
+private theorem admittedSquare_final :
+    rE9.store.gossip =
+      canonicalStoreView (rawFold ⟨[], [], []⟩ admittedMsgs) := by
+  rw [← admittedEpoch_eq]
+  exact admittedSquare
+
+/-! ## 8. Divergence witnesses -/
+
+-- Conflict sequence
+private def conflictMsgs : List GossipMessage :=
+  [.channelAnnouncement annA, .channelAnnouncement annConflict]
+
+private noncomputable def conflictEpoch : StoreEpoch :=
+  epochFold acceptAll rE0 conflictMsgs
+
+private theorem notGateConflict_rE1 : ¬ CanonicalMessageAdmitted acceptAll rE1.store
+    (.channelAnnouncement annConflict) := by
+  intro h
+  rcases h with ⟨_, _, hcompat, _⟩
+  have hmem : annA ∈ rE1.store.gossip.announcements := by
+    rw [rE1_ann]; simp
+  have hkey := (hcompat annA hmem).1 rfl
+  exact kA_ne_kC (by simpa [annA, annConflict, mkAnn] using hkey)
+
+private theorem conflictEpoch_ann : conflictEpoch.store.gossip.announcements = [annA] := by
+  change (epochStep acceptAll rE1 (.channelAnnouncement annConflict)).store.gossip.announcements =
+    [annA]
+  rw [StoreEpoch.epochStep_of_rejected (verify := acceptAll) (e := rE1)
+    (m := .channelAnnouncement annConflict) notGateConflict_rE1]
+  exact rE1_ann
+
+private theorem conflictRawView_ann :
+    (canonicalStoreView (rawFold ⟨[], [], []⟩ conflictMsgs)).announcements =
+      [annConflict] := by
+  simp [canonicalStoreView, rawFold, applyGossip, conflictMsgs, selectAnnouncements,
+    insertReplacing, annA, annConflict, mkAnn, annA_scid]
+
+private theorem conflictSquare_fails :
+    conflictEpoch.store.gossip ≠
+      canonicalStoreView (rawFold ⟨[], [], []⟩ conflictMsgs) := by
+  intro h
+  have hann := congrArg (fun s => s.announcements) h
+  rw [conflictEpoch_ann, conflictRawView_ann] at hann
+  have hann' : annA = annConflict := by simpa using hann
+  exact annConflict_ne_annA hann'.symm
+
+private theorem conflict_not_admitted :
+    ¬ EpochAdmittedAlong acceptAll rE0 conflictMsgs := by
+  intro h
+  exact notGateConflict_rE1 h.2.1
+
+private theorem conflictRawAdmitted : RawAdmittedAlong ⟨[], [], []⟩ conflictMsgs := by
+  simp [RawAdmittedAlong, RawClockAdmits, conflictMsgs]
+
+-- Clock sequence
+private def clockMsgs : List GossipMessage :=
+  [.channelAnnouncement annA, .channelAnnouncement annB,
+   .channelUpdate v0, .channelUpdate u0]
+
+private noncomputable def cE0 : StoreEpoch := rE0
+private noncomputable def cE1 : StoreEpoch := rE1
+private noncomputable def cE2 : StoreEpoch := rE2
+private noncomputable def cE3 : StoreEpoch := epochStep acceptAll rE2 (.channelUpdate v0)
+private noncomputable def cE4 : StoreEpoch := epochStep acceptAll cE3 (.channelUpdate u0)
+
+private theorem gateV0_c : CanonicalMessageAdmitted acceptAll rE2.store
+    (.channelUpdate v0) := by
+  refine ⟨?_, ?_, ?_⟩
+  · simp [ChannelUpdate.signatureValid, signatureValid, acceptAll]
+  · refine GossipState.updateKeyAnnouncedDirectional_of_mem (a := annB) ?_ rfl ?_
+    · rw [rE2_ann]; simp
+    · rw [ChannelUpdate.direction_of_channelFlags_zero (by rfl : v0.channelFlags = 0)]
+      exact ChannelAnnellation.attributesKeyForDirection_node1 annB
+  · intro v hv hscid hdir
+    rw [rE2_upd] at hv
+    simp at hv
+
+private theorem cE3_ann : cE3.store.gossip.announcements = [annB, annA] := by
+  rw [cE3, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_update_of_admitted acceptAll rE2.store v0 gateV0_c]
+  exact rE2_ann
+
+private theorem cE3_upd : cE3.store.gossip.updates = [v0] := by
+  rw [cE3, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_update_of_admitted acceptAll rE2.store v0 gateV0_c]
+  simp [rE2_upd, insertUpdateCanonical]
+
+private theorem gateU0_c : CanonicalMessageAdmitted acceptAll cE3.store
+    (.channelUpdate u0) := by
+  refine ⟨?_, ?_, ?_⟩
+  · simp [ChannelUpdate.signatureValid, signatureValid, acceptAll]
+  · refine GossipState.updateKeyAnnouncedDirectional_of_mem (a := annA) ?_ rfl ?_
+    · rw [cE3_ann]; simp
+    · rw [ChannelUpdate.direction_of_channelFlags_zero (by rfl : u0.channelFlags = 0)]
+      exact ChannelAnnellation.attributesKeyForDirection_node1 annA
+  · intro v hv hscid hdir
+    rw [cE3_upd] at hv
+    simp only [List.mem_singleton] at hv
+    subst v
+    exact absurd hscid sc2_ne_sc1
+
+private theorem cE4_upd : cE4.store.gossip.updates = [u0, v0] := by
+  rw [cE4, StoreEpoch.epochStep_store,
+    applyGossipCanonicalStore_update_of_admitted acceptAll cE3.store u0 gateU0_c]
+  simp [cE3_upd, insertUpdateCanonical, v0, u0, mkUpd, sc2_ne_sc1]
+
+private theorem clockAlong : EpochAdmittedAlong acceptAll rE0 clockMsgs := by
+  refine ⟨gateA, ?_⟩
+  change EpochAdmittedAlong acceptAll rE1
+    [.channelAnnouncement annB, .channelUpdate v0, .channelUpdate u0]
+  refine ⟨gateB, ?_⟩
+  change EpochAdmittedAlong acceptAll cE2 [.channelUpdate v0, .channelUpdate u0]
+  refine ⟨gateV0_c, ?_⟩
+  change EpochAdmittedAlong acceptAll cE3 [.channelUpdate u0]
+  exact ⟨gateU0_c, trivial⟩
+
+private theorem clockRaw_not_admitted :
+    ¬ RawClockAdmits (rawFold ⟨[], [], []⟩
+      [.channelAnnouncement annA, .channelAnnouncement annB, .channelUpdate v0])
+      (.channelUpdate u0) := by
+  simp [RawClockAdmits, rawFold, applyGossip, GossipState.applyUpdate,
+    GossipState.latestUpdateTimestamp, latestTimestamp, v0, u0, mkUpd]
+
+private theorem clock_not_raw :
+    ¬ RawAdmittedAlong ⟨[], [], []⟩ clockMsgs := by
+  intro h
+  exact clockRaw_not_admitted h.2.2.2.1
+
+private theorem clockCanonicalView_upd :
+    (canonicalStoreView (rawFold ⟨[], [], []⟩ clockMsgs)).updates = [v0] := by
+  simp [canonicalStoreView, rawFold, applyGossip, clockMsgs, selectUpdates,
+    insertUpdateCanonical, GossipState.applyUpdate,
+    GossipState.latestUpdateTimestamp, latestTimestamp, v0, u0, mkUpd]
+
+private theorem clockSquare_fails :
+    (epochFold acceptAll rE0 clockMsgs).store.gossip ≠
+      canonicalStoreView (rawFold ⟨[], [], []⟩ clockMsgs) := by
+  intro h
+  have hupd := congrArg (fun s => s.updates) h
+  change cE4.store.gossip.updates = _ at hupd
+  rw [cE4_upd, clockCanonicalView_upd] at hupd
+  have hneq : u0 = v0 := by simpa using hupd
+  exact u0_ne_v0 hneq
+
+/-! ## 9. Public witness statements -/
+
+/-- A concrete nine-message sequence: announce two channels, install and then
+supersede a directional update, install an update on the other channel,
+re-announce the first channel, reject a conflicting re-announcement, reject a
+stale update, and append a node announcement.
+
+The final epoch is `7` (seven admissions, two rejections).  The history is
+newest-first and records the exact replaced record for each supersession. -/
+theorem realistic_epoch_store_history :
+    ∃ (verify : SigVerifier) (e : StoreEpoch) (a a' b : ChannelAnnellation)
+      (u0 u1 v0 : ChannelUpdate) (n : NodeAnnouncement),
+      e.epoch = 7 ∧
+      e.store.gossip.announcements = [a', b] ∧
+      e.store.gossip.updates = [v0, u1] ∧
+      e.store.gossip.nodeAnnouncements = [n] ∧
+      e.history = [ReplacementEvent.node 7 n,
+                   ReplacementEvent.announcement 6 a' [a],
+                   ReplacementEvent.update 5 v0 [],
+                   ReplacementEvent.update 4 u1 [u0],
+                   ReplacementEvent.update 3 u0 [],
+                   ReplacementEvent.announcement 2 b [],
+                   ReplacementEvent.announcement 1 a []] ∧
+      e.history.length = 7 := by
+  refine ⟨acceptAll, rE9, annA, annA', annB, u0, u1, v0, nodeAnn,
+    rE9_epoch, rE9_ann, rE9_upd, rE9_node, rE9_history, ?_⟩
+  rw [rE9_history]
+  rfl
+
+/-- The realistic history records both required supersessions: the same-slot
+update replacement and the channel re-announcement replacement. -/
+theorem realistic_history_records_supersession :
+    ∃ (verify : SigVerifier) (e : StoreEpoch) (a a' : ChannelAnnellation)
+      (u0 u1 : ChannelUpdate),
+      ReplacementEvent.update 4 u1 [u0] ∈ e.history ∧
+        ReplacementEvent.announcement 6 a' [a] ∈ e.history := by
+  refine ⟨acceptAll, rE9, annA, annA', u0, u1, ?_, ?_⟩
+  · rw [rE9_history]; simp
+  · rw [rE9_history]; simp
+
+/-- The two rejected messages are complete no-ops: the epoch stays at `6`
+through both, and the epoch store is literally unchanged. -/
+theorem realistic_rejected_messages_do_not_increment_epoch :
+    ∃ (verify : SigVerifier) (eBefore eConflict eStale : StoreEpoch)
+      (a : ChannelAnnellation) (u : ChannelUpdate),
+      eBefore.epoch = 6 ∧ eConflict.epoch = 6 ∧ eStale.epoch = 6 ∧
+        eConflict = eBefore ∧ eStale = eBefore := by
+  exact ⟨acceptAll, rE6, rE7, rE8, annConflict, uStale,
+    rE6_epoch, rE7_epoch, rE8_epoch, rE7_eq, by rw [rE8_eq, rE7_eq]⟩
+
+/-- The all-admitted subsequence of the realistic sequence satisfies the
+sequence-level epoch/raw square.  Its seven messages are individually admitted
+by the canonical gates and by the raw global clock. -/
+theorem realistic_admitted_sequence_square :
+    ∃ (verify : SigVerifier) (e : StoreEpoch) (s : GossipState)
+      (msgs : List GossipMessage),
+      msgs.length = 7 ∧
+      e.store.gossip = canonicalStoreView s ∧
+      EpochAdmittedAlong verify e msgs ∧
+      RawAdmittedAlong s msgs ∧
+      (epochFold verify e msgs).store.gossip =
+        canonicalStoreView (rawFold s msgs) := by
+  exact ⟨acceptAll, rE0, ⟨[], [], []⟩, admittedMsgs, rfl,
+    by simp [rE0, StoreEpoch.empty, canonicalStoreView], admittedAlong,
+    admittedRaw, admittedSquare⟩
+
+/-- Dropping only the canonical-admission hypothesis breaks the square: the
+conflicting re-announcement is appended by raw `applyGossip` but rejected by the
+canonical store.  All other hypotheses (initial observation and raw admission)
+hold. -/
+theorem realistic_rejected_conflict_breaks_refinement :
+    ∃ (verify : SigVerifier) (e : StoreEpoch) (s : GossipState)
+      (msgs : List GossipMessage),
+      e.store.gossip = canonicalStoreView s ∧
+      RawAdmittedAlong s msgs ∧
+      ¬ EpochAdmittedAlong verify e msgs ∧
+      (epochFold verify e msgs).store.gossip ≠
+        canonicalStoreView (rawFold s msgs) := by
+  exact ⟨acceptAll, rE0, ⟨[], [], []⟩, conflictMsgs,
+    by simp [rE0, StoreEpoch.empty, canonicalStoreView], conflictRawAdmitted,
+    conflict_not_admitted, conflictSquare_fails⟩
+
+/-- Dropping only the raw-clock hypothesis breaks the square: after a stored
+update at timestamp `30`, a canonically admitted per-slot update at timestamp
+`10` is ignored by the raw global clock.  All other hypotheses (initial
+observation and canonical admission) hold. -/
+theorem clock_boundary_sequence_breaks_refinement :
+    ∃ (verify : SigVerifier) (e : StoreEpoch) (s : GossipState)
+      (msgs : List GossipMessage),
+      e.store.gossip = canonicalStoreView s ∧
+      EpochAdmittedAlong verify e msgs ∧
+      ¬ RawAdmittedAlong s msgs ∧
+      (epochFold verify e msgs).store.gossip ≠
+        canonicalStoreView (rawFold s msgs) := by
+  exact ⟨acceptAll, rE0, ⟨[], [], []⟩, clockMsgs,
+    by simp [rE0, StoreEpoch.empty, canonicalStoreView], clockAlong,
+    clock_not_raw, clockSquare_fails⟩
 
 end LnLean.Proofs.Routing.GossipStoreEpochTargets

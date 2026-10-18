@@ -278,24 +278,32 @@ Five disjoint lanes extended the model and promoted eight more exact targets.
 Wave 8 launched from `50d78ed`; the lane plan is `agents/swarm/WAVE-8.md` and
 reports go to `agents/reports/swarm8/`.
 
-- [ ] `S8-L1-TXVALID` — `TxValidation.Full`/`txCheckerFor` transfer and
+- [x] `S8-L1-TXVALID` — exact known-amount `txCheckerFor`/`realCheckerOf`
+  transfer, delayed/revocation transfer, missing-amount fail-closed, and
   `minimalData`/`csv ≥ 32768` policy edges.
-- [ ] `S8-PR-HTLCPREIMAGE` — `HtlcWire` preimage byte equality, scriptCode
-  synthesis, and display-order txid boundary.
-- [ ] `S8-L1-OPENCHANNEL-WIRE` — type-32 `open_channel` constructor,
-  exhaustive-match repair, and end-to-end projection.
-- [ ] `S8-PR-ACCEPT-PAYLOAD` — `acceptChannel?` storage/registration and
-  key-attribution bridge.
-- [ ] `S8-CH-CONSUMER-SITES` — actual consumer construction sites and compiled
-  adapter.
-- [ ] `S8-L1-EC-BRIDGE` — concrete `verifyImpl` bridge or sharp conditional
-  extraction.
-- [ ] `S8-CONF-ENCODINGS` — wider BOLT encodings and finite/live differential
-  rows.
-- [ ] `S8-MODEL-STORE-EPOCH` — gossip-store epochs/replacement sequences over
-  the canonical wrapper.
-- [ ] Parent integration: root imports, catalog/targets, audit, generated
-  indexes, docs, full gate, non-force push.
+- [x] `S8-PR-HTLCPREIMAGE` — `HtlcWire` preimage byte equality, 143/136-byte
+  scriptCode synthesis, and display-order txid boundary.
+- [x] `S8-L1-OPENCHANNEL-WIRE` — type-32 `Msg.openChannel` constructor,
+  six-key/type/length/identity laws, and end-to-end funding projection.
+- [x] `S8-PR-ACCEPT-PAYLOAD` — `acceptChannel?` storage/provenance and the
+  conditional attribution/negative possession bridge.
+- [x] `S8-CH-CONSUMER-SITES` — proof-layer consumer adapter and compiled site
+  examples; no production `CommitmentTx` consumer.
+- [x] `S8-L1-EC-BRIDGE` — sharp conditional `VendorEcdsaBridge` and exact
+  `verifyImpl` transfer; no unconditional EC claim.
+- [x] `S8-CONF-ENCODINGS` — six BOLT 2 message vectors, 29 `decide` theorems,
+  and 13/13 mutation controls; live message row deferred.
+- [x] `S8-MODEL-STORE-EPOCH` — gossip-store epochs/replacement history over
+  the canonical wrapper, with two divergence witnesses.
+- [x] Parent integration: seven new root imports, seven catalog rows
+  strengthened from 79 to 100 targets, audit extended to 215 theorems, generated
+  indexes/docs refreshed, full gate green, and code commit `9bafdab`.
+
+Wave-8 reports are in `agents/reports/swarm8/`. The proof-wave-8 gate is
+**build 250 jobs, strict catalog 100 targets / 8181 declarations, check.sh
+`files=211 obligations=82 sorry_in_proofs=0`, 215 audited theorems, 306
+anchors, 149 vendor files, and 0 forbidden constructs.** The next candidates
+are listed in `docs/OPEN-ISSUES.md` under “Wave 9 candidates”.
 
 The catalog is no longer the work queue. Open issues are tracked in
 `docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`.

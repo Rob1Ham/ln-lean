@@ -158,14 +158,17 @@ the remaining issues are research-only, or the gate cannot be kept green.
 
 ## Current wave
 
-Wave 8 is running from `50d78ed`: 48/48 catalog rows are proved, 79 resolved
-targets, full build 233 jobs, strict catalog audit green, and 194 audited
-theorems at launch. The plan is `agents/swarm/WAVE-8.md`; lane reports go to
-`agents/reports/swarm8/`. Wave 8 attacks the final `TxValidation.Full`
-transfer, `HtlcWire` preimage equality, the type-32 `open_channel` wire
-constructor, `accept_channel` payload/registration, consumer construction
-sites, a concrete ECDSA bridge, wider BOLT encodings, and gossip-store epochs.
-Wave 7 is recorded in `agents/swarm/WAVE-7.md` and
+Wave 8 is integrated as `9bafdab`: 48/48 catalog rows are proved, **100**
+resolved targets, full build **250** jobs, strict catalog audit green, and
+**215** audited theorems. The plan is `agents/swarm/WAVE-8.md`; lane reports are
+in `agents/reports/swarm8/`. Wave 8 closed the final `TxValidation.Full`
+transfer for a known amount, `HtlcWire` preimage equality, the type-32
+`open_channel` wire constructor, `accept_channel` payload storage, the
+proof-layer consumer adapter, the conditional ECDSA bridge, wider BOLT
+encodings, and gossip-store epochs. The next candidates are listed in
+`docs/OPEN-ISSUES.md` under “Wave 9 candidates”; they focus on the remaining
+unconditional EC/amount boundary, transport attribution, registration, and the
+live message row. Wave 7 is recorded in `agents/swarm/WAVE-7.md` and
 `agents/reports/swarm7/`. Every wave is integrated under the same gate and
 recorded here.
 

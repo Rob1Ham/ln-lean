@@ -12,13 +12,13 @@ wire completeness, conformance, and public release packaging — are tracked in
 
 At the proof-wave 7 gate, the integrated `repair/integrated` tree has:
 
-* **204 Lean files** under `LnLean/` — 38 executable model modules and 166
+* **211 Lean files** under `LnLean/` — 38 executable model modules and 173
   proof modules;
-* **202 root imports** in `LnLean.lean` (the `Proofs.All` and `Proofs.PhaseC2`
+* **209 root imports** in `LnLean.lean` (the `Proofs.All` and `Proofs.PhaseC2`
   aggregators are intentionally not root-imported);
 * **48 catalog obligations: 48 `proved`, 0 `statement-only`**;
 * **0 actual `sorry` sites** in the proof tree;
-* a full build of **233 jobs, RC 0**;
+* a full build of **250 jobs, RC 0**;
 
 A `proved` row means the named declaration exists and is sorry-free. It does
 not mean the English sentence is unconditionally true: several rows keep
@@ -32,21 +32,21 @@ the lane reports under `agents/reports/`.
 |---|---:|
 | Catalog rows | 48 |
 | `proved` | 48 |
-| Catalog targets | 79 |
+| Catalog targets | 100 |
 | `statement-only` | 0 |
 | Unresolved/planned targets | 0 |
 | Actual `sorry` terms | 0 |
-| Lean files | 204 |
-| Root imports | 202 |
-| Full build | 233 jobs, RC 0 |
-| Audited headline theorems | 194 |
+| Lean files | 211 |
+| Root imports | 209 |
+| Full build | 250 jobs, RC 0 |
+| Audited headline theorems | 215 |
 | Conformance vectors | 61 base + 16 framing + 9 boundaries; 33 differential fixtures; live 26 BigSize + 3 TLV + 4 wire |
 
 The strict catalog audit is now green:
 
 ```text
-rows=48 proved=48 statementOnly=0 targets=79 unresolved=0
-proved_failures=0 duplicate_ids=0 candidates=0 declarations=7707
+rows=48 proved=48 statementOnly=0 targets=100 unresolved=0
+proved_failures=0 duplicate_ids=0 candidates=0 declarations=8181
 ```
 
 The remaining work is no longer catalog promotion. It is the harder bridge from
@@ -67,10 +67,10 @@ LnLean/Protocol/            handshake, peer, features, errors
 LnLean/Routing/             graph, gossip, onion, route construction
 LnLean/Payment/             invoices, MPP, keysend, liquidity
 LnLean/Security/            threat model and invariant catalog
-LnLean/Proofs/              166 proof modules: obligation modules, theorem
+LnLean/Proofs/              173 proof modules: obligation modules, theorem
                             statements, WaveD (33), WaveE (15),
                             ModelHardening (15), PhaseC2 (17), PhaseC3 (12),
-                            and the proof-wave 3/4/5/6/7 target modules
+                            and the proof-wave 3/4/5/6/7/8 target modules
 ```
 
 `LnLean/Proofs/All.lean` and `LnLean/Proofs/PhaseC2.lean` are convenience
@@ -108,10 +108,10 @@ flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build LnLean.Channel.Commit
 ## Checks
 
 ```sh
-./scripts/check.sh                    # files=204 obligations=82 sorry_in_proofs=0
-python3 scripts/check-final.py        # 204 files, 202 root imports, D=33 E=15 F=15
+./scripts/check.sh                    # files=211 obligations=82 sorry_in_proofs=0
+python3 scripts/check-final.py        # 211 files, 209 root imports, D=33 E=15 F=15
 python3 scripts/check-catalog.py --audit
-                                      # rows=48 proved=48 statementOnly=0 targets=79
+                                      # rows=48 proved=48 statementOnly=0 targets=100
 python3 scripts/check-conformance.py  # 61 base + 16 framing + 9 boundaries, 33 differential fixtures, live evidence
 python3 scripts/verify-anchors.py     # anchors=306 bad=0 unanchored_rows=2
 ./scripts/verify-vendor.sh            # 149-file L1 snapshot checksums
