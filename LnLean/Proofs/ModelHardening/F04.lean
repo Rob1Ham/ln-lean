@@ -127,22 +127,12 @@ theorem waveF_f04_legacy_anchor_gap
       Commitment.htlcOutputValue, Commitment.anchorOutputValue, htlcOutputsValue] at hf ⊢ <;>
     omega
 
-/-- The faithful unconditional conservation statement for the existing pair
-constructor: with anchors enabled, no extra debit is required and both
-commitments conserve the funding value.  This statement is **false**; the
-mechanized 660-satoshi counterexample and the general gap theorem below
-refute it.  It is retained with one `sorry` so the model gap stays explicit
-rather than being silently weakened into a conditional theorem. -/
--- OBLIGATION: LN-WF-F04
-theorem waveF_f04_legacy_unconditional_conservation
-    (localParams remoteParams : ChannelParams) (b : Balance)
-    (fee number : Nat) (funder : Direction)
-    (hA : localParams.anchorOutputs = true)
-    (hB : remoteParams.anchorOutputs = true)
-    (hf : fee ≤ (if funder = Direction.local then b.localSat else b.remoteSat)) :
-    let p := commitmentPairOfBalances localParams remoteParams b fee number funder
-    p.localCommitment.Conserves ∧ p.remoteCommitment.Conserves := by
-  sorry
+-- REPAIRED: the false unconditional legacy claim was removed.  It is refuted
+-- by `waveF_f04_counterexample_not_conserves` and, in general, by
+-- `waveF_f04_legacy_anchor_not_conserves` (via `waveF_f04_legacy_anchor_gap`).
+-- The strongest true replacement is `waveF_f04_corrected_conservation` for the
+-- anchor-debit constructor `commitmentPairWithAnchorDebit`, under the explicit
+-- BOLT 3 affordability hypotheses.
 
 /-- The legacy anchored pair does **not** conserve: both commitments fail
 `Commitment.Conserves`. -/
