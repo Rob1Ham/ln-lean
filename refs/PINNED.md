@@ -37,8 +37,8 @@ real directory copy, not a symlink, and the public clone is not modified.
 * Imported by `lakefile.lean` as the path dependency `«core»`.
 * Integrity: `vendor/VENDOR-SHA256` (149 files); check with
   `./scripts/verify-vendor.sh` or `./scripts/check-public-reference.sh`.
-* Equivalence: `diff -r vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core`
-  is empty.
+* Equivalence: `diff -r -x .lake vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core`
+  is empty (only the `.lake/` build cache is excluded).
 * Never edit; see `docs/L1-PIN.md`.
 
 Historical note: before this bump the build input was the `wallet-peer`

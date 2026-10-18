@@ -49,8 +49,9 @@ repository or by any LN agent.
   `./scripts/verify-vendor.sh` re-checks them before and after every wave and
   excludes `.lake/`.
 * Equivalence check:
-  `diff -r vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core` is
-  empty (the `.lake/` build cache is created after the copy and is excluded).
+  `diff -r -x .lake vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core`
+  is empty (the `.lake/` build cache is created by the first build and is
+  excluded; without `-x .lake` it shows up as the single "Only in" entry).
 
 `vendor/` is listed in `.gitignore`, so the vendor payload itself is not
 committed (historical layout). The tracked record of the bump is
@@ -108,5 +109,5 @@ The bump recorded here was executed as the `V01` lane; see
 ```sh
 ./scripts/check-public-reference.sh   # public URL/commit + vendor digest, offline
 ./scripts/verify-vendor.sh            # vendor digest only
-diff -r vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core  # empty
+diff -r -x .lake vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core  # empty
 ```

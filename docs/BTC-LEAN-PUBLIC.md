@@ -7,8 +7,8 @@
 > the retired `f950806` snapshot and is kept as the pre-bump record: the
 > "87-path diff" in §2, the "can the vendor be bumped?" answer in §4, and §5
 > items 3 and 5 describe the state **before** the bump. Post-bump measurements:
-> `diff -r vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core` is
-> empty, `vendor/VENDOR-SHA256` has 149 entries, and a full `lake build` is
+> `diff -r -x .lake vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core`
+> is empty, `vendor/VENDOR-SHA256` has 149 entries, and a full `lake build` is
 > RC 0 (170 jobs).
 
 **Audit date:** 2026-10-18
@@ -283,8 +283,8 @@ git -C /home/ubuntu/btc-lean-public log -1 --format='%H%n%ci%n%s'
 git -C /home/ubuntu/btc-lean-public cat-file -e f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb  # must fail
 
 # diff (pre-bump: 87 lines / 80 modified files; post-V01: 0)
-diff -rq vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core | wc -l   # 87 (0 after V01)
-diff -rq vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core | grep -c '^Files '  # 80 (0 after V01)
+diff -rq -x .lake vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core | wc -l   # 87 (0 after V01)
+diff -rq -x .lake vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core | grep -c '^Files '  # 80 (0 after V01)
 
 # byte identity of the imported closure
 for f in Bitcoin/Data/Basic.lean Bitcoin/Data/Script.lean Bitcoin/Data/Tx.lean; do
