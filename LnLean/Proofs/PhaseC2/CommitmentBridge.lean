@@ -576,8 +576,8 @@ def bolt3ToLocalP2wsh (sha256 : ByteArray → ByteArray)
 
 /-- **Explicit L1 interpreter bridge for the BOLT 3 templates.**  It records
 P2WSH delegation and the soundness/completeness of the two `to_local` branches
-and of the P2WPKH `to_remote` output.  It is a hypothesis, not an axiom: no
-theorem is claimed about Bitcoin consensus without it. -/
+and of the P2WPKH `to_remote` output.  It is a hypothesis, not a global
+postulate: no theorem is claimed about Bitcoin consensus without it. -/
 structure Bolt3CommitmentSpendBridge
     (accepts : Script → WitnessStack → UInt32 → Bool)
     (acceptsWitnessScript : Script → WitnessStack → UInt32 → Bool)
