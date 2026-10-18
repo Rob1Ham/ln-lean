@@ -1,12 +1,12 @@
 # FINAL-REPAIR — integration narrative
 
-**Repository:** `/home/ubuntu/ln-lean-repair`  
-**Branch:** `repair/integrated`  
-**HEAD:** `d5b8e9422c257f80c70c9100c2a092b676c89c23`  
-**Toolchain:** `leanprover/lean4:v4.35.0`  
-**Author:** D02 (integration documentation lane)  
-**Status:** repair lanes complete; **final gate and push remain with G01**  
-**Commit/push:** none made by D02. K02's catalog promotion is uncommitted.
+**Repository:** `/home/ubuntu/ln-lean-repair`
+**Branch:** `repair/integrated`
+**HEAD:** `68c236da89b6063dd884799453f076bdc006de2f`
+**Toolchain:** `leanprover/lean4:v4.35.0`
+**Author:** D02 (integration documentation lane), finalized by the integration lane
+**Status:** repair lanes complete; **final gate PASS at this HEAD**
+**Commit/push:** integrated commit `68c236d`; push is the remaining action.
 
 ## 1. Starting point
 
@@ -156,8 +156,7 @@ unchanged. The module now builds in ~1.3–1.5 s at ~1.7 GiB peak.
 
 ## 3. What is actually checked
 
-At the working tree described at the top (HEAD `d5b8e94` plus uncommitted K02
-edits):
+At the committed final HEAD `68c236d` (G01 gate):
 
 ```text
 flock -w 3600 /tmp/ln-build.lock lake build LnLean
@@ -174,6 +173,9 @@ python3 scripts/verify-anchors.py
 
 ./scripts/check.sh
   -> files=164 obligations=81 sorry_in_proofs=0; check: OK.  RC 0
+
+python3 scripts/check-final.py
+  -> selected D=33 E=15 F=15; 164 Lean files; 162 root imports; OK.  RC 0
 
 ./scripts/check-public-reference.sh
   -> check-public-reference: OK (offline).  RC 0
@@ -233,21 +235,20 @@ conditional/algebraic results plus 30 tracked statement-only claims.
   claimed.
 - The public `btc-lean` tree is not imported; no theorem is checked against it.
 
-## 6. Residual risks / blockers for the final gate
+## 6. Residual risks / final-gate findings
 
-1. **The earlier `check.sh` false positive is resolved.** The policy checker's
-   second pass now scans comment-stripped code, so the prose word `sorry` in
-   `LnLean/Proofs/ModelHardening/F13.lean:257` no longer fails the gate.
-   `./scripts/check.sh` is **RC 0** (`sorry_in_proofs=0`). The checker fix is
-   uncommitted and is not a D02 edit; G01 must include it in the final commit.
-2. **Catalog strict mode is RC 1.** 23 unresolved planned `statementOnly`
-   targets remain. `--allow-planned` is RC 0 and never promotes them. The final
-   gate must choose and document its enforcement mode.
-3. **K02 is uncommitted.** HEAD is `d5b8e94`; catalog promotion, Traceability,
-   and the regenerated index are working-tree changes. G01 must commit them.
-4. **Public/vendor lineage mismatch.** A vendor bump is a separate deliberate
-   change; the public clone must never become a build dependency.
-5. **`refs/btc-lean` must not be committed.** It is an untracked, git-excluded
+1. **Final gate PASS at `68c236d`.** The earlier `check.sh` doc-comment false
+   positive and the stale 132-file `check-final.py` assumption are fixed and
+   committed. Both checkers are RC 0 at the final HEAD.
+2. **Catalog strict mode remains RC 1 by design.** 23 unresolved planned
+   `statementOnly` targets remain. `--allow-planned` is RC 0 and never promotes
+   them; it is the mode used by the final gate, with the strict audit retained
+   as the planning report.
+3. **Public/vendor lineage mismatch.** A vendor bump is a separate deliberate
+   change; the public clone must never become a build dependency. The green
+   isolated compatibility branch `repair/pubbump` records the public
+   `spec/core` bump but is intentionally not merged here.
+4. **`refs/btc-lean` must not be committed.** It is an untracked, git-excluded
    symlink.
 
 ## 7. Exact commands
@@ -286,4 +287,4 @@ as statement-only.
 It is still a conditional scaffold. Zero `sorry` is not zero assumptions: C1
 and C8 are explicit finite/algebraic boundaries, L1 spendability depends on the
 Phase-C2 bridges, and computational cryptographic security is not modelled. The
-final gate and any push remain pending G01.
+final gate is green at `68c236d`; the non-force push is the remaining action.

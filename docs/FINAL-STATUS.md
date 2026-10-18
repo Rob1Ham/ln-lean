@@ -2,12 +2,9 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**HEAD:** `d5b8e9422c257f80c70c9100c2a092b676c89c23` (`[CCR01] remove
-CrossChannelRouting elaboration blowup`)
-**Catalog state:** K02's five promotions and two target corrections are in the
-working tree at the time of writing; K02 made no commit, so the checked-in
-`HEAD` is still `d5b8e94` and the counts below describe `HEAD` plus those
-uncommitted K02 edits.
+**HEAD:** `68c236da89b6063dd884799453f076bdc006de2f` (`[INTEGRATION] promote
+catalog proofs, add planned-aware audit, refresh gate docs`)
+**Catalog state:** committed at this HEAD: 18 `proved` / 30 `statementOnly`.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 **L1 build dependency:** read-only `vendor/btc-lean-core` snapshot
 `f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb`
@@ -37,14 +34,15 @@ elaboration blowup (`CCR01`).
 
 ## Verified state
 
-Commands were run by D02 at the working tree described above. No commit or
-push was made.
+Commands were run by G01 at the committed HEAD above. The only remaining
+action is the non-force push of this branch.
 
 | Check | Command | Result |
 |---|---|---|
 | Full build | `flock -w 3600 /tmp/ln-build.lock lake build LnLean` | **RC 0**, `Build completed successfully (170 jobs).` |
 | Actual `sorry` | `grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` | **0 matches** (grep RC 1: no lines) |
 | Policy checker | `./scripts/check.sh` | **RC 0**, `files=164 obligations=81 sorry_in_proofs=0`, `check: OK` |
+| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, 164 Lean files, 162 root imports, D=33 E=15 F=15 |
 | Vendor integrity | `./scripts/verify-vendor.sh` | **RC 0**, `OK (119 files)` |
 | Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=298 bad=0 unanchored_rows=2` |
 | Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 1**, 23 unresolved planned `statementOnly` targets, 0 `proved` failures |
@@ -199,26 +197,24 @@ proved.
 - **Deep-reorg behaviour** is a separate obligation (`LN-CHAIN-REORG`), not a
   proved property of this tree.
 
-## Residual risks / pre-gate findings
+## Residual risks / final-gate findings
 
-1. **The `check.sh` false positive was fixed during this session.** Earlier at
-   this tree, `scripts/check.py` had a raw-text second pass that treated the
-   prose word `sorry` in a doc comment in
-   `LnLean/Proofs/ModelHardening/F13.lean:257` as an open proof obligation.
-   That pass now scans comment-stripped code, and `./scripts/check.sh` is
-   **RC 0** (`sorry_in_proofs=0`). The checker fix is uncommitted and is not a
-   D02 edit; G01 must include it in the final commit.
+1. **The final gate is green at `68c236d`.** G01 ran the full build, vendor,
+   anchors, `check.sh`, `check-final.py`, the planned-aware catalog audit, and
+   the exact `sorry` scan; all returned the results in the table above. The
+   earlier `check.sh` doc-comment false positive and the stale 132-file
+   `check-final.py` assumption are fixed in this commit.
 2. **Catalog strict mode is RC 1 by design.** The 23 unresolved
    `statementOnly` targets are reported as errors by `--audit`;
    `--allow-planned` is RC 0 and keeps them `PLANNED`, never `proved`. The
-   final gate must state which mode it enforces.
-3. **K02's edits are uncommitted.** `HEAD` is `d5b8e94`; the catalog promotion
-   and regenerated index exist only in the working tree. G01 must commit them
-   (no commit or push was made by D02).
-4. **Public/vendor lineage mismatch.** The vendor snapshot `f950806` is not in
+   committed gate uses `--allow-planned`; the strict audit remains available
+   as the planning report.
+3. **Public/vendor lineage mismatch.** The vendor snapshot `f950806` is not in
    public `btc-lean` history; a future vendor bump is a separate deliberate
-   change, not part of this repair.
-5. **`refs/btc-lean` is an untracked symlink.** It is git-excluded and must
+   change, not part of this repair. A green isolated compatibility branch
+   (`repair/pubbump`) records the public `spec/core` bump but is intentionally
+   not merged here.
+4. **`refs/btc-lean` is an untracked symlink.** It is git-excluded and must
    not be committed.
 
 ## Reproduce

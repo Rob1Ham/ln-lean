@@ -1,9 +1,9 @@
 # Repair TODO — integrated Lightning proof tree
 
-**Worktree:** `/home/ubuntu/ln-lean-repair`  
-**Branch:** `repair/integrated` (from `final/integrated@af6caae`)  
-**Toolchain:** `leanprover/lean4:v4.35.0`  
-**L1 public reference:** `https://github.com/Rob1Ham/btc-lean` (`main@4f5c4f8`)  
+**Worktree:** `/home/ubuntu/ln-lean-repair`
+**Branch:** `repair/integrated` (from `final/integrated@af6caae`)
+**Toolchain:** `leanprover/lean4:v4.35.0`
+**L1 public reference:** `https://github.com/Rob1Ham/btc-lean` (`main@4f5c4f8`)
 **Vendor L1 snapshot:** `f950806` (read-only; retained for build compatibility)
 
 ## Baseline (done)
@@ -72,22 +72,29 @@ delete the negative result.
 
 ## R5 — Final gate
 
-- [ ] Full build with zero actual `sorry` in `LnLean/`.
-- [ ] Vendor integrity and anchor checks pass.
-- [ ] `scripts/check.sh` / policy checker passes.
-- [ ] Catalog checker passes and reports exact proved/statementOnly counts.
-- [ ] Update `docs/FINAL-STATUS.md`, `docs/WAVE-STATUS.md`, and
-  `agents/reports/FINAL-REPAIR.md` at the exact final HEAD.
-- [ ] Non-force merge/push of `repair/integrated` to the remote; never rewrite
+- [x] Full build with zero actual `sorry` in `LnLean/` — RC 0, 170 jobs,
+  `sorry_in_proofs=0`.
+- [x] Vendor integrity and anchor checks pass — 119 vendor files, 298 anchors,
+  0 bad.
+- [x] `scripts/check.sh` / policy checker passes — RC 0.
+- [x] `python3 scripts/check-final.py` passes — 164 Lean files, 162 root
+  imports.
+- [x] Catalog checker passes and reports exact counts — 18 proved / 30
+  statementOnly, 23 planned, 0 proved failures; `--allow-planned` RC 0.
+- [x] Update `docs/FINAL-STATUS.md`, `docs/WAVE-STATUS.md`, and
+  `agents/reports/FINAL-REPAIR.md` at final HEAD `68c236d`.
+- [ ] Non-force push of `repair/integrated` to the remote; never rewrite
   `main` or the other worker's branches.
 
 ## Commands
 
 ```sh
-export PATH=/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/bin:$PATH
+export PATH=/home/ubuntu/.elan/toolchains/leanprover--lean4---v4.35.0/bin:$PATH
 cd /home/ubuntu/ln-lean-repair
-flock -w 1800 /tmp/ln-build.lock lake build
+flock -w 1800 /tmp/ln-build.lock lake build LnLean
 ./scripts/verify-vendor.sh
 python3 scripts/verify-anchors.py
 ./scripts/check.sh
+python3 scripts/check-final.py
+python3 scripts/check-catalog.py --allow-planned
 ```

@@ -2,9 +2,8 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**HEAD:** `d5b8e9422c257f80c70c9100c2a092b676c89c23`
-**Working tree:** K02's catalog promotion (`18 proved / 30 statementOnly`) and
-regenerated index are uncommitted; `HEAD` is still `d5b8e94`.
+**HEAD:** `68c236da89b6063dd884799453f076bdc006de2f`
+**Catalog:** committed at this HEAD: 18 proved / 30 statementOnly.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 
 This file describes the repair branch. The historical wave tables below are
@@ -47,9 +46,11 @@ are not `sorry` terms.
   `check: OK`. An earlier raw-text false positive on a doc-comment occurrence
   of `sorry` in `LnLean/Proofs/ModelHardening/F13.lean:257` was fixed by
   making that pass comment-aware.
+- `check-final.py` — **RC 0**: 164 Lean files, 162 root imports, D=33 E=15
+  F=15. The stale 132-file assumption was updated for this branch.
 
-The final gate has **not** been declared; G01 owns it. No commit or push was
-made by D02.
+**Final gate: PASS at `68c236d` (G01).** The non-force push is the remaining
+integration action.
 
 ## Repair lanes completed
 
@@ -213,4 +214,5 @@ there are no unfinished proof bodies; it does **not** mean the 30
 `statementOnly` rows are proved. Cryptographic correctness is conditional on
 the interface fields in `PrimitiveModel` and on the finite C8 admission; it is
 never asserted as an axiom. L1 correctness is conditional on the vendor seam
-and the Phase-C2 bridges. The final gate and any push remain pending G01.
+and the Phase-C2 bridges. The final gate is green at `68c236d`; the non-force
+push is the remaining integration action.
