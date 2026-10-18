@@ -113,7 +113,7 @@ repair tree; the catalog now has exact targets for eleven additional rows.
   candidates.
 - [x] Full build **170 jobs RC 0**; `check.sh`, `check-final.py`, vendor,
   anchors, public-reference, and planned-aware catalog audit all RC 0.
-- [ ] Commit and non-force push to `origin/repair/integrated`.
+- [x] Commit and non-force push to `origin/repair/integrated`.
 
 ### Remaining planned/statement-only gaps
 

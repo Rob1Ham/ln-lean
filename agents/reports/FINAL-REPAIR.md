@@ -2,11 +2,11 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `PENDING-PROOF-WAVE-COMMIT`
+**Gate HEAD:** `d2769d20d01e2b69e170e1dafcd2e29e1df888d2`
 **Toolchain:** `leanprover/lean4:v4.35.0`
 **Author:** D02 (integration documentation lane), finalized by the integration lane
 **Status:** repair + proof-wave lanes complete; **proof-wave gate PASS**
-**Commit/push:** proof-wave commit pending; will be pushed non-force to
+**Commit/push:** integrated commit `d2769d2`; pushed non-force to
 `origin/repair/integrated`.
 
 ## 1. Starting point

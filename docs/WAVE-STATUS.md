@@ -2,7 +2,7 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `PENDING-PROOF-WAVE-COMMIT`
+**Gate HEAD:** `d2769d20d01e2b69e170e1dafcd2e29e1df888d2`
 **Catalog:** proof-wave tree: 29 proved / 19 statementOnly.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 

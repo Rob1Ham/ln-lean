@@ -2,8 +2,8 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `PENDING-PROOF-WAVE-COMMIT` (`[PROOF] add eight-lane exact
-targets, promote 11 catalog rows`)
+**Gate HEAD:** `d2769d20d01e2b69e170e1dafcd2e29e1df888d2` (`[PROOF] add
+eight-lane exact targets, promote 11 catalog rows`)
 **Catalog state:** proof-wave tree: 29 `proved` / 19 `statementOnly`.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 **L1 build dependency:** read-only `vendor/btc-lean-core` snapshot
