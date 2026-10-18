@@ -272,10 +272,10 @@ is [`docs/OPEN-ISSUES.md`](OPEN-ISSUES.md). The P0 blockers are:
 * `OPS-02` — no `LICENSE`; a neutral decision matrix is ready;
 * `OPS-03` — no release tag and `main` is behind; a release checklist is ready;
 * `L1-01`/`L1-02`/`L1-07` — the positive funding, delayed, and revocation
-  branches now execute through the vendored interpreter and a constructed BIP
-  143 digest, but a concrete EC verifier, transaction-validity context,
-  decoded sequence context, and unconditional `ConsensusSpendBridge` remain
-  open.
+  branches now execute through the vendored interpreter with a constructed BIP
+  143 digest and an exact decoded sequence context, but a concrete EC verifier,
+  the `TxValidation.Full`/`txCheckerFor` transfer, sequence-range/`minimalData`
+  policy edges, and unconditional `ConsensusSpendBridge` remain open.
 
 Wave 7 closed `CH-01` (consumer path), `RT-01` (canonical wrapper and raw
 non-refinement), `CONF-02` (live finite comparison), and `MODEL-02`/`MODEL-03`
