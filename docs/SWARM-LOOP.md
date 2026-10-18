@@ -158,17 +158,16 @@ the remaining issues are research-only, or the gate cannot be kept green.
 
 ## Current wave
 
-Wave 7 is complete: 48/48 catalog rows are proved, 79 resolved targets, full
-build 233 jobs, strict catalog audit green, 194 audited theorems, and the
-vector/framing/differential/live conformance checker is green. Reports are in
-`agents/reports/swarm7/`; the plan is `agents/swarm/WAVE-7.md`. Wave 7 closed
-the consumer, raw-gossip, live-conformance, and fold questions and narrowed the
-remaining L1, preimage, `open_channel`, and key-registration gaps. Wave 8
-candidates are defined in `docs/OPEN-ISSUES.md`: `TxValidation.Full` transfer,
-`HtlcWire` preimage equality, `Messages.openChannel`, `AcceptChannel`
-registration, consumer construction sites, a concrete EC bridge, more live
-encodings, and a store-epoch model. Every wave is integrated under the same
-gate and recorded here.
+Wave 8 is running from `50d78ed`: 48/48 catalog rows are proved, 79 resolved
+targets, full build 233 jobs, strict catalog audit green, and 194 audited
+theorems at launch. The plan is `agents/swarm/WAVE-8.md`; lane reports go to
+`agents/reports/swarm8/`. Wave 8 attacks the final `TxValidation.Full`
+transfer, `HtlcWire` preimage equality, the type-32 `open_channel` wire
+constructor, `accept_channel` payload/registration, consumer construction
+sites, a concrete ECDSA bridge, wider BOLT encodings, and gossip-store epochs.
+Wave 7 is recorded in `agents/swarm/WAVE-7.md` and
+`agents/reports/swarm7/`. Every wave is integrated under the same gate and
+recorded here.
 
 ## Why this is not a fully autonomous daemon
 

@@ -262,14 +262,33 @@ Five disjoint lanes extended the model and promoted eight more exact targets.
   retained `L1-02`/`L1-07`, `PR-05`, `L1-03`, and `PR-01` with narrower
   boundaries.
 
-### Wave 8 and beyond
+### Proof-wave 8 — residual transfer, wire, registration, EC, and store epochs
+
+Wave 8 launched from `50d78ed`; the lane plan is `agents/swarm/WAVE-8.md` and
+reports go to `agents/reports/swarm8/`.
+
+- [ ] `S8-L1-TXVALID` — `TxValidation.Full`/`txCheckerFor` transfer and
+  `minimalData`/`csv ≥ 32768` policy edges.
+- [ ] `S8-PR-HTLCPREIMAGE` — `HtlcWire` preimage byte equality, scriptCode
+  synthesis, and display-order txid boundary.
+- [ ] `S8-L1-OPENCHANNEL-WIRE` — type-32 `open_channel` constructor,
+  exhaustive-match repair, and end-to-end projection.
+- [ ] `S8-PR-ACCEPT-PAYLOAD` — `acceptChannel?` storage/registration and
+  key-attribution bridge.
+- [ ] `S8-CH-CONSUMER-SITES` — actual consumer construction sites and compiled
+  adapter.
+- [ ] `S8-L1-EC-BRIDGE` — concrete `verifyImpl` bridge or sharp conditional
+  extraction.
+- [ ] `S8-CONF-ENCODINGS` — wider BOLT encodings and finite/live differential
+  rows.
+- [ ] `S8-MODEL-STORE-EPOCH` — gossip-store epochs/replacement sequences over
+  the canonical wrapper.
+- [ ] Parent integration: root imports, catalog/targets, audit, generated
+  indexes, docs, full gate, non-force push.
 
 The catalog is no longer the work queue. Open issues are tracked in
-`docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`. Wave 8
-candidates are the `TxValidation.Full` transfer, `HtlcWire` preimage equality,
-`Messages.openChannel`, `AcceptChannel` registration, consumer construction
-sites, a concrete EC bridge, more live encodings, and a gossip store-epoch
-model. Human-gated release decisions remain outside agent lanes.
+`docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`.
+Human-gated release decisions remain outside agent lanes.
 
 ## Commands
 

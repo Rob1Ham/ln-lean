@@ -1,11 +1,11 @@
 # Open Issues and Swarm Roadmap
 
 **Status:** living roadmap after proof-wave 7; wave 7 is integrated and wave 8
-candidates are listed below.
+is running from `50d78ed`.
 **Branch:** `repair/integrated`.
-**Base commit:** `3180581` (wave 7 launch); proof-wave 7 code is `b48d041`;
-proof-wave 6 code is `0a3a5fb` (proof-wave 5 code is `6389baa`; proof-wave 4
-code at `26ced90`).
+**Base commit:** `50d78ed` (wave 8 launch); proof-wave 7 code is `b48d041`;
+wave 7 launch is `3180581`; proof-wave 6 code is `0a3a5fb` (proof-wave 5 code
+is `6389baa`; proof-wave 4 code at `26ced90`).
 **Catalog gate:** 48/48 rows `proved`, 0 `statement-only`, 0 unresolved,
 79 targets.
 **Full build:** 233 jobs, RC 0.
@@ -168,6 +168,27 @@ outside an agent lane.
 | `S8-L1-EC-BRIDGE` | `L1-01`, `L1-07` | Investigate a concrete ECDSA verifier bridge for `Bitcoin.Crypto.Ecdsa.Verify.verifyImpl`; keep the abstract-verifier boundary if no faithful implementation is available |
 | `S8-CONF-ENCODINGS` | `CONF-01` | Add more BOLT encodings and, if the environment permits, a node-level or wider live differential path; keep the finite/public-API caveat |
 | `S8-MODEL-STORE-EPOCH` | `RT-01` | Model gossip-store epochs/replacements explicitly and refine the canonical wrapper against the raw store over a realistic update sequence |
+
+## Wave 8 lanes (running)
+
+Wave 8 launched from `50d78ed`. Eight disjoint lanes are in flight; the parent
+integrates under the same build/catalog/audit/conformance/anchor/vendor/sorry
+gate. The exact lane plan and write sets are in `agents/swarm/WAVE-8.md`.
+
+| Lane | Issue(s) | Scope | Owned files |
+|---|---|---|---|
+| `S8-L1-TXVALID` | `L1-02`, `L1-07` | Final `TxValidation.Full`/`txCheckerFor` transfer and policy edges | new `TxValidTransferTargets.lean` |
+| `S8-PR-HTLCPREIMAGE` | `PR-05`, `PR-02` | `HtlcWire` preimage byte equality and scriptCode/display-order boundary | new `HtlcPreimageTargets.lean` |
+| `S8-L1-OPENCHANNEL-WIRE` | `L1-03` | Type-32 `open_channel` wire constructor and end-to-end projection | `Messages.lean`, `Laws.lean`, affected `Msg` matches, new `OpenChannelWireTargets.lean` |
+| `S8-PR-ACCEPT-PAYLOAD` | `PR-01` | `acceptChannel?` storage/registration and key-attribution bridge | `Handshake.lean`, `KeyModelTargets.lean`, new `AcceptPayloadTargets.lean` |
+| `S8-CH-CONSUMER-SITES` | `CH-01` | Actual consumer construction sites and compiled adapter | `CommitmentConsumerTargets.lean`, new `CommitmentConsumerSitesTargets.lean` |
+| `S8-L1-EC-BRIDGE` | `L1-01`, `L1-07` | Concrete `verifyImpl` bridge or sharp conditional extraction | new `EcdsaBridgeTargets.lean` |
+| `S8-CONF-ENCODINGS` | `CONF-01` | Wider BOLT encodings and finite/live differential rows | `tests/conformance/**`, checker, `ConformanceDiffTargets.lean` |
+| `S8-MODEL-STORE-EPOCH` | `RT-01` | Store epochs/replacement sequences over the canonical wrapper | `Gossip.lean`, new `GossipStoreEpochTargets.lean` |
+
+Candidates not selected remain listed above and stay owned by no lane. Human
+release decisions and the probability/complexity foundation remain outside the
+wave.
 
 ## Wave update protocol
 
