@@ -2,8 +2,8 @@
 
 **Status:** living roadmap after proof-wave 4.
 **Branch:** `repair/integrated`.
-**Base commit:** this proof-wave 4 working tree; the status commit records the
-exact hash. Wave 4 launched from `47189fe`; proof-wave 3 code was `0c99c92`.
+**Base commit:** `26ced90` (proof-wave 4 integration); wave 4 launched from
+`47189fe`; proof-wave 3 code was `0c99c92`.
 **Catalog gate:** 48/48 rows `proved`, 0 `statement-only`, 0 unresolved,
 61 targets.
 **Full build:** 188 jobs, RC 0.

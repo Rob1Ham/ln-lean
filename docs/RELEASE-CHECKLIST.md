@@ -28,7 +28,7 @@ Evidence labels used below:
 
 | Item | State | Evidence |
 |---|---|---|
-| Branch tip | wave-4 integration working tree (status commit records the hash) | `git rev-parse HEAD` |
+| Branch tip | `26ced90` proof-wave 4 integration (status commits may advance) | `git rev-parse HEAD` |
 | `origin/main` | `b891a59`; **61 commits behind** `HEAD`; `main` is an ancestor of `HEAD` | `git rev-list --count origin/main..HEAD` = 61; `git merge-base --is-ancestor origin/main HEAD` |
 | Release tags | none | `git tag -l` empty; GitHub tags API empty |
 | GitHub releases | none | GitHub releases API empty |

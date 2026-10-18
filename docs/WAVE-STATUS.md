@@ -2,8 +2,9 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** this proof-wave 4 working tree; the status commit records the
-exact hash. Proof-wave 3 code was `0c99c92`; wave 4 launched from `47189fe`.
+**Gate HEAD:** `26ced90` (`[PROOF] integrate proof-wave 4 bridge and
+conformance lanes`). Status commits may advance the branch tip. Proof-wave 3
+code was `0c99c92`; wave 4 launched from `47189fe`.
 **Catalog:** 48 proved / 0 statementOnly / 0 unresolved / 61 targets.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 
