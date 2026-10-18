@@ -29,8 +29,7 @@ predicates it proves
 
 The unconditional committed-update ledger is **false**: with truncated
 subtraction an HTLC larger than the settled balance adds in-flight value
-without removing settled value.  The faithful unconditional statement is kept
-below with the obligation marker, the mechanized refutation
+without removing settled value.  The mechanized refutation
 `committedUpdate_ledger_counterexample` / `committedUpdate_preserves_ledger_not_unconditional`
 records why, and the corrected theorem carries the affordability hypothesis.
 The same gap is mechanized for the commitment remainder in
@@ -258,8 +257,8 @@ theorem addLocalHtlc_balance (c : Channel) {amount : Msat}
 /-- **Conditional committed-update ledger conservation.**  If the added local
 HTLC fits inside the settled local balance (the `NoUnderflow`/`Affordable`
 invariant), then the settled plus in-flight ledger with the fee bucket is
-preserved.  This is the corrected form of
-`committedUpdate_preserves_ledger_unconditional` below. -/
+preserved.  This is the strongest true replacement for the refuted
+unconditional committed-update ledger (see §5). -/
 theorem committedUpdate_preserves_ledger {c : Channel} {fee amount : Msat}
     (haff : Affordable c.balance .local amount.val)
     (hledger : LedgerBalanced c fee) :
@@ -437,15 +436,11 @@ theorem committedUpdate_preserves_ledger_not_unconditional :
   exact committedUpdate_ledger_counterexample
     (h zeroChannel ⟨0⟩ ⟨1⟩ zeroChannel_ledger)
 
-/-- **Faithful unconditional statement, kept as an open obligation.**  Without
-the affordability hypothesis this is false by
-`committedUpdate_ledger_counterexample`; the corrected conditional theorem is
-`committedUpdate_preserves_ledger`. -/
-theorem committedUpdate_preserves_ledger_unconditional
-    (c : Channel) (fee amount : Msat) (hledger : LedgerBalanced c fee) :
-    LedgerBalanced (addLocalHtlc c amount) fee := by
-  -- OBLIGATION: LN-WF-F03
-  sorry
+-- REPAIRED: `committedUpdate_preserves_ledger_unconditional` was refuted by
+-- `committedUpdate_ledger_counterexample` (and
+-- `committedUpdate_preserves_ledger_not_unconditional`); the strongest true
+-- replacement is `committedUpdate_preserves_ledger`, which carries the
+-- explicit `Affordable c.balance .local amount.val` hypothesis.
 
 /-- The arithmetic invariant is not vacuous: residual add-back fails exactly
 when the debit does not fit. -/
