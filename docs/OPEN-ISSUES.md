@@ -1,8 +1,9 @@
 # Open Issues and Swarm Roadmap
 
-**Status:** living roadmap after proof-wave 6; wave 7 candidate lanes defined.
+**Status:** living roadmap after proof-wave 6; wave 7 lanes launched from
+`83d90b7`.
 **Branch:** `repair/integrated`.
-**Base commit:** `201a0a0` (wave 6 launch); proof-wave 6 code is `0a3a5fb`
+**Base commit:** `83d90b7` (wave 7 launch); proof-wave 6 code is `0a3a5fb`
 (proof-wave 5 code is `6389baa`; proof-wave 4 code at `26ced90`).
 **Catalog gate:** 48/48 rows `proved`, 0 `statement-only`, 0 unresolved,
 73 targets.
@@ -122,13 +123,13 @@ theorems. The remaining lane output is evidence for existing rows and the
 wave-7 candidates below, not a claim of unconditional consensus execution or
 computational security.
 
-## Wave 7 candidate lanes
+## Wave 7 lanes (launched)
 
-These are codeable next steps from the wave-6 gaps. The parent selects a
-disjoint set after the wave-6 checkpoint. Human-only decisions (`OPS-02`,
-`OPS-03`, vendor publication) and the probability/complexity foundation
-(`CR-01`/`SEC-01`) stay outside an agent lane until a maintainer chooses the
-foundation.
+Wave 7 launched from `83d90b7` with eight disjoint lanes. Human-only decisions
+(`OPS-02`, `OPS-03`, vendor publication) and the probability/complexity
+foundation (`CR-01`/`SEC-01`) stay outside an agent lane until a maintainer
+chooses the foundation. Integration is pending; the owned-file table is in
+`agents/swarm/WAVE-7.md`.
 
 | Lane | Issue(s) | Scope | Owned files |
 |---|---|---|---|

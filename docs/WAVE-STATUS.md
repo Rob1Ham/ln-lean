@@ -78,15 +78,15 @@ Wave 6 added seven Lean files (one model module and six proof modules),
 strengthened four catalog rows from 67 to 73 resolved targets, extended the
 audit to 163 headline theorems, and kept the 48/0/0 catalog gate.
 
-## Wave 7 candidates
+## Wave 7 lanes (launched)
 
-The remaining codeable gaps are: exact BIP 143 preimage equality to the
-vendored `bip143MsgL`/`LnLean.Bitcoin.Sighash.encode`, the
-`trimmedTotalSat`/`trimmedSat` naming decision and coordinated rename, live
-rust-lightning fixture regeneration, folding `UpdateStep`/`DanceStep` into
-`ProtocolEvent`, raw `applyGossip` refinement, and the computational-security
-game foundation. Release decisions (`OPS-02`, `OPS-03`, vendor publication)
-remain human-only.
+Wave 7 launched from `83d90b7` with eight disjoint lanes: decoded
+sequence/policy context, exact BIP 143 preimage equality, legacy commitment
+consumer migration, folding/refining the update and dance layers, raw
+`applyGossip` refinement, live rust-lightning conformance, `open_channel`/
+funding-key authentication, and a secret-key/signer model. Integration is
+pending; the lane/owned-file table is in `agents/swarm/WAVE-7.md`. Release
+decisions (`OPS-02`, `OPS-03`, vendor publication) remain human-only.
 
 ## Historical waves
 
