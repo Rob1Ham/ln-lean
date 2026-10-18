@@ -388,6 +388,26 @@ theorem Commitment.outputs_nonneg_and_sum_le_funding_of_fee (c : Commitment)
   ⟨Commitment.commitmentOutputs_value_nonneg_int c,
     Commitment.commitmentOutputs_sum_le_funding_of_fee c h⟩
 
+/-- **Catalog target `LN-CH-002`.**  No commitment output has a negative value
+and, under the BOLT 3 balance equation
+`totalOutputValue + feeSat = fundingValueSat`, the emitted output sum stays
+within the funding value.
+
+The first conjunct holds unconditionally (output values are `Nat` and are read
+as `Int`, so a negative output is unrepresentable; see
+`commitmentOutputs_value_nonneg_int`); the hypothesis `h` is needed only for
+the second conjunct.  The funding bound is *not* unconditional, because
+`Commitment` has no well-formedness invariant forcing the balance equation
+(D46's `waveD_d46_unconditional_counterexample` refutes the bare bound).  The
+proof is exactly C01's
+`Commitment.outputs_nonneg_and_sum_le_funding_of_fee`, named at the catalog
+target rather than restated with a new hypothesis. -/
+theorem Commitment.outputs_nonnegative (c : Commitment)
+    (h : c.totalOutputValue + c.feeSat = c.fundingValueSat) :
+    (∀ o ∈ c.commitmentOutputs, 0 ≤ (o.value : Int)) ∧
+      (c.commitmentOutputs.map CommitmentOutput.value).sum ≤ c.fundingValueSat :=
+  Commitment.outputs_nonneg_and_sum_le_funding_of_fee c h
+
 /-! ## Model-level trimming facts (LN-CH-003)
 
 `commitmentOutputs` trims a `to_local`/`to_remote` output exactly when its

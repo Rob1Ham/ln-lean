@@ -2,8 +2,8 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `d2769d20d01e2b69e170e1dafcd2e29e1df888d2`
-**Catalog:** proof-wave tree: 29 proved / 19 statementOnly.
+**Gate HEAD:** pending proof-wave 2 integration commit
+**Catalog:** proof-wave 2 tree: 37 proved / 11 statementOnly.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 
 This file describes the repair branch. The historical wave tables below are
@@ -14,17 +14,17 @@ current result.
 
 | Metric | Value |
 |---|---|
-| Lean files under `LnLean/` | **164** |
-| Root imports in `LnLean.lean` | **162** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
-| Full build | **RC 0**, `Build completed successfully (170 jobs)` |
+| Lean files under `LnLean/` | **166** |
+| Root imports in `LnLean.lean` | **164** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
+| Full build | **RC 0**, `Build completed successfully (172 jobs)` |
 | Actual `sorry` lines | **0** (`grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` → no matches, grep RC 1) |
-| Proof files with the word `sorry` in prose | 15 (comments only, not proof terms) |
+| Proof files with the word `sorry` in prose | comments only, not proof terms |
 | Catalog rows | **48** |
-| Catalog `proved` | **29** |
-| Catalog `statementOnly` | **19** (12 planned/unresolved targets, 7 exact non-promotable) |
+| Catalog `proved` | **37** |
+| Catalog `statementOnly` | **11** (1 planned/unresolved, 3 exact-but-retained, 7 exact non-promotable) |
 | Vendor snapshot | **OK**, 119 files |
 | Anchors | **298 checked, 0 bad**, 2 unanchored rows |
-| Generated obligation index | 128 proof files, 80 markers, 4138 declarations, 0 `sorry` sites |
+| Generated obligation index | 130 proof files, 80 markers, 4151 declarations, 0 `sorry` sites |
 | Public L1 pin | `Rob1Ham/btc-lean` `main@4f5c4f8` |
 | Build dependency | `vendor/btc-lean-core` `f950806` |
 
@@ -39,18 +39,23 @@ are not `sorry` terms.
 - `verify-anchors.py` — RC 0.
 - `check-public-reference.sh` — RC 0.
 - `check-catalog.py --allow-planned` — RC 0
-  (`rows=48 proved=29 statementOnly=19 planned=12 proved_failures=0`).
-- `check-catalog.py --audit` (strict) — RC 1: the 12 planned
-  `statementOnly` targets are errors in strict mode; no `proved` row fails.
-- `check.sh` — **RC 0**: `files=164 obligations=81 sorry_in_proofs=0`,
-  `check: OK`. An earlier raw-text false positive on a doc-comment occurrence
-  of `sorry` in `LnLean/Proofs/ModelHardening/F13.lean:257` was fixed by
-  making that pass comment-aware.
-- `check-final.py` — **RC 0**: 164 Lean files, 162 root imports, D=33 E=15
-  F=15. The stale 132-file assumption was updated for this branch.
+  (`rows=48 proved=37 statementOnly=11 planned=1 proved_failures=0
+  candidates=3`).
+- `check-catalog.py --audit` (strict) — RC 1: `LN-CH-003` is the one
+  unresolved planned target; no `proved` row fails. The three exact candidates
+  (`LN-HT-004`, `LN-PR-003`, `LN-PR-004`) are intentionally retained as
+  `statementOnly`.
+- `check.sh` — **RC 0**: `files=166 obligations=81 sorry_in_proofs=0`,
+  `check: OK`.
+- `check-final.py` — **RC 0**: 166 Lean files, 164 root imports, D=33 E=15
+  F=15.
+- `verify-vendor.sh` — **RC 0**, 119 files.
+- `verify-anchors.py` — **RC 0**, 298 anchors, 0 bad, 2 unanchored rows.
+- `check-public-reference.sh` — **RC 0**, offline pin/vendor checks OK.
 
-**Proof-wave gate: PASS at the commit recorded above.** The branch is pushed
-non-force to `origin/repair/integrated`.
+**Proof-wave 2 gate: PASS.** The branch is pushed non-force to
+`origin/repair/integrated` after the full build and gate pass; the exact commit
+is recorded in `docs/FINAL-STATUS.md`.
 
 ## Repair lanes completed
 
@@ -64,6 +69,11 @@ non-force to `origin/repair/integrated`.
 | `R01`–`R10` | Repair the ten remaining refuted sites | Removed each false unconditional declaration plus marker; kept the counterexample and conditional replacement |
 | `W01`, `R01`, `O01`, `M01`, `P01`, `S01` | Proof-wave exact targets | Promoted `LN-CR-006`, `LN-PR-005`, `LN-RT-002/003/004/005`, `LN-PM-002/005`, and `LN-SEC-002/003/006`; see `docs/THEOREM-INDEX.md` for the conditional caveats |
 | `H01`, `C01` | Statement-only gap support | Added HTLC partition/id and commitment nonnegativity/trimming lemmas; no fake exact target, and the D12/D15/D34/D46 counterexamples were retained |
+| `SEC05-ECON` | Bounded penalty economics | Promoted `LN-SEC-005` via `Liveness.penalty_economical`; unconditional D34 spike counterexample retained |
+| `CH02-WF` | Commitment output nonnegativity | Promoted `LN-CH-002` under the BOLT 3 balance equation; D46 retained |
+| `HT-LEDGER` | HTLC ledger partition | Promoted `LN-HT-003` under the explicit ledger invariant; `LN-HT-004` retained because its exact target assumes `liveHtlcIdsNodup` |
+| `PR-WRAPPERS` | Protocol exact names | Promoted `LN-PR-001` and `LN-PR-006`; `LN-PR-003/004` retained as conditional characterizations |
+| `CR-RETARGET` | Crypto field targets | Retargeted `LN-CR-001/002/003` to `CryptoTargets` conditional contracts; D05/D07 counterexamples retained |
 
 ### Repaired sites
 
@@ -157,21 +167,21 @@ probability are outside the model. See `docs/HMAC-LIMITS.md` and
   explicit script/sighash/C1 hypotheses.
 - Network liveness is conditional on partial synchrony and fairness. The
   watchtower bridge requires a report (which implies liveness), not `live` alone;
-  penalty economics remains unproved.
+  penalty economics is proved only under the bounded fee schedule.
 
 ## Known non-closures / planned work
 
-- 12 `statementOnly` rows name declarations not yet present:
-  `LN-CR-001/002/003`, `LN-CH-002/003`, `LN-HT-003/004`,
-  `LN-PR-001/003/004/006`, and `LN-SEC-005`.
+- 1 `statementOnly` row names a declaration not yet present: `LN-CH-003`.
+- 3 `statementOnly` rows have exact targets but are deliberately retained:
+  `LN-HT-004` assumes the uniqueness it claims, and `LN-PR-003/004`
+  characterize or assume their predicates.
 - 7 `statementOnly` rows name `def`s or predicate `def`s, not theorems.
-- 19 rows remain `statementOnly` in total.
+- 11 rows remain `statementOnly` in total.
 - `LN-L1-004`: `toLocalScript` is a flat seam fragment, not the full BOLT 3
   two-branch witness script.
 - `LN-PR-004`: both D20/E20 remain negative/conditional.
-- `LN-SEC-005`: the unbounded fee model has a D34 counterexample to the
-  unconditional penalty-economics claim; a bounded-feerate-schedule model is
-  still needed.
+- `LN-SEC-005`: the unconditional fee-spike claim is refuted by D34; the
+  promoted theorem uses the explicit `FeeScheduleBounded` hypothesis.
 - `LN-CH-101`: there is no `Step.update_add_htlc` constructor; E37 models the
   affordability arithmetic on successor functions.
 - `LN-GOSSIP-002`: the raw `applyGossip` path remains unguarded; E39 proves
@@ -217,9 +227,9 @@ by K02; do not run it just to inspect status.
 ## Honest status
 
 An obligation is a named claim, not a proof. Zero actual `sorry` terms means
-there are no unfinished proof bodies; it does **not** mean the 19
+there are no unfinished proof bodies; it does **not** mean the 11
 `statementOnly` rows are proved. Cryptographic correctness is conditional on
 the interface fields in `PrimitiveModel` and on the finite C8 admission; it is
 never asserted as an axiom. L1 correctness is conditional on the vendor seam
-and the Phase-C2 bridges. The proof-wave gate is green at the commit recorded
-above, and the branch is pushed non-force to `origin/repair/integrated`.
+and the Phase-C2 bridges. The proof-wave 2 gate is recorded above, and the
+branch is pushed non-force to `origin/repair/integrated`.

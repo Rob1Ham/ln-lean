@@ -17,7 +17,7 @@ LEAN = "/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/bin"
 
 # The repair/integrated branch adds the 29 C2/C3 modules and
 # LnLean/Proofs/Common to the original 132-file final tree.
-EXPECTED_LEAN_FILES = 164
+EXPECTED_LEAN_FILES = 166
 
 # These are convenience aggregators, not root dependencies.  The root module
 # imports the concrete modules directly; importing an aggregator as well would

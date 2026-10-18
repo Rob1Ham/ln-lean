@@ -15,6 +15,10 @@
 -/
 
 import LnLean.Proofs.Conservation
+import LnLean.Channel.Commitment
+import LnLean.Channel.HTLC
+import LnLean.Proofs.CryptoTargets
+import LnLean.Proofs.ProtocolTargets
 import LnLean.Proofs.Channel.HTLCProps
 import LnLean.Proofs.Channel.RevocationProps
 import LnLean.Proofs.Channel.PenaltyProps
@@ -126,7 +130,18 @@ set_option autoImplicit false
 #print axioms LnLean.Proofs.Bitcoin.FundingProps.confirm_preserves_funding
 #print axioms LnLean.Proofs.Bitcoin.FundingProps.fundingSpend_conditional_2of2_only
 
-/-! ## 14. Registry
+/-! ## 14. Proof-wave 2 catalog targets -/
+
+#print axioms LnLean.Crypto.Hash.paymentHash_sha256_contract
+#print axioms LnLean.Crypto.Sig.commitmentSig_contract
+#print axioms LnLean.Crypto.Hash.onionHmacTag_size_and_bindsOn
+#print axioms LnLean.Channel.Commitment.outputs_nonnegative
+#print axioms LnLean.Channel.HTLC.amount_conservation
+#print axioms LnLean.Protocol.Handshake.open_bounds
+#print axioms LnLean.Protocol.Handshake.feature_intersection
+#print axioms LnLean.Proofs.Liveness.penalty_economical
+
+/-! ## 15. Registry
 
   The registry is a plain list of fully-qualified names.  Keeping it in the
   same module as the `#print axioms` commands lets the length proof below
@@ -187,6 +202,14 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Proofs.Bitcoin.FundingProps.witnessScript_is_2of2_over_funding_keys,
     `LnLean.Proofs.Bitcoin.FundingProps.FundingConfirmed.script_is_p2wsh,
     `LnLean.Proofs.Bitcoin.FundingProps.confirm_preserves_funding,
-    `LnLean.Proofs.Bitcoin.FundingProps.fundingSpend_conditional_2of2_only ]
+    `LnLean.Proofs.Bitcoin.FundingProps.fundingSpend_conditional_2of2_only,
+    `LnLean.Crypto.Hash.paymentHash_sha256_contract,
+    `LnLean.Crypto.Sig.commitmentSig_contract,
+    `LnLean.Crypto.Hash.onionHmacTag_size_and_bindsOn,
+    `LnLean.Channel.Commitment.outputs_nonnegative,
+    `LnLean.Channel.HTLC.amount_conservation,
+    `LnLean.Protocol.Handshake.open_bounds,
+    `LnLean.Protocol.Handshake.feature_intersection,
+    `LnLean.Proofs.Liveness.penalty_economical ]
 
-theorem auditedTheorems_length : auditedTheorems.length = 54 := rfl
+theorem auditedTheorems_length : auditedTheorems.length = 62 := rfl

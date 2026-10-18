@@ -6,8 +6,8 @@ kept in sync with it; every id below appears in `docs/TRACEABILITY.md` and in
 the Lean catalog, and vice versa.
 
 The proof-wave lanes added declarations and replaced `statement-only` rows with
-proved theorems. At the time of writing, 29 rows are `proved` (the target
-theorem exists in the tree) and 19 are `statement-only` (no theorem yet; the
+proved theorems. At the time of writing, 37 rows are `proved` (the target
+theorem exists in the tree) and 11 are `statement-only` (no theorem yet; the
 target is the planned declaration). A `proved` row is not a claim that the full
 English property is proved by the cited theorem alone when the row names
 several targets, or when the theorem keeps cryptographic/model hypotheses
@@ -21,14 +21,14 @@ per-lane reports under `agents/reports/`.
 | Domain | Obligations | Proved | Statement-only |
 |---|---:|---:|---:|
 | L1 / foundations | 6 | 2 | 4 |
-| Crypto / wire | 6 | 2 | 4 |
-| Channel / commitment | 6 | 3 | 3 |
-| HTLC / revocation | 6 | 4 | 2 |
-| Protocol / peer | 6 | 2 | 4 |
+| Crypto / wire | 6 | 5 | 1 |
+| Channel / commitment | 6 | 4 | 2 |
+| HTLC / revocation | 6 | 5 | 1 |
+| Protocol / peer | 6 | 4 | 2 |
 | Routing / onion | 6 | 5 | 1 |
 | Payments | 6 | 6 | 0 |
-| Security / proofs | 6 | 5 | 1 |
-| **Total** | **48** | **29** | **19** |
+| Security / proofs | 6 | 6 | 0 |
+| **Total** | **48** | **37** | **11** |
 
 ## Obligations
 
@@ -40,30 +40,30 @@ per-lane reports under `agents/reports/`.
 | `LN-L1-004` | L1 / foundations | The to_local commitment output carries the CSV contest delay and the revocation key. | `LnLean.Bitcoin.toLocalScript` | statement-only |
 | `LN-L1-005` | L1 / foundations | An anchor output is worth exactly 330 satoshis. | `LnLean.Bitcoin.anchorValue_eq` | proved |
 | `LN-L1-006` | L1 / foundations | The commitment base weight is the BOLT 3 constant 724 before HTLC outputs. | `LnLean.Bitcoin.commitmentBaseWeight` | statement-only |
-| `LN-CR-001` | Crypto / wire | Payment hashes are SHA-256 outputs, relying on assumption C1 (collision and preimage resistance). | `LnLean.Crypto.Hash.sha256` | statement-only |
-| `LN-CR-002` | Crypto / wire | Commitment signatures verify under the counterparty funding key, relying on assumption C3 (ECDSA EUF-CMA). | `LnLean.Crypto.Sig.ecdsaVerify` | statement-only |
-| `LN-CR-003` | Crypto / wire | Onion integrity checks are HMAC-SHA256 tags, relying on assumption C8 (HMAC PRF). | `LnLean.Crypto.Hash.hmacSha256` | statement-only |
+| `LN-CR-001` | Crypto / wire | Constructed and opened payment hashes are SHA-256 outputs; under assumption C1 (collision resistance on the 32-byte preimage domain), a payment hash determines at most one valid preimage. | `LnLean.Crypto.Hash.paymentHash_sha256_contract` | proved |
+| `LN-CR-002` | Crypto / wire | Under assumption C3 (ECDSA EUF-CMA), a commitment-domain signature binds its untagged message uniquely and cannot verify in the funding or close signing domain. | `LnLean.Crypto.Sig.commitmentSig_contract` | proved |
+| `LN-CR-003` | Crypto / wire | Onion HMAC-SHA256 tags are 32 bytes; under the finite-execution C8 admission, an authentic tag determines the hop payloads uniquely among the messages of that execution. | `LnLean.Crypto.Hash.onionHmacTag_size_and_bindsOn` | proved |
 | `LN-CR-004` | Crypto / wire | BigSize encoding and decoding are inverse on canonical encodings. | `LnLean.Wire.decode_encode` | proved |
 | `LN-CR-005` | Crypto / wire | A TLV stream is strictly sorted by type and has no duplicate types. | `LnLean.Wire.TLVStream.WellFormed` | statement-only |
 | `LN-CR-006` | Crypto / wire | A Lightning message frame's declared length matches the payload actually consumed. | `LnLean.Wire.Message.decode_length` | proved |
 | `LN-CH-001` | Channel / commitment | Every ledger transition preserves funding = local + remote + in-flight + fee. | `LnLean.Security.Ledger.step_conserves` | proved |
-| `LN-CH-002` | Channel / commitment | No commitment output has a negative value and the output sum stays within the funding value. | `LnLean.Channel.Commitment.outputs_nonnegative` | statement-only |
+| `LN-CH-002` | Channel / commitment | No commitment output has a negative value and the output sum stays within the funding value. | `LnLean.Channel.Commitment.outputs_nonnegative` | proved |
 | `LN-CH-003` | Channel / commitment | Commitment outputs are ordered by value then script, and dust HTLCs are trimmed. | `LnLean.Channel.Commitment.output_ordering` | statement-only |
 | `LN-CH-004` | Channel / commitment | A committed update never decreases the commitment number. | `LnLean.Security.advance_monotone` | proved |
 | `LN-CH-005` | Channel / commitment | A commitment with an insufficient feerate for its weight is rejected before signing. | `LnLean.Channel.Fee.feeInsufficient` | statement-only |
 | `LN-CH-006` | Channel / commitment | HTLC exposure and channel reserve bounds are respected by admissible updates. | `LnLean.Channel.Reserve.bounds` | proved |
 | `LN-HT-001` | HTLC / revocation | A fulfilled HTLC carries a preimage whose hash is the payment hash. | `LnLean.Security.HtlcRecord.fulfill_sound` | proved |
 | `LN-HT-002` | HTLC / revocation | An HTLC is failed only at or after its CLTV expiry. | `LnLean.Security.HtlcRecord.fail_only_after_expiry` | proved |
-| `LN-HT-003` | HTLC / revocation | Offered, received, and trimmed HTLC amounts plus balances and fee equal the funding value. | `LnLean.Channel.HTLC.amount_conservation` | statement-only |
+| `LN-HT-003` | HTLC / revocation | Offered, received, and trimmed HTLC amounts plus balances and fee equal the funding value. | `LnLean.Channel.HTLC.amount_conservation` | proved |
 | `LN-HT-004` | HTLC / revocation | An HTLC id is unique within the live HTLC set of a channel. | `LnLean.Channel.HTLC.id_unique` | statement-only |
 | `LN-HT-005` | HTLC / revocation | A revoked commitment is strictly older than the current commitment and cannot be the current one. | `LnLean.Security.revoked_commitment_is_old` | proved |
 | `LN-HT-006` | HTLC / revocation | A punishable breach has a penalty transaction that spends both commitment outputs. | `LnLean.Security.breach_penalty_spends_both` | proved |
-| `LN-PR-001` | Protocol / peer | open_channel accepts a funding amount only above the dust and minimum-channel bounds. | `LnLean.Protocol.Handshake.open_bounds` | statement-only |
+| `LN-PR-001` | Protocol / peer | open_channel accepts a funding amount only above the dust and minimum-channel bounds. | `LnLean.Protocol.Handshake.open_bounds` | proved |
 | `LN-PR-002` | Protocol / peer | The channel enters normal operation only after both channel_ready messages. | `LnLean.Protocol.Handshake.channel_ready_gate` | proved |
 | `LN-PR-003` | Protocol / peer | funding_signed carries a valid signature over the funding transaction. | `LnLean.Protocol.Handshake.funding_signed_valid` | statement-only |
 | `LN-PR-004` | Protocol / peer | commitment_signed covers exactly the current HTLC set and fee. | `LnLean.Protocol.Messages.commitment_signed_covers` | statement-only |
 | `LN-PR-005` | Protocol / peer | channel_reestablish retransmits unacknowledged updates without rolling state back. | `LnLean.Protocol.Peer.reestablish_no_rollback` | proved |
-| `LN-PR-006` | Protocol / peer | Negotiated channel features are the intersection of both peers' supported features. | `LnLean.Protocol.Handshake.feature_intersection` | statement-only |
+| `LN-PR-006` | Protocol / peer | Negotiated channel features are the intersection of both peers' supported features. | `LnLean.Protocol.Handshake.feature_intersection` | proved |
 | `LN-RT-001` | Routing / onion | A well-formed route is non-empty, connected end-to-end, and every hop has enough capacity. | `LnLean.Security.Route.wellFormed_connected; LnLean.Security.Route.wellFormed_capacity; LnLean.Security.Route.wellFormed_nonempty` | proved |
 | `LN-RT-002` | Routing / onion | A newer channel_update replaces an older one only if its timestamp is greater. | `LnLean.Routing.Gossip.update_monotone` | proved |
 | `LN-RT-003` | Routing / onion | Peeling one onion layer exposes the next hop or a terminal payload, never both. | `LnLean.Routing.Onion.peel_deterministic` | proved |
@@ -80,7 +80,7 @@ per-lane reports under `agents/reports/`.
 | `LN-SEC-002` | Security / proofs | Across all channels and the L1 spend set, total value is conserved. | `LnLean.Proofs.Conservation.global_conservation` | proved |
 | `LN-SEC-003` | Security / proofs | Safety holds under an asynchronous adversarial schedule (without a fairness hypothesis). | `LnLean.Proofs.Security.safety_async` | proved |
 | `LN-SEC-004` | Security / proofs | After GST every message is delivered within delta of its send time. | `LnLean.Security.partial_synchrony_delivers` | proved |
-| `LN-SEC-005` | Security / proofs | A penalty transaction remains economical under the modelled fee spike. | `LnLean.Proofs.Liveness.penalty_economical` | statement-only |
+| `LN-SEC-005` | Security / proofs | A penalty transaction remains economical under the modelled fee spike. | `LnLean.Proofs.Liveness.penalty_economical` | proved |
 | `LN-SEC-006` | Security / proofs | A breach is punished if some party has the revocation secret and a timely L1 transaction, given a live watchtower. | `LnLean.Proofs.Liveness.watchtower_bridge` | proved |
 
 ## Notes
@@ -89,7 +89,7 @@ per-lane reports under `agents/reports/`.
 
 * The ten core invariant records (`INV-01`..`INV-10`) live in `LnLean/Security/Invariants.lean` and are a separate, smaller catalog; they are the predicates the wave-B proof modules should instantiate.
 
-* `LN-L1-002` and `LN-L1-005` name existing theorems in `LnLean/Bitcoin/Seam.lean`. Row `LN-CR-004` names `LnLean.Wire.decode_encode` in `LnLean/Wire/BigSize.lean`. Rows `LN-CH-006`, `LN-PR-002`, `LN-PM-003`, and `LN-PM-006` name theorems owned by wave-D/wave-E modules (`LnLean.Proofs.WaveD.D14`, `D18`, `D29`, `LnLean.Proofs.WaveE.E31`). The proof-wave promotions add exact targets in `LnLean/Wire/Message`, `LnLean/Protocol/Peer`, the routing modules, `LnLean/Payment/Invoice`, `LnLean/Payment/MPP`, `LnLean.Proofs.PhaseC2.GlobalConservation`, `LnLean.Proofs.PhaseC3.SecurityGame`, and `LnLean.Proofs.Liveness`; the remaining older `proved` rows name declarations owned by `LnLean/Security/Invariants.lean`.
+* `LN-L1-002` and `LN-L1-005` name existing theorems in `LnLean/Bitcoin/Seam.lean`. Row `LN-CR-004` names `LnLean.Wire.decode_encode` in `LnLean/Wire/BigSize.lean`. Rows `LN-CH-006`, `LN-PR-002`, `LN-PM-003`, and `LN-PM-006` name theorems owned by wave-D/wave-E modules (`LnLean.Proofs.WaveD.D14`, `D18`, `D29`, `LnLean.Proofs.WaveE.E31`). The proof-wave promotions add exact targets in `LnLean/Wire/Message`, `LnLean/Protocol/Peer`, `LnLean/Proofs/ProtocolTargets`, `LnLean/Proofs/CryptoTargets`, `LnLean/Channel/Commitment`, `LnLean/Channel/HTLC`, the routing modules, `LnLean/Payment/Invoice`, `LnLean/Payment/MPP`, `LnLean.Proofs.PhaseC2.GlobalConservation`, `LnLean.Proofs.PhaseC3.SecurityGame`, and `LnLean.Proofs.Liveness`; the remaining older `proved` rows name declarations owned by `LnLean/Security/Invariants.lean`.
 
 ### Proof-wave promotion notes
 
@@ -117,12 +117,33 @@ of the row's meaning and are also recorded in the lane reports under
   `wt.reports c c.breachHeight`, which implies `wt.live`. A live tower alone
   is insufficient; `LnLean.Proofs.WaveE.E35` contains the counterexample.
 
-The remaining `statement-only` rows are not silently weakened. `LN-CH-002`
-and `LN-CH-003` have model-level nonnegativity/trimming support but retain
-their D46/D12 counterexamples to the unconditional claims; `LN-HT-003/004`
-have partition and live-id invariant support but need a balance/fee ledger or
-per-sender id counters for the exact claims; `LN-PR-001/003/004/006` have
-faithful models in D17/E19/E20/FeatureClosure but not at the catalogued wave-A
-names; `LN-SEC-005` has a D34 counterexample to the unconditional fee-spike
-claim and needs a bounded-feerate-schedule model.
+The proof-wave 2 promotions add these exact targets and scope notes:
+
+* `LN-CR-001/002/003` were **retargeted** from `PrimitiveModel` fields to
+  standalone conditional contracts. `paymentHash_sha256_contract` covers
+  constructed/opened hashes and C1 preimage uniqueness; D05's well-formed
+  33-byte counterexample refutes the universal range reading.
+  `commitmentSig_contract` covers C3 message binding and funding/close domain
+  separation; it does not claim signing completeness or key attribution.
+  `onionHmacTag_size_and_bindsOn` covers 32-byte tags and finite-execution C8
+  binding; global HMAC PRF is refuted by D07.
+* `LN-CH-002` (`Commitment.outputs_nonnegative`) proves nonnegativity
+  unconditionally and the funding bound under the BOLT 3 balance equation
+  `totalOutputValue + feeSat = fundingValueSat`; D46 retains the unconditional
+  counterexample.
+* `LN-HT-003` (`HTLC.amount_conservation`) is a partition theorem under the
+  explicit ledger invariant `ledger + totalHtlcValue (htlcSet hs) = funding`.
+  `LN-HT-004` remains `statement-only`: its exact `id_unique` target assumes
+  `liveHtlcIdsNodup`, which is the uniqueness property being claimed.
+* `LN-PR-001` (`Handshake.open_bounds`) is the D17 acceptor-bound theorem.
+  `LN-PR-006` (`Handshake.feature_intersection`) is the support-set
+  intersection under BOLT 1's survival hypothesis, not raw bitwise AND.
+  `LN-PR-003/004` remain `statement-only`: their wrappers characterize or
+  assume the claimed predicate rather than prove it from the wire record.
+* `LN-SEC-005` (`Liveness.penalty_economical`) is the bounded-schedule theorem
+  (`FeeScheduleBounded`); D34 retains the unconditional fee-spike
+  counterexample.
+
+`LN-CH-003` also remains `statement-only`: D12 refutes the unconditional
+ordering claim and the model has no script/CLTV ordering key.
 

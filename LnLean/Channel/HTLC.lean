@@ -703,4 +703,56 @@ theorem liveHtlcIdsNodup_unconditional_false :
   rw [hids] at h
   simp at h
 
+/-! ## Catalog-named targets for `LN-HT-003` and `LN-HT-004`
+
+The catalog writes the module name `HTLC` as if it were a namespace, so the
+exact targets are `LnLean.Channel.HTLC.amount_conservation` and
+`LnLean.Channel.HTLC.id_unique`.  The nested namespace below supplies those
+names without changing any earlier declaration.
+
+Both theorems restate H01's results with the same explicit hypotheses; neither
+premise is discharged by the model.  In particular:
+
+* `amount_conservation` still takes the channel-ledger invariant as a
+  hypothesis because `HTLCRecord` has no balance, fee, or funding field;
+* `id_unique` still takes live-id distinctness as a hypothesis because the
+  unconditional claim is false (`liveHtlcIdsNodup_unconditional_false`). -/
+
+namespace HTLC
+
+/-- Catalog target `LN-HT-003`: offered, received, and trimmed HTLC amounts plus
+the channel ledger equal the funding value.
+
+This is exactly `htlcValue_conservation_of_ledger`.  `ledger` stands for the
+catalog's balances plus fee, and `hledger` is an explicit channel-ledger
+invariant, not a consequence of this module: `HTLCRecord` carries no balance,
+fee, or funding value.  The identity is false without `hledger` (the checked
+counterexample is `waveD_d15_without_balance_invariant_false` in
+`LnLean.Proofs.WaveD.D15`). -/
+theorem amount_conservation
+    (dustLimit timeoutFee successFee ledger funding : Nat)
+    (hs : List HTLCRecord)
+    (hledger : ledger + totalHtlcValue (htlcSet hs) = funding) :
+    ledger + totalHtlcValue (htlcOffered dustLimit timeoutFee successFee hs) +
+        totalHtlcValue (htlcReceived dustLimit timeoutFee successFee hs) +
+        totalHtlcValue (htlcTrimmed dustLimit timeoutFee successFee hs) =
+      funding :=
+  htlcValue_conservation_of_ledger dustLimit timeoutFee successFee ledger funding
+    hs hledger
+
+/-- Catalog target `LN-HT-004`: within the live HTLC set an id determines the
+record.
+
+This is exactly `liveHtlcIdsNodup_unique`.  The hypothesis `hnd` is the live-id
+distinctness invariant; it is not automatic.  The model allows two distinct live
+records with the same id (`liveHtlcIdsNodup_unconditional_false`), and
+`addHTLC` performs no id check (`addHTLC_same_id_distinct_amounts_ok`), so the
+unconditional catalog wording is not claimed here. -/
+theorem id_unique (hs : List HTLCRecord)
+    (hnd : liveHtlcIdsNodup hs) :
+    ∀ h1 ∈ htlcSet hs, ∀ h2 ∈ htlcSet hs, h1.id = h2.id → h1 = h2 :=
+  liveHtlcIdsNodup_unique hs hnd
+
+end HTLC
+
 end LnLean.Channel

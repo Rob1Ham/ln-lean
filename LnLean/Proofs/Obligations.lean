@@ -115,22 +115,34 @@ def obligations : List Obligation :=
     rlAnchor := "lightning/src/ln/chan_utils.rs:281" },
 
   -- Crypto / wire (6)
+  -- Retarget note (proof wave 2): the original target was the `PrimitiveModel`
+  -- field `sha256`, not a theorem.  The faithful contract is that constructed
+  -- and opened payment hashes are SHA-256 images, with C1 giving uniqueness of
+  -- a valid 32-byte preimage.  The universal "every payment hash is a SHA-256
+  -- output" reading is false (D05's well-formed 33-byte counterexample).
   { id := "LN-CR-001", domain := .cryptoWire,
-    claim := "Payment hashes are SHA-256 outputs, relying on assumption C1 (collision and preimage resistance).",
-    leanTarget := "LnLean.Crypto.Hash.sha256",
-    status := .statementOnly,
+    claim := "Constructed and opened payment hashes are SHA-256 outputs; under assumption C1 (collision resistance on the 32-byte preimage domain), a payment hash determines at most one valid preimage.",
+    leanTarget := "LnLean.Crypto.Hash.paymentHash_sha256_contract",
+    status := .proved,
     boltdoc := "BOLT 2 §Adding an HTLC",
     rlAnchor := "lightning/src/ln/channel.rs:8370" },
+  -- Retarget note: the original target was the `ecdsaVerify` field.  The
+  -- faithful C3 contract is message binding plus funding/close domain
+  -- separation.  "Honest signatures verify" needs a signing-completeness law
+  -- (E06), and key attribution needs `KeyBinding`; neither follows from C3.
   { id := "LN-CR-002", domain := .cryptoWire,
-    claim := "Commitment signatures verify under the counterparty funding key, relying on assumption C3 (ECDSA EUF-CMA).",
-    leanTarget := "LnLean.Crypto.Sig.ecdsaVerify",
-    status := .statementOnly,
+    claim := "Under assumption C3 (ECDSA EUF-CMA), a commitment-domain signature binds its untagged message uniquely and cannot verify in the funding or close signing domain.",
+    leanTarget := "LnLean.Crypto.Sig.commitmentSig_contract",
+    status := .proved,
     boltdoc := "BOLT 3 §Commitment Transaction Construction",
     rlAnchor := "lightning/src/ln/chan_utils.rs:1450" },
+  -- Retarget note: the original target was the `hmacSha256` field.  The true
+  -- claim is structural 32-byte output plus C8 `HmacBindsOn` for one execution;
+  -- a global HMAC PRF claim is refuted by D07's `hmacPrf_vacuous`.
   { id := "LN-CR-003", domain := .cryptoWire,
-    claim := "Onion integrity checks are HMAC-SHA256 tags, relying on assumption C8 (HMAC PRF).",
-    leanTarget := "LnLean.Crypto.Hash.hmacSha256",
-    status := .statementOnly,
+    claim := "Onion HMAC-SHA256 tags are 32 bytes; under the finite-execution C8 admission, an authentic tag determines the hop payloads uniquely among the messages of that execution.",
+    leanTarget := "LnLean.Crypto.Hash.onionHmacTag_size_and_bindsOn",
+    status := .proved,
     boltdoc := "BOLT 4 §Packet Structure",
     rlAnchor := "lightning/src/ln/onion_payment.rs:505" },
   { id := "LN-CR-004", domain := .cryptoWire,
@@ -159,12 +171,17 @@ def obligations : List Obligation :=
     status := .proved,
     boltdoc := "BOLT 3 §Commitment Transaction",
     rlAnchor := "lightning/src/ln/chan_utils.rs:716" },
+  -- Scope note: nonnegativity is unconditional; the funding bound is proved
+  -- under the BOLT 3 balance equation
+  -- `totalOutputValue + feeSat = fundingValueSat` (D46 refutes the bare bound).
   { id := "LN-CH-002", domain := .channel,
     claim := "No commitment output has a negative value and the output sum stays within the funding value.",
     leanTarget := "LnLean.Channel.Commitment.outputs_nonnegative",
-    status := .statementOnly,
+    status := .proved,
     boltdoc := "BOLT 3 §Commitment Transaction Outputs",
     rlAnchor := "lightning/src/ln/chan_utils.rs:1908" },
+  -- Scope note: D12 refutes the unconditional ordering claim and the model
+  -- has no script/CLTV key; keep statementOnly.
   { id := "LN-CH-003", domain := .channel,
     claim := "Commitment outputs are ordered by value then script, and dust HTLCs are trimmed.",
     leanTarget := "LnLean.Channel.Commitment.output_ordering",
@@ -203,12 +220,17 @@ def obligations : List Obligation :=
     status := .proved,
     boltdoc := "BOLT 3 §HTLC-Timeout and HTLC-Success Transactions",
     rlAnchor := "lightning/src/ln/chan_utils.rs:875; lightning/src/ln/channel.rs:8671" },
+  -- Scope note: `ledger` is the modelled balances/fee total; the partition
+  -- theorem requires `ledger + totalHtlcValue (htlcSet hs) = funding`.
   { id := "LN-HT-003", domain := .htlcRevocation,
     claim := "Offered, received, and trimmed HTLC amounts plus balances and fee equal the funding value.",
     leanTarget := "LnLean.Channel.HTLC.amount_conservation",
-    status := .statementOnly,
+    status := .proved,
     boltdoc := "BOLT 2 §Adding an HTLC",
     rlAnchor := "lightning/src/ln/chan_utils.rs:716" },
+  -- Scope note: the exact target exists, but `id_unique` assumes
+  -- `liveHtlcIdsNodup`, which is the claimed uniqueness property.  Promoting it
+  -- would be tautological; the unconditional counterexample remains.
   { id := "LN-HT-004", domain := .htlcRevocation,
     claim := "An HTLC id is unique within the live HTLC set of a channel.",
     leanTarget := "LnLean.Channel.HTLC.id_unique",
@@ -229,10 +251,12 @@ def obligations : List Obligation :=
     rlAnchor := "lightning/src/ln/channel.rs:9471; lightning/src/chain/channelmonitor.rs:5079" },
 
   -- Protocol / peer (6)
+  -- Scope note: proved in the D17 acceptor model; the wrapper in
+  -- `LnLean.Proofs.ProtocolTargets` restates its accepted-open bounds.
   { id := "LN-PR-001", domain := .protocol,
     claim := "open_channel accepts a funding amount only above the dust and minimum-channel bounds.",
     leanTarget := "LnLean.Protocol.Handshake.open_bounds",
-    status := .statementOnly,
+    status := .proved,
     boltdoc := "BOLT 2 §The open_channel Message",
     rlAnchor := "lightning/src/ln/channelmanager.rs:17521" },
   { id := "LN-PR-002", domain := .protocol,
@@ -241,12 +265,17 @@ def obligations : List Obligation :=
     status := .proved,
     boltdoc := "BOLT 2 §The channel_ready Message",
     rlAnchor := "lightning/src/ln/channelmanager.rs:17614" },
+  -- Scope note: the wrapper is an exact iff characterization of
+  -- `fundingSignedValid`; the literal "carries a valid signature" claim needs
+  -- signing completeness and key binding, so keep statementOnly.
   { id := "LN-PR-003", domain := .protocol,
     claim := "funding_signed carries a valid signature over the funding transaction.",
     leanTarget := "LnLean.Protocol.Handshake.funding_signed_valid",
     status := .statementOnly,
     boltdoc := "BOLT 2 §The funding_signed Message",
     rlAnchor := "lightning/src/ln/channel.rs:2107" },
+  -- Scope note: the wrapper assumes the coverage predicate and proves its
+  -- consequences; it does not establish coverage from the wire record.
   { id := "LN-PR-004", domain := .protocol,
     claim := "commitment_signed covers exactly the current HTLC set and fee.",
     leanTarget := "LnLean.Protocol.Messages.commitment_signed_covers",
@@ -259,10 +288,12 @@ def obligations : List Obligation :=
     status := .proved,
     boltdoc := "BOLT 2 §Message Retransmission",
     rlAnchor := "lightning/src/ln/channelmanager.rs:17831; lightning/src/ln/channel.rs:10826" },
+  -- Scope note: support-set intersection (`featureIntersection`) under BOLT 1's
+  -- survival hypothesis, not the raw bitwise AND of feature vectors (false).
   { id := "LN-PR-006", domain := .protocol,
     claim := "Negotiated channel features are the intersection of both peers' supported features.",
     leanTarget := "LnLean.Protocol.Handshake.feature_intersection",
-    status := .statementOnly,
+    status := .proved,
     boltdoc := "BOLT 9 §Features; BOLT 2 §Defined Channel Types",
     rlAnchor := "lightning/src/ln/channel.rs:4702" },
 
@@ -375,10 +406,12 @@ def obligations : List Obligation :=
     status := .proved,
     boltdoc := "BOLT 1 §Lightning Message Format",
     rlAnchor := "lightning/src/ln/channelmanager.rs:17831" },
+  -- Scope note: bounded-schedule theorem (`FeeScheduleBounded`); the
+  -- unconditional spike claim is refuted by D34's counterexamples.
   { id := "LN-SEC-005", domain := .security,
     claim := "A penalty transaction remains economical under the modelled fee spike.",
     leanTarget := "LnLean.Proofs.Liveness.penalty_economical",
-    status := .statementOnly,
+    status := .proved,
     boltdoc := "BOLT 5 §Revoked Transaction Close Handling",
     rlAnchor := "lightning/src/chain/chaininterface.rs:350" },
   -- Scope note: the exact target requires `wt.reports` (which implies live);

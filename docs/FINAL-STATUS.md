@@ -2,12 +2,13 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `d2769d20d01e2b69e170e1dafcd2e29e1df888d2` (`[PROOF] add
-eight-lane exact targets, promote 11 catalog rows`)
-**Catalog state:** proof-wave tree: 29 `proved` / 19 `statementOnly`.
-**Remote refs:** `origin/repair/integrated` contains proof commit `d2769d2`
-(status commits may advance the tip); `origin/repair/pubbump = 95fc49d`
-(separate compatibility branch); `origin/main = b891a59` (untouched).
+**Gate HEAD:** pending proof-wave 2 integration commit (the code commit is
+recorded after the gate run; status commits may advance the tip).
+**Catalog state:** proof-wave 2 tree: 37 `proved` / 11 `statementOnly`.
+**Remote refs:** `origin/repair/integrated` currently contains proof-wave 1
+commit `d2769d2` and status tip `0caec3d`; proof-wave 2 will advance it
+non-force. `origin/repair/pubbump = 95fc49d` (separate compatibility branch);
+`origin/main = b891a59` (untouched).
 **Toolchain:** `leanprover/lean4:v4.35.0`
 **L1 build dependency:** read-only `vendor/btc-lean-core` snapshot
 `f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb`
@@ -35,15 +36,26 @@ interface consistent (`M01`, `M02`), adds the exact catalog checker (`K01`),
 pins the public L1 reference (`L01`), and fixes the `CrossChannelRouting`
 elaboration blowup (`CCR01`).
 
-The proof-wave round runs eight disjoint lanes (`W01`, `R01`, `O01`, `H01`,
-`C01`, `P01`, `M01`, `S01`) and promotes eleven exact catalog rows. The new
-exact targets are in message framing, reestablish retransmission, gossip/route/
-onion semantics, invoice/MPP payments, and security/liveness. The lanes that
-could not state a faithful exact target did not fabricate one: `H01` and `C01`
-added partition/trimming/id invariants plus retained counterexamples, and `P01`
+Proof-wave 1 runs eight disjoint lanes (`W01`, `R01`, `O01`, `H01`, `C01`,
+`P01`, `M01`, `S01`) and promotes eleven exact catalog rows. The new exact
+targets are in message framing, reestablish retransmission, gossip/route/onion
+semantics, invoice/MPP payments, and security/liveness. The lanes that could
+not state a faithful exact target did not fabricate one: `H01` and `C01` added
+partition/trimming/id invariants plus retained counterexamples, and `P01`
 documented the D17/E19/E20/FeatureClosure retargets for the remaining protocol
-rows. Conditional promotions and scope caveats are recorded in
-`docs/THEOREM-INDEX.md` and the per-lane reports.
+rows.
+
+Proof-wave 2 runs five more lanes (`SEC05-ECON`, `CH02-WF`, `HT-LEDGER`,
+`PR-WRAPPERS`, `CR-RETARGET`) and promotes eight additional rows:
+`LN-CR-001/002/003`, `LN-CH-002`, `LN-HT-003`, `LN-PR-001`, `LN-PR-006`, and
+`LN-SEC-005`. The crypto rows were retargeted from `PrimitiveModel` fields to
+standalone conditional contracts; the new modules are
+`LnLean/Proofs/CryptoTargets.lean` and `LnLean/Proofs/ProtocolTargets.lean`.
+Three exact targets are deliberately **not** promoted: `LN-HT-004` assumes the
+live-id uniqueness it claims, and `LN-PR-003/004` characterize or assume the
+predicate they are supposed to establish. `LN-CH-003` remains the one
+unresolved planned target. Full scope notes are in `docs/THEOREM-INDEX.md` and
+the reports under `agents/reports/`.
 
 ## Verified state
 
@@ -53,21 +65,21 @@ rewritten.
 
 | Check | Command | Result |
 |---|---|---|
-| Full build | `flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (170 jobs).` |
+| Full build | `flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (172 jobs).` |
 | Actual `sorry` | `grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` | **0 matches** (grep RC 1: no lines) |
-| Policy checker | `./scripts/check.sh` | **RC 0**, `files=164 obligations=81 sorry_in_proofs=0`, `check: OK` |
-| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 164 Lean files, 162 root imports |
+| Policy checker | `./scripts/check.sh` | **RC 0**, `files=166 obligations=81 sorry_in_proofs=0`, `check: OK` |
+| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 166 Lean files, 164 root imports |
 | Vendor integrity | `./scripts/verify-vendor.sh` | **RC 0**, `OK (119 files)` |
 | Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=298 bad=0 unanchored_rows=2` |
-| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 1**, 12 unresolved planned `statementOnly` targets, 0 `proved` failures |
-| Catalog, planned-aware | `python3 scripts/check-catalog.py --allow-planned` | **RC 0**, `rows=48 proved=29 statementOnly=19 planned=12 proved_failures=0 candidates=0` |
+| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 1**, 1 unresolved planned `statementOnly` target (`LN-CH-003`), 0 `proved` failures, 3 exact-but-retained candidates |
+| Catalog, planned-aware | `python3 scripts/check-catalog.py --allow-planned` | **RC 0**, `rows=48 proved=37 statementOnly=11 planned=1 proved_failures=0 candidates=3` |
 | Traceability build | `lake build LnLean.Proofs.Traceability` | **RC 0**, 10 jobs |
 | Public-reference pin | `./scripts/check-public-reference.sh` | **RC 0**, public HEAD/tag/vendor checks OK |
-| Generated index | `docs/OBLIGATIONS-GENERATED.md` (regenerated) | `128` proof files, `80` markers, `48` catalog rows, `0` `sorry` sites |
+| Generated index | `docs/OBLIGATIONS-GENERATED.md` (regenerated) | `130` proof files, `80` markers, `48` catalog rows, `4151` declarations, `0` `sorry` sites |
 
-Tree size: **164 Lean files** under `LnLean/`, **162** root imports in
+Tree size: **166 Lean files** under `LnLean/`, **164** root imports in
 `LnLean.lean`; `LnLean.Proofs.All` and the `LnLean.Proofs.PhaseC2` aggregator
-are not root-imported. The full build covers 170 Lake jobs.
+are not root-imported. The full build covers 172 Lake jobs.
 
 The `sorry` grep result is exact: **there are no lines consisting only of
 `sorry` (modulo whitespace) in any `LnLean/**/*.lean` file.** Fifteen files
@@ -118,27 +130,39 @@ repair removes a false headline; it does not prove the refuted statement.
 
 ## Catalog status
 
-The proof-wave counts are:
+The proof-wave 2 counts are:
 
 - **48 catalog rows**
-- **29 `proved`**
-- **19 `statementOnly`**
-- **12** `statementOnly` rows name a planned declaration that does not yet
-  exist (reported as `PLANNED` by `--allow-planned`)
+- **37 `proved`**
+- **11 `statementOnly`**
+- **1** `statementOnly` row names a planned declaration that does not yet
+  exist (`LN-CH-003`, reported as `PLANNED` by `--allow-planned`)
+- **3** `statementOnly` rows resolve to exact theorems but are deliberately
+  not promoted for scope reasons (`LN-HT-004`, `LN-PR-003`, `LN-PR-004`)
 - **7** `statementOnly` rows resolve exactly but are not theorem/lemma
-  promotion candidates (all seven name `def`s or predicate `def`s).
-- **0** promotion candidates remain.
+  promotion candidates (all seven name `def`s or predicate `def`s)
+- **3** promotion candidates are reported by the checker; all three are the
+  deliberately retained rows above.
 
-The eleven proof-wave promotions are `LN-CR-006`, `LN-PR-005`,
-`LN-RT-002`, `LN-RT-003`, `LN-RT-004`, `LN-RT-005`, `LN-PM-002`,
-`LN-PM-005`, `LN-SEC-002`, `LN-SEC-003`, and `LN-SEC-006`. Each exact target
-is a theorem with no `sorry` in its source body. The earlier five promoted
-rows (`LN-CH-006`, `LN-PR-002`, `LN-PM-003`, `LN-PM-006`, `LN-CR-004`) remain
+The proof-wave 2 promotions are `LN-CR-001`, `LN-CR-002`, `LN-CR-003`,
+`LN-CH-002`, `LN-HT-003`, `LN-PR-001`, `LN-PR-006`, and `LN-SEC-005`.
+The proof-wave 1 promotions remain `LN-CR-006`, `LN-PR-005`, `LN-RT-002`,
+`LN-RT-003`, `LN-RT-004`, `LN-RT-005`, `LN-PM-002`, `LN-PM-005`,
+`LN-SEC-002`, `LN-SEC-003`, and `LN-SEC-006`. The earlier five promoted rows
+(`LN-CH-006`, `LN-PR-002`, `LN-PM-003`, `LN-PM-006`, `LN-CR-004`) remain
 proved. `LN-CR-004` and `LN-CR-005` targets were corrected to the declarations
 that actually exist (`LnLean.Wire.decode_encode`,
 `LnLean.Wire.TLVStream.WellFormed`).
 
-The newer promotions carry explicit scope caveats: `LN-RT-004` is the checked
+The newer promotions carry explicit scope caveats. `LN-CR-001` covers
+constructed/opened payment hashes plus C1 uniqueness (D05 refutes the universal
+range reading); `LN-CR-002` is C3 message binding and funding/close domain
+separation, not signing completeness or key attribution; `LN-CR-003` is
+32-byte tag width plus finite-execution C8 binding, not global HMAC PRF;
+`LN-CH-002` uses the BOLT 3 balance equation; `LN-HT-003` uses the explicit
+ledger invariant; `LN-PR-001` is the D17 acceptor model; `LN-PR-006` is the
+support-set intersection under BOLT 1 survival, not raw bitwise AND; and
+`LN-SEC-005` is the bounded-schedule theorem. `LN-RT-004` is the checked
 `openLayer` path and raw `peel` retains the D25 HMAC counterexample;
 `LN-PM-002` is a model-level projection from `Invoice.verify` and does not
 prove ECDSA soundness; `LN-SEC-002` covers the multi-channel ledger but not an
@@ -214,18 +238,22 @@ witness script.
 Network results are conditional on explicit scheduling/fairness hypotheses.
 Partial synchrony (delivery within `Δ` after GST) is always a hypothesis, never
 an axiom. The watchtower bridge requires the tower to report the breach (which
-implies liveness); `live` alone is insufficient. Penalty economics remains
-unproved: the current unbounded fee model has a D34 counterexample, and a
-bounded-feerate-schedule model is still needed.
+implies liveness); `live` alone is insufficient. Penalty economics is proved
+only under the explicit bounded-feerate-schedule hypothesis
+`FeeScheduleBounded`; the unbounded model has a D34 counterexample and is not
+claimed.
 
 ## What remains conditional or planned
 
-- **12 planned `statementOnly` targets** do not yet have declarations in this
-  tree: `LN-CR-001/002/003`, `LN-CH-002/003`, `LN-HT-003/004`,
-  `LN-PR-001/003/004/006`, and `LN-SEC-005`.
+- **1 planned `statementOnly` target** does not yet have a declaration:
+  `LN-CH-003` (`Commitment.output_ordering`). D12 refutes the unconditional
+  ordering claim and the model has no script/CLTV ordering key.
+- **3 exact `statementOnly` targets** exist but are deliberately not promoted:
+  `LN-HT-004` assumes `liveHtlcIdsNodup` (the claimed uniqueness), and
+  `LN-PR-003/004` characterize or assume the predicate they should establish.
 - **7 `statementOnly` rows** name `def`s or predicate `def`s rather than
   theorems, so the theorem/lemma rule cannot promote them.
-- **19 rows remain `statementOnly`** in total; a green build and zero
+- **11 rows remain `statementOnly`** in total; a green build and zero
   `sorry` sites do not make them proved.
 - **L1 spendability** is conditional on the Phase-C2 bridge fields and on
   script/sighash semantics that are not imported from the public L1 tree.
@@ -245,11 +273,13 @@ bounded-feerate-schedule model is still needed.
    build, vendor, anchors, `check.sh`, `check-final.py`, the planned-aware
    catalog audit, `LnLean.Proofs.Traceability`, and the exact `sorry` scan all
    returned the results in the table above.
-2. **Catalog strict mode is RC 1 by design.** The 12 unresolved
-   `statementOnly` targets are reported as errors by `--audit`;
-   `--allow-planned` is RC 0 and keeps them `PLANNED`, never `proved`. The
+2. **Catalog strict mode is RC 1 by design.** The one unresolved
+   `statementOnly` target (`LN-CH-003`) is reported as an error by `--audit`;
+   `--allow-planned` is RC 0 and keeps it `PLANNED`, never `proved`. The
    committed gate uses `--allow-planned`; the strict audit remains available
-   as the planning report.
+   as the planning report. The three exact-but-retained targets
+   (`LN-HT-004`, `LN-PR-003`, `LN-PR-004`) are listed as promotion candidates
+   but are intentionally not flipped.
 3. **Public/vendor lineage mismatch.** The vendor snapshot `f950806` is not in
    public `btc-lean` history; a future vendor bump is a separate deliberate
    change, not part of this repair. A green isolated compatibility branch
@@ -283,8 +313,9 @@ rewrites `docs/OBLIGATIONS-GENERATED.md` and
 
 - No theorem here is a proof of Lightning Network security, of Bitcoin
   consensus, or of computational cryptographic hardness.
-- A green build and zero actual `sorry` terms do not imply the 19
+- A green build and zero actual `sorry` terms do not imply the 11
   `statementOnly` rows are proved.
-- The eleven proof-wave promotions are exact model-level targets; the
-  conditional caveats in this file and in `docs/THEOREM-INDEX.md` are part of
-  their meaning and must not be dropped when citing them.
+- The nineteen proof-wave promotions (eleven in wave 1, eight in wave 2) are
+  exact model-level targets; the conditional caveats in this file and in
+  `docs/THEOREM-INDEX.md` are part of their meaning and must not be dropped
+  when citing them.

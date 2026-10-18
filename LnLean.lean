@@ -38,6 +38,7 @@ import LnLean.Proofs.Channel.ReserveProps
 import LnLean.Proofs.Channel.RevocationProps
 import LnLean.Proofs.Channel.StateMachineProps
 import LnLean.Proofs.Conservation
+import LnLean.Proofs.CryptoTargets
 import LnLean.Proofs.Crypto.EcdsaProps
 import LnLean.Proofs.Crypto.SchnorrProps
 import LnLean.Proofs.Crypto.Sha256Props
@@ -62,6 +63,7 @@ import LnLean.Proofs.Payment.InvoiceProps
 import LnLean.Proofs.Payment.KeysendProps
 import LnLean.Proofs.Payment.LiquidityProps
 import LnLean.Proofs.Payment.MPPProps
+import LnLean.Proofs.ProtocolTargets
 import LnLean.Proofs.Protocol.ChannelReestablishProps
 import LnLean.Proofs.Protocol.ErrorProps
 import LnLean.Proofs.Protocol.FeaturesProps

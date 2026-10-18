@@ -109,28 +109,47 @@ repair tree; the catalog now has exact targets for eleven additional rows.
   invariants, retained the unconditional-id counterexample.
 - [x] `C01` — no fake exact target; added commitment nonnegativity/sum/
   trimming lemmas, retained D46/D12 counterexamples.
-- [x] Catalog: **29 proved / 19 statementOnly**, **12 planned**, 0 promotion
-  candidates.
+- [x] At the end of R6: **29 proved / 19 statementOnly**, **12 planned**, 0
+  promotion candidates.
 - [x] Full build **170 jobs RC 0**; `check.sh`, `check-final.py`, vendor,
   anchors, public-reference, and planned-aware catalog audit all RC 0.
 - [x] Commit and non-force push to `origin/repair/integrated`.
 
+## R7 — Proof-wave 2 (done)
+
+Five disjoint lanes extended the model and promoted eight more exact targets.
+
+- [x] `SEC05-ECON` — `LN-SEC-005` `Liveness.penalty_economical` under
+  `FeeScheduleBounded`; unconditional D34 spike counterexample retained.
+- [x] `CH02-WF` — `LN-CH-002` `Commitment.outputs_nonnegative` under the BOLT 3
+  balance equation; D46 retained.
+- [x] `HT-LEDGER` — `LN-HT-003` `HTLC.amount_conservation` under the explicit
+  ledger invariant; `LN-HT-004` deliberately retained.
+- [x] `PR-WRAPPERS` — `LN-PR-001` `Handshake.open_bounds` and `LN-PR-006`
+  `Handshake.feature_intersection` (support-set intersection, BOLT 1 survival).
+  `LN-PR-003/004` deliberately retained as conditional characterizations.
+- [x] `CR-RETARGET` — retargeted `LN-CR-001/002/003` from `PrimitiveModel`
+  fields to `CryptoTargets` conditional contracts; D05/D07 counterexamples
+  retained.
+- [x] New modules `LnLean/Proofs/ProtocolTargets.lean` and
+  `LnLean/Proofs/CryptoTargets.lean`; root imports and `AxiomAudit` extended.
+- [x] Catalog: **37 proved / 11 statementOnly**, **1 planned** (`LN-CH-003`),
+  3 exact-but-retained, 7 definition targets.
+- [x] Full gate and non-force push after integration.
+
 ### Remaining planned/statement-only gaps
 
-- `LN-CR-001/002/003`: crypto model fields (`sha256`, `ecdsaVerify`,
-  `hmacSha256`), not standalone declarations.
-- `LN-CH-002`: needs the conservation premise split out; nonnegativity is
-  proved, unconditional funding bound is false (D46).
 - `LN-CH-003`: unconditional ordering is false (D12); script/CLTV key absent.
-- `LN-HT-003`: needs a balance/fee/funding ledger record.
-- `LN-HT-004`: needs per-sender id counters or a `Nodup` state invariant.
-- `LN-PR-001`: faithful D17 acceptor model, wrong wave-A target.
-- `LN-PR-003`: faithful E19 verifier model, not a length check.
-- `LN-PR-004`: faithful E20 conditional model; unconditional form false.
-- `LN-PR-006`: feature model is in FeaturesProps/FeatureClosure; raw
-  intersection is not negotiated support.
-- `LN-SEC-005`: unbounded fee model has a D34 counterexample; needs a bounded
-  feerate schedule.
+  This is the only unresolved planned target.
+- `LN-HT-004`: exact `id_unique` assumes `liveHtlcIdsNodup`; promoting it would
+  assume the claimed uniqueness. Needs a model-level id allocator or per-sender
+  counters that proves the invariant from insertion.
+- `LN-PR-003`: wrapper is an iff characterization; the literal validity claim
+  needs signing completeness and key binding.
+- `LN-PR-004`: wrapper assumes the coverage predicate; it does not establish
+  coverage from the wire record.
+- Seven definition-target rows (`LN-L1-001/003/004/006`, `LN-CR-005`,
+  `LN-CH-005`, `LN-RT-006`) are not theorem/lemma promotions.
 
 ## Commands
 

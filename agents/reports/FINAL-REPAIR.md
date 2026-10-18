@@ -122,12 +122,15 @@ for `sorry`, and marks a row `proved` only when every target is a
 the catalog.
 
 K02 promoted five exact candidates and corrected two stale targets. Its counts
-were **18 `proved` / 30 `statementOnly`** out of 48 rows; the proof-wave round
-supersedes them with **29 / 19**. At the proof-wave gate the strict audit still
-exits 1 because 12 planned `statementOnly` targets do not exist;
-`--allow-planned` exits 0 and reports them as `PLANNED`, never as proved. The
-fifth K02 promotion is `LN-CR-004` (`LnLean.Wire.decode_encode`); its target
-was first corrected from the stale `LnLean.Wire.BigSize.decode_encode`.
+were **18 `proved` / 30 `statementOnly`** out of 48 rows; proof-wave 1
+superseded them with **29 / 19**, and proof-wave 2 with **37 / 11**. At the
+proof-wave 2 gate the strict audit still exits 1 because the one planned
+`statementOnly` target (`LN-CH-003`) does not exist; `--allow-planned` exits 0
+and reports it as `PLANNED`, never as proved. The three exact-but-retained
+candidates (`LN-HT-004`, `LN-PR-003`, `LN-PR-004`) are intentionally left as
+`statementOnly`. The fifth K02 promotion is `LN-CR-004`
+(`LnLean.Wire.decode_encode`); its target was first corrected from the stale
+`LnLean.Wire.BigSize.decode_encode`.
 
 ### 2.6 `L01`: public L1 reference
 
@@ -176,13 +179,31 @@ The lane reports are `agents/reports/W01-WIRE.md`, `R01-ROUTING.md`,
 `O01-ONION.md`, `P01-PROTOCOL.md`, `M01-PAYMENTS.md`, `S01-SECURITY.md`,
 `H01-HTLC.md`, and `C01-COMMITMENT.md`.
 
+### 2.9 Proof-wave 2 lanes
+
+Five more disjoint lanes extended the model and promoted eight exact targets:
+
+| Lane | Result |
+|---|---|
+| `SEC05-ECON` | `LN-SEC-005` `Liveness.penalty_economical` under `FeeScheduleBounded`; the D34 unconditional spike counterexample remains |
+| `CH02-WF` | `LN-CH-002` `Commitment.outputs_nonnegative`: nonnegativity plus the funding bound under `totalOutputValue + feeSat = fundingValueSat`; D46 remains |
+| `HT-LEDGER` | `LN-HT-003` `HTLC.amount_conservation` under `ledger + totalHtlcValue (htlcSet hs) = funding`; `LN-HT-004` retained because `id_unique` assumes `liveHtlcIdsNodup` |
+| `PR-WRAPPERS` | `LN-PR-001` `Handshake.open_bounds`; `LN-PR-006` `Handshake.feature_intersection` under BOLT 1 survival and support-set intersection. `LN-PR-003/004` retained as conditional characterizations |
+| `CR-RETARGET` | Retargeted `LN-CR-001/002/003` from `PrimitiveModel` fields to `CryptoTargets` contracts: C1 preimage uniqueness; C3 message binding plus domain separation; 32-byte HMAC tag plus finite-execution C8 binding |
+
+The new modules are `LnLean/Proofs/ProtocolTargets.lean` and
+`LnLean/Proofs/CryptoTargets.lean`; both are root-imported and audited in
+`PhaseC3/AxiomAudit.lean`. The lane reports are `SEC05-ECON.md`,
+`CH02-WF.md`, `HT03-HT04-LEDGER.md`, `PR-WRAPPERS.md`, and
+`CR-RETARGET.md`.
+
 ## 3. What is actually checked
 
-At the proof-wave gate:
+At the proof-wave 2 gate:
 
 ```text
 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build
-  -> Build completed successfully (170 jobs).  RC 0
+  -> Build completed successfully (172 jobs).  RC 0
 
 grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'
   -> no output; 0 matches; grep RC 1
@@ -194,39 +215,38 @@ python3 scripts/verify-anchors.py
   -> anchors=298 bad=0 unanchored_rows=2; verify-anchors: OK.  RC 0
 
 ./scripts/check.sh
-  -> files=164 obligations=81 sorry_in_proofs=0; check: OK.  RC 0
+  -> files=166 obligations=81 sorry_in_proofs=0; check: OK.  RC 0
 
 python3 scripts/check-final.py
-  -> selected D=33 E=15 F=15; 164 Lean files; 162 root imports; OK.  RC 0
+  -> selected D=33 E=15 F=15; 166 Lean files; 164 root imports; OK.  RC 0
 
 ./scripts/check-public-reference.sh
   -> check-public-reference: OK (offline).  RC 0
 
 python3 scripts/check-catalog.py --allow-planned
-  -> rows=48 proved=29 statementOnly=19 planned=12 proved_failures=0
-     duplicate_ids=0 candidates=0; RC 0
+  -> rows=48 proved=37 statementOnly=11 planned=1 proved_failures=0
+     duplicate_ids=0 candidates=3; RC 0
 
 python3 scripts/check-catalog.py --audit
-  -> RC 1: 12 unresolved planned statementOnly targets; 0 proved failures
+  -> RC 1: 1 unresolved planned statementOnly target (LN-CH-003);
+     0 proved failures; 3 exact-but-retained candidates
 
 lake build LnLean.Proofs.Traceability
   -> Build completed successfully (10 jobs).  RC 0
 ```
 
-Tree size: 164 Lean files, 162 root imports. `LnLean.Proofs.All` and the
-`PhaseC2` aggregator are not root-imported; the full build still covers 170
-jobs.
+Tree size: 166 Lean files, 164 root imports. `LnLean.Proofs.All` and the
+`PhaseC2` aggregator are not root-imported; the full build covers 172 jobs.
 
-Actual `sorry` terms: **zero**. Fifteen files contain the word `sorry` only in
-comments/prose.
+Actual `sorry` terms: **zero**. `sorry` appears only in comments/prose.
 
 ## 4. What is proved
 
-- Every Lean module in the tree builds under the pinned toolchain (170 jobs,
+- Every Lean module in the tree builds under the pinned toolchain (172 jobs,
   RC 0).
 - No proof body contains `sorry`, `admit`, `axiom`, `constant`, `opaque`,
   `native_decide`, `unsafe`, or `@[implemented_by]` in executable code.
-- The 29 catalog `proved` rows name exact declarations that exist and are
+- The 37 catalog `proved` rows name exact declarations that exist and are
   `sorry`-free in their source bodies.
 - The mechanical C1/C8 facts: 32-byte widths, hash-lock equality, verifier
   equality, stored-tag extraction, and the pigeonhole negative results.
@@ -237,20 +257,27 @@ comments/prose.
   full tree.
 
 This is **not** a proof of Lightning security. It is a sorry-free Lean tree of
-conditional/algebraic results plus 19 tracked statement-only claims. The newer
-promotions keep their scope caveats: `LN-RT-004` is checked-`openLayer` only,
-`LN-PM-002` is a verification projection, `LN-SEC-002` has no L1 spend-set
-bridge, `LN-SEC-003` keeps four assumptions, and `LN-SEC-006` requires a
+conditional/algebraic results plus 11 tracked statement-only claims. The newer
+promotions keep their scope caveats: `LN-CR-001/002/003` are conditional crypto
+contracts; `LN-CH-002` uses the balance equation; `LN-HT-003` uses the ledger
+invariant; `LN-PR-006` is support-set intersection under survival;
+`LN-SEC-005` is bounded-schedule only; `LN-RT-004` is checked-`openLayer` only;
+`LN-PM-002` is a verification projection; `LN-SEC-002` has no L1 spend-set
+bridge; `LN-SEC-003` keeps four assumptions; and `LN-SEC-006` requires a
 watchtower report.
 
 ## 5. What remains conditional or planned
 
-- 12 `statementOnly` rows name planned declarations not present in the tree:
-  `LN-CR-001/002/003`, `LN-CH-002/003`, `LN-HT-003/004`,
-  `LN-PR-001/003/004/006`, and `LN-SEC-005`.
+- 1 `statementOnly` row names a planned declaration not present in the tree:
+  `LN-CH-003`. D12 refutes unconditional output ordering and the model has no
+  script/CLTV ordering key.
+- 3 `statementOnly` rows have exact targets but are deliberately retained:
+  `LN-HT-004` assumes the live-id uniqueness it claims; `LN-PR-003/004`
+  characterize or assume their predicates. The checker reports them as
+  promotion candidates, but the integration lane does not flip them.
 - 7 `statementOnly` rows resolve exactly but are not theorem/lemma candidates
-  (all seven name `def`s or predicate `def`s). No promotion candidate remains.
-- 19 rows remain `statementOnly` in total.
+  (all seven name `def`s or predicate `def`s).
+- 11 rows remain `statementOnly` in total.
 - C1 is exact algebraic injectivity on 32-byte inputs, stronger than
   computational collision hardness; no reduction is proved.
 - C8 is a finite-execution admission supplied by the caller; computational PRF
@@ -269,14 +296,15 @@ watchtower report.
 
 ## 6. Residual risks / final-gate findings
 
-1. **Proof-wave gate PASS at the commit recorded above.** The earlier
+1. **Proof-wave 2 gate PASS at the commit recorded above.** The earlier
    `check.sh` doc-comment false positive and the stale 132-file
    `check-final.py` assumption are fixed. Both checkers are RC 0 at the
-   proof-wave HEAD.
-2. **Catalog strict mode remains RC 1 by design.** 12 unresolved planned
-   `statementOnly` targets remain. `--allow-planned` is RC 0 and never promotes
-   them; it is the mode used by the final gate, with the strict audit retained
-   as the planning report.
+   proof-wave 2 HEAD.
+2. **Catalog strict mode remains RC 1 by design.** One unresolved planned
+   `statementOnly` target (`LN-CH-003`) remains. `--allow-planned` is RC 0 and
+   never promotes it; it is the mode used by the final gate, with the strict
+   audit retained as the planning report. The three exact-but-retained
+   candidates are a deliberate scope decision, not a checker failure.
 3. **Public/vendor lineage mismatch.** A vendor bump is a separate deliberate
    change; the public clone must never become a build dependency. The green
    isolated compatibility branch `repair/pubbump` records the public
@@ -313,13 +341,15 @@ Module-level reproducers are in the individual lane reports
 The repair removed the two vacuous global crypto assumptions, removed all ten
 remaining refuted unconditional headlines without hiding them behind `True` or
 axioms, eliminated every actual `sorry` term, fixed the catalog checker and the
-`CrossChannelRouting` blowup, and pinned the public L1 reference. The proof-wave
-round then added eleven exact catalog targets across wire, protocol, routing,
-payments, and security/liveness. The result is a 170-job RC 0 Lean tree with 29
-exact catalog rows proved and 19 rows tracked as statement-only.
+`CrossChannelRouting` blowup, and pinned the public L1 reference. Proof-wave 1
+added eleven exact catalog targets; proof-wave 2 added eight more across crypto,
+commitment, HTLC, protocol, and penalty economics. The result is a sorry-free
+Lean tree with 37 exact catalog rows proved and 11 rows tracked as
+statement-only (1 unresolved planned target, 3 exact-but-retained, 7 definition
+targets).
 
 It is still a conditional scaffold. Zero `sorry` is not zero assumptions: C1
 and C8 are explicit finite/algebraic boundaries, L1 spendability depends on the
 Phase-C2 bridges, and computational cryptographic security is not modelled. The
-proof-wave gate is green at the commit recorded above, and the branch is pushed
-non-force to `origin/repair/integrated`.
+proof-wave 2 gate is recorded above, and the branch is pushed non-force to
+`origin/repair/integrated`.

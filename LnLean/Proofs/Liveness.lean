@@ -2,6 +2,7 @@ import LnLean.Channel.State
 import LnLean.Protocol.Peer
 import LnLean.Basic.Core
 import LnLean.Proofs.WaveE.E35
+import LnLean.Proofs.WaveD.D34
 
 /-!
 # LnLean.Proofs.Liveness
@@ -723,5 +724,69 @@ theorem watchtower_bridge (sh : Shachain) (scheme : RevocationScheme)
   waveE_e35_watchtower_bridge sh scheme bridge wt c r hreport
 
 end WatchtowerBridge
+
+/-! ## 9. Catalog target `LN-SEC-005`: penalty economics
+
+`LnLean.Proofs.WaveD.D34` provides the fee/economy model and proves the
+strongest true form of the penalty-economics claim.  This section restates that
+form at the catalog name `LnLean.Proofs.Liveness.penalty_economical`.
+
+The *unconditional* reading is false in this model, because
+`FeeEnvironment.atHeight` is an arbitrary function and `spikeAt` carries no
+bound: `waveD_d34_unconditional_claim_false` refutes it, and
+`waveD_d34_spike_breaks_valid_penalty` exhibits a `penaltyValid` transaction
+that a modelled spike makes uneconomical.  The missing economic hypothesis is
+exactly the explicit bound `FeeScheduleBounded env rMax` (`LN-PENALTY-ECON`):
+the base rate and every height-indexed rate, including the recorded spike, lie
+below a break-even rate `rMax` at which the penalty is economical.
+
+The `What is NOT modelled` bullet above records the wave-A import allowlist;
+`LnLean.Proofs.WaveD.D34` now supplies the penalty-economics bridge under this
+explicit bound, so the import is added while the wave-A liveness claims are
+unchanged.  No cycle is introduced: D34's transitive closure contains neither
+this module nor `LnLean.Proofs.WaveE.E35`. -/
+
+section PenaltyEconomics
+
+open LnLean.Security (FeeEnvironment)
+open LnLean.Proofs.WaveD.D34
+
+/-- **`LN-SEC-005`.**  If the whole adversary fee schedule (base rate and every
+height-indexed rate) is bounded by a break-even rate `rMax`, and the penalty of
+weight `w` on value `v` is economical at `rMax`, then it is economical at the
+rate actually in force (`effectiveRate env`, i.e. the spike rate when a spike
+is recorded) and at every height the schedule can select.
+
+This is conditional by necessity: `FeeScheduleBounded env rMax` is the explicit
+`LN-PENALTY-ECON` hypothesis, not a consequence of `FeeEnvironment` (see
+`waveD_d34_unconditional_claim_false`). -/
+theorem penalty_economical (env : FeeEnvironment) (rMax : FeeRate)
+    (w : Weight) (v : Msat)
+    (hb : FeeScheduleBounded env rMax)
+    (hecon : penaltyEconomical rMax w v) :
+    penaltyEconomical (effectiveRate env) w v ∧
+      ∀ h : Height, penaltyEconomical (env.atHeight h) w v :=
+  ⟨waveD_d34_economical_under_bounded_spike env rMax w v hb hecon,
+    (waveD_d34_economical_throughout_bounded_schedule
+      env rMax w v hb hecon).2⟩
+
+/-- The recorded-spike specialization, at the catalogue claim's shape: at the
+height named by `spikeAt`, the penalty remains economical. -/
+theorem penalty_economical_at_spike (env : FeeEnvironment) (rMax : FeeRate)
+    (w : Weight) (v : Msat) {spikeHeight : Height}
+    (hb : FeeScheduleBounded env rMax) (hs : env.spikeAt = some spikeHeight)
+    (hecon : penaltyEconomical rMax w v) :
+    penaltyEconomical (env.atHeight spikeHeight) w v :=
+  waveD_d34_economical_at_spike env rMax w v hb hs hecon
+
+/-- The base-rate specialization of the same bounded-schedule bound. -/
+theorem penalty_economical_at_base (env : FeeEnvironment) (rMax : FeeRate)
+    (w : Weight) (v : Msat)
+    (hb : FeeScheduleBounded env rMax)
+    (hecon : penaltyEconomical rMax w v) :
+    penaltyEconomical env.base w v :=
+  (waveD_d34_economical_throughout_bounded_schedule env rMax w v hb hecon).1
+
+end PenaltyEconomics
 
 end LnLean.Proofs.Liveness

@@ -18,7 +18,7 @@ hand-maintained traceability tables:
 4. every status and every domain is one of the model's enumerations, and the
    catalog covers all eight domains (`obligations_statuses_enumerated`,
    `obligations_domains_enumerated`, `every_domain_used`);
-5. the catalog has 48 rows, `29` marked `proved` and `19` marked
+5. the catalog has 48 rows, `37` marked `proved` and `11` marked
    `statementOnly`, matching the summary table of `docs/THEOREM-INDEX.md`
    (`obligations_count_ge_40`, `proved_row_count`,
    `statement_only_row_count`);
@@ -27,7 +27,7 @@ hand-maintained traceability tables:
    `LnLean.*` modules (`obligations_targets_in_table`,
    `target_modules_lnean`);
 7. every `proved` row names at least one declaration, all named declarations
-   occur in the thirty-two-name snapshot `provedDeclarations`, no snapshot name
+   occur in the forty-name snapshot `provedDeclarations`, no snapshot name
    is unused, and every snapshot declaration lives in a module from
    `lneanModules` (`proved_rows_have_decls`, `proved_decls_in_snapshot`,
    `proved_snapshot_all_used`, `proved_declaration_modules_lnean`).  This is
@@ -216,9 +216,9 @@ def targetTable : List TargetEntry :=
   , ⟨"LnLean.Bitcoin.toLocalScript", ["LnLean.Bitcoin.Seam"]⟩
   , ⟨"LnLean.Bitcoin.anchorValue_eq", ["LnLean.Bitcoin.Seam"]⟩
   , ⟨"LnLean.Bitcoin.commitmentBaseWeight", ["LnLean.Bitcoin.Seam"]⟩
-  , ⟨"LnLean.Crypto.Hash.sha256", ["LnLean.Crypto.Hash"]⟩
-  , ⟨"LnLean.Crypto.Sig.ecdsaVerify", ["LnLean.Crypto.Sig"]⟩
-  , ⟨"LnLean.Crypto.Hash.hmacSha256", ["LnLean.Crypto.Hash"]⟩
+  , ⟨"LnLean.Crypto.Hash.paymentHash_sha256_contract", ["LnLean.Proofs.CryptoTargets"]⟩
+  , ⟨"LnLean.Crypto.Sig.commitmentSig_contract", ["LnLean.Proofs.CryptoTargets"]⟩
+  , ⟨"LnLean.Crypto.Hash.onionHmacTag_size_and_bindsOn", ["LnLean.Proofs.CryptoTargets"]⟩
   , ⟨"LnLean.Wire.decode_encode", ["LnLean.Wire.BigSize"]⟩
   , ⟨"LnLean.Wire.TLVStream.WellFormed", ["LnLean.Wire.TLV"]⟩
   , ⟨"LnLean.Wire.Message.decode_length", ["LnLean.Wire.Message"]⟩
@@ -234,12 +234,12 @@ def targetTable : List TargetEntry :=
   , ⟨"LnLean.Channel.HTLC.id_unique", ["LnLean.Channel.HTLC"]⟩
   , ⟨"LnLean.Security.revoked_commitment_is_old", ["LnLean.Security.Invariants"]⟩
   , ⟨"LnLean.Security.breach_penalty_spends_both", ["LnLean.Security.Invariants"]⟩
-  , ⟨"LnLean.Protocol.Handshake.open_bounds", ["LnLean.Protocol.Handshake"]⟩
+  , ⟨"LnLean.Protocol.Handshake.open_bounds", ["LnLean.Proofs.ProtocolTargets"]⟩
   , ⟨"LnLean.Protocol.Handshake.channel_ready_gate", ["LnLean.Proofs.WaveD.D18"]⟩
-  , ⟨"LnLean.Protocol.Handshake.funding_signed_valid", ["LnLean.Protocol.Handshake"]⟩
-  , ⟨"LnLean.Protocol.Messages.commitment_signed_covers", ["LnLean.Protocol.Messages"]⟩
+  , ⟨"LnLean.Protocol.Handshake.funding_signed_valid", ["LnLean.Proofs.ProtocolTargets"]⟩
+  , ⟨"LnLean.Protocol.Messages.commitment_signed_covers", ["LnLean.Proofs.ProtocolTargets"]⟩
   , ⟨"LnLean.Protocol.Peer.reestablish_no_rollback", ["LnLean.Protocol.Peer"]⟩
-  , ⟨"LnLean.Protocol.Handshake.feature_intersection", ["LnLean.Protocol.Handshake"]⟩
+  , ⟨"LnLean.Protocol.Handshake.feature_intersection", ["LnLean.Proofs.ProtocolTargets"]⟩
   , ⟨"LnLean.Security.Route.wellFormed_connected; LnLean.Security.Route.wellFormed_capacity; LnLean.Security.Route.wellFormed_nonempty", ["LnLean.Security.Invariants", "LnLean.Security.Invariants", "LnLean.Security.Invariants"]⟩
   , ⟨"LnLean.Routing.Gossip.update_monotone", ["LnLean.Routing.Gossip"]⟩
   , ⟨"LnLean.Routing.Onion.peel_deterministic", ["LnLean.Routing.Onion"]⟩
@@ -260,21 +260,28 @@ def targetTable : List TargetEntry :=
   , ⟨"LnLean.Proofs.Liveness.watchtower_bridge", ["LnLean.Proofs.Liveness"]⟩
   ]
 
-/-- The 29 `proved` rows' targets and the declarations each names. -/
+/-- The 37 `proved` rows' targets and the declarations each names. -/
 def provedTable : List ProvedEntry :=
   [ ⟨"LnLean.Bitcoin.fundingOutput_moneyRange", ["LnLean.Bitcoin.fundingOutput_moneyRange"]⟩
   , ⟨"LnLean.Bitcoin.anchorValue_eq", ["LnLean.Bitcoin.anchorValue_eq"]⟩
+  , ⟨"LnLean.Crypto.Hash.paymentHash_sha256_contract", ["LnLean.Crypto.Hash.paymentHash_sha256_contract"]⟩
+  , ⟨"LnLean.Crypto.Sig.commitmentSig_contract", ["LnLean.Crypto.Sig.commitmentSig_contract"]⟩
+  , ⟨"LnLean.Crypto.Hash.onionHmacTag_size_and_bindsOn", ["LnLean.Crypto.Hash.onionHmacTag_size_and_bindsOn"]⟩
   , ⟨"LnLean.Wire.decode_encode", ["LnLean.Wire.decode_encode"]⟩
   , ⟨"LnLean.Wire.Message.decode_length", ["LnLean.Wire.Message.decode_length"]⟩
   , ⟨"LnLean.Security.Ledger.step_conserves", ["LnLean.Security.Ledger.step_conserves"]⟩
+  , ⟨"LnLean.Channel.Commitment.outputs_nonnegative", ["LnLean.Channel.Commitment.outputs_nonnegative"]⟩
   , ⟨"LnLean.Security.advance_monotone", ["LnLean.Security.advance_monotone"]⟩
   , ⟨"LnLean.Channel.Reserve.bounds", ["LnLean.Channel.Reserve.bounds"]⟩
   , ⟨"LnLean.Security.HtlcRecord.fulfill_sound", ["LnLean.Security.HtlcRecord.fulfill_sound"]⟩
   , ⟨"LnLean.Security.HtlcRecord.fail_only_after_expiry", ["LnLean.Security.HtlcRecord.fail_only_after_expiry"]⟩
+  , ⟨"LnLean.Channel.HTLC.amount_conservation", ["LnLean.Channel.HTLC.amount_conservation"]⟩
   , ⟨"LnLean.Security.revoked_commitment_is_old", ["LnLean.Security.revoked_commitment_is_old"]⟩
   , ⟨"LnLean.Security.breach_penalty_spends_both", ["LnLean.Security.breach_penalty_spends_both"]⟩
+  , ⟨"LnLean.Protocol.Handshake.open_bounds", ["LnLean.Protocol.Handshake.open_bounds"]⟩
   , ⟨"LnLean.Protocol.Handshake.channel_ready_gate", ["LnLean.Protocol.Handshake.channel_ready_gate"]⟩
   , ⟨"LnLean.Protocol.Peer.reestablish_no_rollback", ["LnLean.Protocol.Peer.reestablish_no_rollback"]⟩
+  , ⟨"LnLean.Protocol.Handshake.feature_intersection", ["LnLean.Protocol.Handshake.feature_intersection"]⟩
   , ⟨"LnLean.Security.Route.wellFormed_connected; LnLean.Security.Route.wellFormed_capacity; LnLean.Security.Route.wellFormed_nonempty", ["LnLean.Security.Route.wellFormed_connected", "LnLean.Security.Route.wellFormed_capacity", "LnLean.Security.Route.wellFormed_nonempty"]⟩
   , ⟨"LnLean.Routing.Gossip.update_monotone", ["LnLean.Routing.Gossip.update_monotone"]⟩
   , ⟨"LnLean.Routing.Onion.peel_deterministic", ["LnLean.Routing.Onion.peel_deterministic"]⟩
@@ -290,6 +297,7 @@ def provedTable : List ProvedEntry :=
   , ⟨"LnLean.Proofs.Conservation.global_conservation", ["LnLean.Proofs.Conservation.global_conservation"]⟩
   , ⟨"LnLean.Proofs.Security.safety_async", ["LnLean.Proofs.Security.safety_async"]⟩
   , ⟨"LnLean.Security.partial_synchrony_delivers", ["LnLean.Security.partial_synchrony_delivers"]⟩
+  , ⟨"LnLean.Proofs.Liveness.penalty_economical", ["LnLean.Proofs.Liveness.penalty_economical"]⟩
   , ⟨"LnLean.Proofs.Liveness.watchtower_bridge", ["LnLean.Proofs.Liveness.watchtower_bridge"]⟩
   ]
 
@@ -298,6 +306,7 @@ modules (`LnLean/Wire/Message`, `LnLean/Protocol/Peer`, the routing modules,
 `LnLean/Payment/Invoice`, `LnLean/Payment/MPP`), the foundational
 `LnLean/Bitcoin/Seam`, `LnLean/Security/Invariants`, `LnLean/Wire/BigSize`,
 and the proof modules `LnLean.Proofs.Conservation`,
+`LnLean.Proofs.ProtocolTargets`, `LnLean.Proofs.CryptoTargets`,
 `LnLean.Proofs.PhaseC2.GlobalConservation`,
 `LnLean.Proofs.PhaseC3.SecurityGame`, `LnLean.Proofs.Liveness`, and
 `LnLean.Proofs.WaveD.D14`, `D18`, `D29`, `LnLean.Proofs.WaveE.E31`.  Adding a
@@ -306,15 +315,22 @@ which is the intended maintenance signal. -/
 def provedDeclarations : List DeclEntry :=
   [ ⟨"LnLean.Bitcoin.fundingOutput_moneyRange", "LnLean.Bitcoin.Seam"⟩
   , ⟨"LnLean.Bitcoin.anchorValue_eq", "LnLean.Bitcoin.Seam"⟩
+  , ⟨"LnLean.Crypto.Hash.paymentHash_sha256_contract", "LnLean.Proofs.CryptoTargets"⟩
+  , ⟨"LnLean.Crypto.Sig.commitmentSig_contract", "LnLean.Proofs.CryptoTargets"⟩
+  , ⟨"LnLean.Crypto.Hash.onionHmacTag_size_and_bindsOn", "LnLean.Proofs.CryptoTargets"⟩
   , ⟨"LnLean.Wire.decode_encode", "LnLean.Wire.BigSize"⟩
   , ⟨"LnLean.Security.Ledger.step_conserves", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Channel.Commitment.outputs_nonnegative", "LnLean.Channel.Commitment"⟩
   , ⟨"LnLean.Security.advance_monotone", "LnLean.Security.Invariants"⟩
   , ⟨"LnLean.Channel.Reserve.bounds", "LnLean.Proofs.WaveD.D14"⟩
   , ⟨"LnLean.Security.HtlcRecord.fulfill_sound", "LnLean.Security.Invariants"⟩
   , ⟨"LnLean.Security.HtlcRecord.fail_only_after_expiry", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Channel.HTLC.amount_conservation", "LnLean.Channel.HTLC"⟩
   , ⟨"LnLean.Security.revoked_commitment_is_old", "LnLean.Security.Invariants"⟩
   , ⟨"LnLean.Security.breach_penalty_spends_both", "LnLean.Security.Invariants"⟩
   , ⟨"LnLean.Protocol.Handshake.channel_ready_gate", "LnLean.Proofs.WaveD.D18"⟩
+  , ⟨"LnLean.Protocol.Handshake.open_bounds", "LnLean.Proofs.ProtocolTargets"⟩
+  , ⟨"LnLean.Protocol.Handshake.feature_intersection", "LnLean.Proofs.ProtocolTargets"⟩
   , ⟨"LnLean.Security.Route.wellFormed_connected", "LnLean.Security.Invariants"⟩
   , ⟨"LnLean.Security.Route.wellFormed_capacity", "LnLean.Security.Invariants"⟩
   , ⟨"LnLean.Security.Route.wellFormed_nonempty", "LnLean.Security.Invariants"⟩
@@ -325,6 +341,7 @@ def provedDeclarations : List DeclEntry :=
   , ⟨"LnLean.Payment.Keysend.preimage_binding", "LnLean.Proofs.WaveE.E31"⟩
   , ⟨"LnLean.Security.L1Ledger.spend_preserves_noDoubleSpend", "LnLean.Security.Invariants"⟩
   , ⟨"LnLean.Security.partial_synchrony_delivers", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Proofs.Liveness.penalty_economical", "LnLean.Proofs.Liveness"⟩
   , ⟨"LnLean.Wire.Message.decode_length", "LnLean.Wire.Message"⟩
   , ⟨"LnLean.Protocol.Peer.reestablish_no_rollback", "LnLean.Protocol.Peer"⟩
   , ⟨"LnLean.Routing.Gossip.update_monotone", "LnLean.Routing.Gossip"⟩
@@ -362,6 +379,8 @@ def lneanModules : List String :=
   , "LnLean.Payment.MPP"
   , "LnLean.Payment.Keysend"
   , "LnLean.Proofs.Conservation"
+  , "LnLean.Proofs.ProtocolTargets"
+  , "LnLean.Proofs.CryptoTargets"
   , "LnLean.Proofs.PhaseC2.GlobalConservation"
   , "LnLean.Proofs.Security"
   , "LnLean.Proofs.PhaseC3.SecurityGame"
@@ -540,16 +559,16 @@ theorem proved_declaration_modules_lnean :
     provedDeclarations.all (fun p => decide (p.module ∈ lneanModules)) = true := by
   decide
 
-/-- Exactly 29 rows are `proved`, matching the `docs/THEOREM-INDEX.md`
+/-- Exactly 37 rows are `proved`, matching the `docs/THEOREM-INDEX.md`
 summary table. -/
 theorem proved_row_count :
-    (obligations.filter (fun o => o.status == .proved)).length = 29 := by
+    (obligations.filter (fun o => o.status == .proved)).length = 37 := by
   decide
 
-/-- Exactly 19 rows are `statementOnly`, matching the
+/-- Exactly 11 rows are `statementOnly`, matching the
 `docs/THEOREM-INDEX.md` summary table. -/
 theorem statement_only_row_count :
-    (obligations.filter (fun o => o.status == .statementOnly)).length = 19 := by
+    (obligations.filter (fun o => o.status == .statementOnly)).length = 11 := by
   decide
 
 /-- No row uses the `UNANCHORED` fallback, matching the anchor policy in
