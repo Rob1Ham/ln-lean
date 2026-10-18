@@ -1,6 +1,5 @@
 /-
-  Combined phase-C2/C3 aggregator.  Explicitly built by the integrator;
-  not part of the wave-A root module.
+  Combined phase-C2/C3 aggregator.
 -/
 import LnLean.Proofs.PhaseC2.CltvAccumulation
 import LnLean.Proofs.PhaseC2.CommitmentAlgebra
@@ -22,7 +21,9 @@ import LnLean.Proofs.PhaseC2.RevocationNumber
 import LnLean.Proofs.PhaseC3.AxiomAudit
 import LnLean.Proofs.PhaseC3.CloseConservation
 import LnLean.Proofs.PhaseC3.ConformanceVectors
+import LnLean.Proofs.PhaseC3.CrossChannelRouting
 import LnLean.Proofs.PhaseC3.EndToEndConservation
+import LnLean.Proofs.PhaseC3.FeeWeightDust
 import LnLean.Proofs.PhaseC3.InvoiceParser
 import LnLean.Proofs.PhaseC3.OnionError
 import LnLean.Proofs.PhaseC3.PersistenceRecovery
