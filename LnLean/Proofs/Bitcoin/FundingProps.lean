@@ -73,8 +73,10 @@ conditional, collision-resistance-parameterised binding lemma is proved), L1
 consensus, chain confirmation and reorgs, fee/RBF behaviour of the funding
 transaction, concrete `OP_CHECKMULTISIG`/P2WSH execution, and ECDSA key
 ownership/unforgeability (assumption C3).  The wave-A `ScriptInstr` parser has
-no `OP_CHECKMULTISIG` constructor (`vendor/btc-lean-core/Bitcoin/Data/Script.lean:31-41`),
-which is stated as an obligation rather than hidden.
+no `OP_CHECKMULTISIG` constructor (`vendor/btc-lean-core/Bitcoin/Data/Script.lean:31-41`);
+this is recorded by the conditional rejection theorem for well-formed
+parameters and by the counterexample showing that unconditional rejection is
+false without `p.WellFormed`.
 -/
 
 namespace LnLean.Proofs.Bitcoin
@@ -656,29 +658,7 @@ private theorem parseWith_witnessScript (k1 k2 : ByteArray)
       (ByteArray.empty.push 0x52 ++ (ByteArray.empty.push k1.size.toUInt8 ++ k1)
         ++ (ByteArray.empty.push k2.size.toUInt8 ++ k2) ++ ByteArray.empty.push 0x52)
 
-/-- btc-lean's `Script.parse` rejects the 2-of-2 funding witness script because
-`ScriptInstr` has no `OP_CHECKMULTISIG` constructor
-(`vendor/btc-lean-core/Bitcoin/Data/Script.lean:31-41`, `decodeOp` `:53-71`);
-consequently the concrete interpreter bridge cannot yet be stated or proved.
-
-**Status: the statement below is false as written.**  It quantifies over
-arbitrary `FundingParams`, but `FundingParams` does not require the funding
-keys to be 33 bytes; `pushData` truncates a length to `UInt8`, so a key of
-length at least 256 makes the parser reinterpret key bytes as opcodes and can
-make it accept the script.  `witnessScript_parse_ne_none_counterexample`
-exhibits such a `p`, and `witnessScript_parse_eq_none_of_wellFormed` proves
-the true conditional form for `p.WellFormed` (which forces 33-byte keys).
-The placeholder is kept only for the refuted statement, with its exact
-missing hypothesis recorded. -/
-theorem witnessScript_parse_eq_none (p : FundingParams) :
-    p.witnessScript.parse = none := by
-  -- OBLIGATION: LN-FUND-001 the stated claim is missing `p.WellFormed`
-  -- (equivalently 33-byte funding keys); see the counterexample and the
-  -- conditional proof below.  The parser really does lack a
-  -- `ScriptInstr.checkMultisig` constructor.
-  sorry
-
-/-- The true conditional form of `witnessScript_parse_eq_none`: for
+/-- The true conditional form of the unconditional rejection claim: for
 well-formed parameters (33-byte keys, hence an exact `0x21` direct push for
 each key) the wave-A parser reaches the trailing `OP_CHECKMULTISIG` and
 rejects the script. -/
@@ -744,10 +724,9 @@ private def cexKey : ByteArray :=
     ++ List.replicate 5 (0x00 : UInt8) ++ [0x4b]
     ++ List.replicate 4 (0x00 : UInt8)).toByteArray
 
-/-- Counterexample parameters with two identical 256-kind keys (no
+/-- Counterexample parameters with two identical 81-byte keys (no
 well-formedness hypothesis): the witness script is accepted by
-`Script.parse`, so `witnessScript_parse_eq_none` is false without
-`p.WellFormed`. -/
+`Script.parse`, so unconditional rejection fails without `p.WellFormed`. -/
 private def cexP : FundingParams :=
   { fundingSatoshis := 0
     pushMsat := ⟨0⟩
@@ -757,7 +736,7 @@ private def cexP : FundingParams :=
     temporaryChannelId := ⟨⟨ByteArray.empty⟩⟩ }
 
 set_option maxRecDepth 10000 in
-/-- **Counterexample to `witnessScript_parse_eq_none` as stated.**  The script
+/-- **Counterexample to unconditional rejection.**  The script
 built from `cexKey` parses successfully: the parser sees `OP_1` where the
 81-byte key's length byte `0x51` should be a push, then follows the key body
 as opcodes until a push swallows the final `OP_CHECKMULTISIG`. -/

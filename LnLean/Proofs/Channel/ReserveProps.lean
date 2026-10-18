@@ -19,9 +19,10 @@ channel against the wave-A model in `LnLean.Channel.{Types,State,Fee}`:
    of `update_add_htlc`) also preserves the local reserve when the amount is
    guarded by `reserve * 1000 + amount <= localBalance`.  The current `Step`
    relation never changes balances, so the operational update constructor is
-   still an obligation (`LN-CH-101`); its unconditional ledger equation is
-   false under truncated subtraction, with the corrected conditional form
-   `committed_update_preserves_ledger_of_le` and a checked counterexample.
+   still an obligation (`LN-CH-101`); the unconditional ledger equation is
+   false under truncated subtraction, so the module records the corrected
+   conditional form `committed_update_preserves_ledger_of_le` together with
+   the checked counterexample `committed_update_preserves_ledger_counterexample`.
 3. Commitment outputs are trimmed by the owner's dust limit: every kept
    output has value at least the limit and every dropped output is recorded
    explicitly in `dustDroppedOutputs` as dust.  Anchor outputs are fixed at
@@ -574,41 +575,14 @@ theorem spendLocalBalance_total_val {b : Balance} {amountMsat : Nat}
   simp [spendLocalBalance, Balance.total_val]
   omega
 
-/-- Next model extension: add BOLT 2 `update_add_htlc` (a local balance drop
-plus a new pending HTLC) to `Channel.Step` and prove that the
-settled-plus-in-flight ledger is preserved.  The current `Step` relation
-changes neither balances nor HTLCs, so this cannot be derived from the wave-A
-transition relation yet.  The unconditional statement is also false as
-written, because `spendLocalBalance` uses truncated `Nat` subtraction; see
-`committed_update_preserves_ledger_counterexample` and the corrected
-`committed_update_preserves_ledger_of_le` below. -/
-theorem committed_update_preserves_ledger (c c' : Channel) (fee : Msat)
-    (amount : Msat)
-    (h_old : c.balance.total.val + htlcInFlightValue c + fee.val =
-      c.fundingValue.val)
-    (h_step : c' = { c with
-      balance := spendLocalBalance c.balance amount.val
-      htlcs := c.htlcs ++
-        [{ direction := Direction.local
-           amount := amount
-           paymentHash := ⟨ByteArray.empty⟩
-           cltvExpiry := 0
-           state := HTLCState.offered }] }) :
-    c'.balance.total.val + htlcInFlightValue c' + fee.val =
-      c'.fundingValue.val := by
-  -- The unconditional statement is false: `spendLocalBalance` truncates at
-  -- zero, so an added HTLC may exceed the settled local balance.
-  -- OBLIGATION: LN-CH-101 missing bridge: no `Step`/`update_add_htlc`
-  -- constructor supplies `amount.val ≤ c.balance.localBalance.val`; the
-  -- truncated subtraction makes the unconditional ledger equation false.
-  sorry
-
-/-- Corrected committed-update ledger.  The unconditional
-`committed_update_preserves_ledger` cannot hold for arbitrary `amount`,
-because `spendLocalBalance` is truncated subtraction: an HTLC larger than the
-settled local balance would add in-flight value without removing settled
-value.  Under the BOLT 2 funding precondition that the added HTLC fits in the
-settled local balance, the update conserves settled plus in-flight value. -/
+/-- Corrected committed-update ledger.  An unconditional equation cannot hold
+for arbitrary `amount`, because `spendLocalBalance` is truncated subtraction:
+an HTLC larger than the settled local balance would add in-flight value
+without removing settled value.  Under the BOLT 2 funding precondition that
+the added HTLC fits in the settled local balance, the update conserves settled
+plus in-flight value.  The refuted unconditional form is recorded by
+`committed_update_preserves_ledger_counterexample`; see also the obligation
+`LN-CH-101` for adding a balance-changing `Step` constructor. -/
 theorem committed_update_preserves_ledger_of_le (c c' : Channel) (fee : Msat)
     (amount : Msat)
     (h_fits : amount.val ≤ c.balance.localBalance.val)
@@ -630,7 +604,7 @@ theorem committed_update_preserves_ledger_of_le (c c' : Channel) (fee : Msat)
   simp only [Balance.total_val] at h_old ⊢
   omega
 
-/-- Counterexample to the unconditional `committed_update_preserves_ledger`.
+/-- Counterexample to the unconditional committed-update ledger equation.
 The channel has zero settled balances and zero funding value; adding a
 1-msat local HTLC leaves the total settled balance at zero by truncated
 subtraction, so the successor has `0 + 1 + 0 ≠ 0`.  This is why the corrected
@@ -684,5 +658,33 @@ theorem committed_update_preserves_ledger_counterexample :
   · simp [c, fee, htlcInFlightValue, Balance.total_val]
   · simp [c', c, fee, amount, spendLocalBalance, htlcInFlightValue,
       Balance.total_val]
+
+/-- Exact truncated-subtraction accounting for the committed update.  Even
+when the added HTLC exceeds the settled local balance, the settled plus
+in-flight ledger exceeds `fundingValue` by exactly the unfunded remainder
+`amount.val - min amount.val localBalance.val`.  This is the general form
+behind `committed_update_preserves_ledger_of_le`, which is the special case
+where the remainder is zero. -/
+theorem committed_update_preserves_ledger_deficit (c c' : Channel) (fee : Msat)
+    (amount : Msat)
+    (h_old : c.balance.total.val + htlcInFlightValue c + fee.val =
+      c.fundingValue.val)
+    (h_step : c' = { c with
+      balance := spendLocalBalance c.balance amount.val
+      htlcs := c.htlcs ++
+        [{ direction := Direction.local
+           amount := amount
+           paymentHash := ⟨ByteArray.empty⟩
+           cltvExpiry := 0
+           state := HTLCState.offered }] }) :
+    c'.balance.total.val + htlcInFlightValue c' + fee.val =
+      c'.fundingValue.val +
+        (amount.val - Nat.min amount.val c.balance.localBalance.val) := by
+  subst c'
+  unfold htlcInFlightValue at h_old ⊢
+  rw [inFlightSum_append_offered]
+  simp only [Balance.total_val, spendLocalBalance] at h_old ⊢
+  simp only [Nat.min_def]
+  split <;> omega
 
 end LnLean.Proofs.Channel
