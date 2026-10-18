@@ -49,6 +49,12 @@ Every site is a false or underspecified unconditional statement retained next
 to an `-- OBLIGATION:` marker, with a proved conditional/counterexample
 companion.  The catalog remains **13/48 proved, 35 statement-only**.
 
+**Crypto interface caveat:** `PrimitiveModel` carries both `sha256_size` and
+`sha256_preimageResistant`, which are jointly inconsistent
+(`preimageResistant_vacuous`).  Theorems over `M : PrimitiveModel` are
+vacuous; byte-decomposition results are unaffected.  Do not present the
+SHA-256-shaped headlines as a real hash bridge.
+
 Do not describe the following as closed:
 
 - `LN-L1-004`: the model's `toLocalScript` is a flat seam fragment, not the

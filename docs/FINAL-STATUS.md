@@ -69,7 +69,12 @@ marker, with a proved conditional/counterexample companion.  See
 ## Trust boundary
 
 Cryptographic primitives are a `PrimitiveModel` interface with assumed
-properties as `Prop` fields (C1–C8 in `docs/ASSUMPTIONS.md`).  Bitcoin L1
+properties as `Prop` fields (C1–C8 in `docs/ASSUMPTIONS.md`).  **Caveat:**
+the current interface contains both `sha256_size` and
+`sha256_preimageResistant`, which are jointly inconsistent
+(`preimageResistant_vacuous`).  Theorems quantified over
+`M : PrimitiveModel` are vacuous, so SHA-256-shaped headlines are not a real
+cryptographic bridge; byte-decomposition theorems are unaffected.  Bitcoin L1
 semantics are consumed from `vendor/btc-lean-core`, never redefined and never
 edited.  Network and liveness results are conditional on explicit partial-
 synchrony/fairness hypotheses.

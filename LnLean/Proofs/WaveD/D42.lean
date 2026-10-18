@@ -54,10 +54,11 @@ Negative/fidelity results:
   harmless for the protocol because BOLT 2 carries `to_self_delay` as a
   `u16` field (0..65535), see below;
 * BOLT 3 uses minimal `CScriptNum` encoding, while the model always uses a
-  three-byte push.  For `d ≥ 128` the model is byte-identical to a minimal
-  encoding of the same integer; for `d < 128` it is not (extra length byte and
-  trailing zero).  The value represented is still exactly `d`; no script
-  interpreter is modelled here, so this is a byte-template statement only;
+  three-byte push.  The model is byte-identical to a minimal encoding only for
+  `128 ≤ d < 32768`: `d = 0` uses `OP_0`, `1 ≤ d < 128` uses a shorter push,
+  and `d ≥ 32768` needs an extra sign byte.  The value represented is still
+  exactly `d`; no script interpreter is modelled here, so this is a
+  byte-template statement only;
 * `SHA256` is not modelled.  `HashesMatch` is a `Prop` parameter, and the
   output-level commitment theorem assumes injectivity of the supplied hash.
   This is the missing crypto bridge, not an extra protocol hypothesis.

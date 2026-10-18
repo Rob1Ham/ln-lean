@@ -82,6 +82,18 @@ These targets are recorded as conditional, negative, or blocked, not closed:
   the guarded store result.
 - `LN-FUND-001` and `LN-GOSSIP-001/003`: the base Wave-C `sorry` sites remain.
 
+### Crypto-model caveat
+
+`LnLean.Crypto.PrimitiveModel` contains both `sha256_size` and
+`sha256_preimageResistant`; these are jointly inconsistent, as mechanized by
+`preimageResistant_vacuous` in `LnLean/Proofs/Crypto/Sha256Props.lean`.
+Theorems quantified over `M : PrimitiveModel` are therefore vacuous.  The
+unconditional byte-decomposition results (D41/D42/D43/D44) are unaffected,
+but the SHA-256-shaped headlines should not be read as a real cryptographic
+bridge.  The honest repair is a bare hash parameter plus an explicit
+computational-collision-resistance hypothesis, not a global injectivity
+assumption.
+
 ## Reproduce
 
 ```sh
