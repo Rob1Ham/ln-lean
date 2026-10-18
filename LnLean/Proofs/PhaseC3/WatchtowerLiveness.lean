@@ -27,7 +27,7 @@ penalty is not realized then at least one of fairness, loss-freedom, the
 timer/settlement trigger, watchtower liveness, or timely L1 acceptance fails.
 
 Every assumption is a structure field or a theorem hypothesis.  There is no
-`axiom`, no `sorry`, and no assumption that the watchtower detects instantly:
+`axiom`, no placeholder proof, and no assumption that the watchtower detects instantly:
 detection is witnessed at the explicit height `detection.detectHeight`, which
 may be strictly after `breachHeight`.
 

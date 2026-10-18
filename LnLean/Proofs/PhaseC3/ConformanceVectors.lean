@@ -23,7 +23,7 @@ own definitions (never by `decide`/`native_decide`):
 
 Every fact below is a named theorem whose proof is `rfl`, `simp` with the
 model's proved lemmas, an existing model theorem, or `omega` for arithmetic
-side conditions.  There is no `decide`, `native_decide`, `sorry`, `axiom`,
+side conditions.  There is no `decide`, `native_decide`, placeholder proof, `axiom`,
 `admit`, `unsafe`, or `implemented_by`.
 
 The vectors check *the model as written*; they do not claim that the model's
