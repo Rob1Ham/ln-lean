@@ -126,12 +126,62 @@ def anchorValue : BtcAmount := 330
 
 theorem anchorValue_eq : anchorValue = 330 := rfl
 
-/-- `to_local` output: `OP_CSV <csv> OP_DROP <revocation_pubkey> OP_CHECKSIG`. -/
+/-- `to_local` output: `OP_CSV <csv> OP_DROP <revocation_pubkey> OP_CHECKSIG`.
+
+This is the *flat one-branch seam fragment* retained for existing consumers
+(`CommitmentBridge`, `D03`, ...).  It is **not** the BOLT 3 `to_local` witness
+script: it has no `OP_IF`/`OP_ELSE` structure, no delayed-payment key, and it
+encodes the delay as a single byte.  Use `toLocalScriptFull` for the faithful
+two-branch model. -/
 def toLocalScript (revocationPubKey : PubKey) (csv : Blocks) : Script :=
   ⟨pushData (ByteArray.mk #[csv.toUInt8])
      ++ (ByteArray.empty.push OP_CSV).push OP_DROP
      ++ pushData revocationPubKey.bytes
      ++ ByteArray.empty.push OP_CHECKSIG⟩
+
+/-- Fixed-width two-byte little-endian push of the `to_local`
+`to_self_delay`: `[0x02, d % 256, (d / 256) % 256]`.
+
+BOLT 3 uses minimal `CScriptNum`; this model deliberately follows the
+scaffold's fixed-width encoding (the same encoding as
+`ScriptTemplates.pushScriptNum16`).  The value represented is exact for every
+`d < 2^16`, which covers BOLT 2's `u16` `to_self_delay` field. -/
+def toLocalDelayPush (csv : Blocks) : ByteArray :=
+  pushData ((ByteArray.empty.push csv.toUInt8).push (csv >>> 8).toUInt8)
+
+theorem toLocalDelayPush_size (csv : Blocks) :
+    (toLocalDelayPush csv).size = 3 := by
+  unfold toLocalDelayPush pushData
+  simp
+
+/-- The faithful BOLT 3 `to_local` witness script:
+
+`OP_IF <revocationpubkey> OP_ELSE <to_self_delay> OP_CSV OP_DROP
+ <local_delayedpubkey> OP_ENDIF OP_CHECKSIG`
+
+The `OP_IF` branch is the revocation (penalty) path; the `OP_ELSE` branch is
+the CSV-delayed local-payment path.  This is the witness script whose SHA-256
+is the 32-byte P2WSH program of the `to_local` output. -/
+def toLocalScriptFull (revocationPubKey delayedPaymentPubKey : PubKey)
+    (csv : Blocks) : Script :=
+  ⟨(ByteArray.empty.push OP_IF)
+     ++ pushData revocationPubKey.bytes
+     ++ (ByteArray.empty.push OP_ELSE)
+     ++ toLocalDelayPush csv
+     ++ (ByteArray.empty.push OP_CSV)
+     ++ (ByteArray.empty.push OP_DROP)
+     ++ pushData delayedPaymentPubKey.bytes
+     ++ (ByteArray.empty.push OP_ENDIF)
+     ++ (ByteArray.empty.push OP_CHECKSIG)⟩
+
+/-- The full `to_local` witness script is 77 bytes for two 33-byte compressed
+keys and the fixed three-byte delay push. -/
+theorem toLocalScriptFull_size (revocationKey delayedPaymentKey : PubKey)
+    (toSelfDelay : Blocks)
+    (h1 : revocationKey.bytes.size = 33)
+    (h2 : delayedPaymentKey.bytes.size = 33) :
+    (toLocalScriptFull revocationKey delayedPaymentKey toSelfDelay).bytes.size = 77 := by
+  simp [toLocalScriptFull, toLocalDelayPush, pushData, h1, h2]
 
 /-- `to_remote` output: a plain P2WPKH to the remote party's payment key
 (the BOLT 3 `to_remote` script is `<remotepubkey> OP_CHECKSIG`; both forms

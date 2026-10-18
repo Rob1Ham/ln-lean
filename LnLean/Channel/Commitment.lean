@@ -34,8 +34,11 @@ rust-lightning anchors at `fe4900930c6bd5786ec4203274d7cf312776a5a6`.
   the two commitment counters).
 
 What is NOT modelled.
-* Exact output ordering, the obscured commitment number, `nSequence`, and
-  signature/witness bytes.
+* The legacy `Commitment.commitmentOutputs` function emits a fixed group order
+  and applies no dust filter.  BOLT 3's value/script/CLTV ordering and dust
+  trimming are modelled separately by the faithful `CommitmentTx` extension
+  at the end of this file.  The obscured commitment number, `nSequence`, and
+  signature/witness bytes remain unmodelled.
 * Zero-fee commitments and the `shared_anchor` output.
 * HTLC second-stage transactions and their 663/703 weights.
 * `to_local` justice/penalty spending; the revocation workstream owns it.
@@ -419,10 +422,13 @@ that a zero-valued HTLC output is still emitted.  The lemmas below record the
 true model-level facts, including the conditional "no sub-dust HTLC output"
 statement for a pre-trimmed `htlcs` list.
 
-No unconditional `output_ordering` theorem is added: D12 refutes it
-(`waveD_d12_output_ordering_fails`), and `CommitmentOutput` carries neither a
-script nor an HTLC expiry, so the BOLT `(value, script, cltv)` key is not even
-representable on this type. -/
+No unconditional `output_ordering` theorem is added for this legacy output
+function: D12 refutes it (`waveD_d12_output_ordering_fails`), and
+`CommitmentOutput` carries neither a script nor an HTLC expiry, so the BOLT
+`(value, script, cltv)` key is not even representable on this type.  The
+faithful extension below (`CommitmentTx`) supplies both keys, the owner's dust
+limit, and the deterministic BOLT 3 construction, and proves the true
+ordering/trimming theorem there (`CommitmentTx.outputs_spec`). -/
 
 /-- A `to_local` output occurs in `commitmentOutputs` exactly when it carries
 the commitment's `toLocalSat` and that value is nonzero. -/
@@ -488,5 +494,459 @@ theorem Commitment.htlc_mem_commitmentOutputs_value_ge {c : Commitment}
     (Commitment.htlc_mem_commitmentOutputs_iff (c := c) (dir := dir)
       (v := v)).1 hv
   exact hpre h hmem
+
+/-! ## BOLT 3 ordered, dust-trimmed commitment outputs (LN-CH-003 model extension)
+
+The value-only `Commitment` record above has no `scriptPubKey`, no
+`cltv_expiry` on its non-HTLC outputs, and (in `commitmentOutputs`) no dust
+filter.  BOLT 3, however, defines the commitment transaction output set by
+
+* trimming every output whose value is below the transaction owner's
+  `dust_limit_satoshis` (with the second-stage fee charged first for HTLC
+  outputs), and
+* sorting the surviving outputs by value, then by `scriptpubkey` (memcmp with
+  the shorter prefix first), then by `cltv_expiry` for HTLC outputs.
+
+`LnLean.Proofs.WaveD.D12` shows that the unconditional ordering claim is
+*false* of `commitmentOutputs` (`waveD_d12_output_ordering_fails`) and that
+the CLTV tiebreak is unrecoverable from the old output type
+(`waveD_d12_cltv_tiebreak_not_recoverable`).  That counterexample is retained
+unchanged.
+
+The types and functions below are the smallest faithful extension that makes
+the true BOLT 3 statement expressible:
+
+* `ScriptPubKey` is a raw script byte string (the model does not import a
+  Bitcoin script interpreter; see `LnLean.Bitcoin.ScriptTemplates` for the
+  L1 template side);
+* `CommitmentTxOutput` tags one output with its kind, value, script, and CLTV;
+* `CommitmentTxOutput.le` is BOLT 3's three-key lexicographic order;
+* `CommitmentTx` adds the owner's dust limit and the per-output scripts to an
+  existing `Commitment`, and `CommitmentTx.outputs` is the deterministic
+  dust-trimmed, sorted construction.
+
+The ordering/trimming theorem is `CommitmentTx.outputs_spec`; the catalog
+target `output_ordering` in
+`LnLean.Proofs.Channel.CommitmentOrderTargets` restates it.  No unconditional
+statement about the legacy `commitmentOutputs` function is claimed: D12's
+counterexample remains the correct statement about that function.
+-/
+
+/-! ### Script keys and BOLT 3 output order -/
+
+/-- A raw `scriptPubKey`: the bytes that BOLT 3 compares with `memcmp`.  The
+model does not interpret scripts; it only needs the byte string to order
+outputs. -/
+structure ScriptPubKey where
+  bytes : List UInt8
+deriving Repr, DecidableEq, BEq
+
+theorem ScriptPubKey.ext_iff {a b : ScriptPubKey} : a = b ↔ a.bytes = b.bytes := by
+  constructor
+  · intro h; rw [h]
+  · intro h; cases a; cases b; simp_all
+
+theorem ScriptPubKey.ext {a b : ScriptPubKey} (h : a.bytes = b.bytes) : a = b :=
+  ScriptPubKey.ext_iff.2 h
+
+def ScriptPubKey.le (a b : ScriptPubKey) : Prop := a.bytes ≤ b.bytes
+
+instance (a b : ScriptPubKey) : Decidable (a.le b) :=
+  inferInstanceAs (Decidable (a.bytes ≤ b.bytes))
+
+theorem ScriptPubKey.le_refl (a : ScriptPubKey) : a.le a := List.le_refl _
+
+theorem ScriptPubKey.le_trans {a b c : ScriptPubKey} (hab : a.le b) (hbc : b.le c) : a.le c :=
+  List.le_trans hab hbc
+
+theorem ScriptPubKey.le_total (a b : ScriptPubKey) : a.le b ∨ b.le a := List.le_total _ _
+
+/-- The role of an output in the BOLT 3 commitment construction. -/
+inductive CommitmentOutputKind where
+  | toLocal
+  | toRemote
+  | htlc (direction : Direction)
+  | localAnchor
+  | remoteAnchor
+deriving Repr, DecidableEq, BEq
+
+/-- One commitment output with the full BOLT 3 sort key: its kind, satoshi
+value, `scriptPubKey`, and `cltv_expiry` (zero for non-HTLC outputs). -/
+structure CommitmentTxOutput where
+  kind : CommitmentOutputKind
+  valueSat : Nat
+  scriptPubKey : ScriptPubKey
+  cltvExpiry : Height
+deriving Repr, DecidableEq, BEq
+
+/-- BOLT 3 non-strict lexicographic order: value, then `scriptPubKey`
+(memcmp), then `cltv_expiry`.  The kind is not part of the key. -/
+def CommitmentTxOutput.le (a b : CommitmentTxOutput) : Prop :=
+  a.valueSat < b.valueSat ∨
+    (a.valueSat = b.valueSat ∧
+      (a.scriptPubKey.bytes < b.scriptPubKey.bytes ∨
+        (a.scriptPubKey.bytes = b.scriptPubKey.bytes ∧ a.cltvExpiry ≤ b.cltvExpiry)))
+
+instance (a b : CommitmentTxOutput) : Decidable (a.le b) := by
+  unfold CommitmentTxOutput.le; infer_instance
+
+theorem CommitmentTxOutput.le_refl (a : CommitmentTxOutput) : a.le a :=
+  Or.inr ⟨rfl, Or.inr ⟨rfl, Nat.le_refl _⟩⟩
+
+theorem CommitmentTxOutput.le_trans {a b c : CommitmentTxOutput}
+    (hab : a.le b) (hbc : b.le c) : a.le c := by
+  rcases hab with hv | ⟨hv, hs | ⟨hs, hc⟩⟩
+  · rcases hbc with hv' | ⟨hv', _⟩
+    · exact Or.inl (Nat.lt_trans hv hv')
+    · exact Or.inl (by omega)
+  · rcases hbc with hv' | ⟨hv', hs' | ⟨hs', hc'⟩⟩
+    · exact Or.inl (by omega)
+    · exact Or.inr ⟨by omega, Or.inl (List.lt_trans hs hs')⟩
+    · exact Or.inr ⟨by omega, Or.inl (hs' ▸ hs)⟩
+  · rcases hbc with hv' | ⟨hv', hs' | ⟨hs', hc'⟩⟩
+    · exact Or.inl (by omega)
+    · exact Or.inr ⟨by omega, Or.inl (by rw [hs]; exact hs')⟩
+    · exact Or.inr ⟨by omega, Or.inr ⟨by rw [hs, hs'], Nat.le_trans hc hc'⟩⟩
+
+theorem CommitmentTxOutput.le_total (a b : CommitmentTxOutput) : a.le b ∨ b.le a := by
+  rcases Nat.lt_trichotomy a.valueSat b.valueSat with hv | hv | hv
+  · exact Or.inl (Or.inl hv)
+  · rcases Std.lt_trichotomy a.scriptPubKey.bytes b.scriptPubKey.bytes with hs | hs | hs
+    · exact Or.inl (Or.inr ⟨hv, Or.inl hs⟩)
+    · rcases Nat.le_total a.cltvExpiry b.cltvExpiry with hc | hc
+      · exact Or.inl (Or.inr ⟨hv, Or.inr ⟨hs, hc⟩⟩)
+      · exact Or.inr (Or.inr ⟨hv.symm, Or.inr ⟨hs.symm, hc⟩⟩)
+    · exact Or.inr (Or.inr ⟨hv.symm, Or.inl hs⟩)
+  · exact Or.inr (Or.inl hv)
+
+/-- Sort commitment outputs by the BOLT 3 three-key order.  `mergeSort` is a
+function, so the result is deterministic for a fixed input list; equal-key
+outputs are interchangeable on-chain and their relative order is irrelevant. -/
+def sortOutputs (l : List CommitmentTxOutput) : List CommitmentTxOutput :=
+  l.mergeSort (fun a b => decide (CommitmentTxOutput.le a b))
+
+theorem sortOutputs_perm (l : List CommitmentTxOutput) : (sortOutputs l).Perm l :=
+  List.mergeSort_perm l _
+
+theorem sortOutputs_pairwise (l : List CommitmentTxOutput) :
+    (sortOutputs l).Pairwise CommitmentTxOutput.le := by
+  have h := List.pairwise_mergeSort
+    (le := fun a b => decide (CommitmentTxOutput.le a b))
+    (by
+      intro a b c hab hbc
+      exact decide_eq_true
+        (CommitmentTxOutput.le_trans (of_decide_eq_true hab) (of_decide_eq_true hbc)))
+    (by
+      intro a b
+      by_cases hab : CommitmentTxOutput.le a b
+      · simp [decide_eq_true hab]
+      · rcases CommitmentTxOutput.le_total a b with h | h
+        · exact absurd h hab
+        · simp [decide_eq_false hab, decide_eq_true h])
+    l
+  exact h.imp (fun {a b} hab => of_decide_eq_true hab)
+
+theorem sortOutputs_values (l : List CommitmentTxOutput) :
+    (sortOutputs l).Pairwise (fun a b => a.valueSat ≤ b.valueSat) := by
+  refine (sortOutputs_pairwise l).imp ?_
+  intro a b hab
+  rcases hab with hv | ⟨hv, _⟩
+  · exact Nat.le_of_lt hv
+  · exact Nat.le_of_eq hv
+
+theorem sortOutputs_scripts (l : List CommitmentTxOutput) :
+    (sortOutputs l).Pairwise (fun a b =>
+      a.valueSat = b.valueSat → a.scriptPubKey.le b.scriptPubKey) := by
+  refine (sortOutputs_pairwise l).imp ?_
+  intro a b hab hv
+  rcases hab with hlt | ⟨_, hs | ⟨hs, _⟩⟩
+  · omega
+  · exact List.le_of_lt hs
+  · change a.scriptPubKey.bytes ≤ b.scriptPubKey.bytes
+    rw [hs]
+    exact List.le_refl _
+
+theorem sortOutputs_cltvs (l : List CommitmentTxOutput) :
+    (sortOutputs l).Pairwise (fun a b =>
+      a.valueSat = b.valueSat → a.scriptPubKey = b.scriptPubKey →
+        a.cltvExpiry ≤ b.cltvExpiry) := by
+  refine (sortOutputs_pairwise l).imp ?_
+  intro a b hab hv hsp
+  rcases hab with hlt | ⟨_, hs | ⟨hs, hc⟩⟩
+  · omega
+  · exfalso
+    exact List.lt_irrefl _ (hsp ▸ hs)
+  · exact hc
+
+/-- The script, CLTV, and dust data that the value-only `Commitment` record
+does not carry.  `dustLimitSat` is the transaction owner's
+`dust_limit_satoshis`.  `htlcScript` is an explicit function because script
+bytes depend on funding keys and payment hashes that are outside this module. -/
+structure CommitmentTx where
+  commitment : Commitment
+  dustLimitSat : Nat
+  toLocalScript : ScriptPubKey
+  toRemoteScript : ScriptPubKey
+  localAnchorScript : ScriptPubKey
+  remoteAnchorScript : ScriptPubKey
+  htlcScript : CommitmentHTLCOutput → ScriptPubKey
+
+def CommitmentTxOutput.toLocal (v : Nat) (script : ScriptPubKey) : CommitmentTxOutput :=
+  { kind := .toLocal, valueSat := v, scriptPubKey := script, cltvExpiry := 0 }
+
+def CommitmentTxOutput.toRemote (v : Nat) (script : ScriptPubKey) : CommitmentTxOutput :=
+  { kind := .toRemote, valueSat := v, scriptPubKey := script, cltvExpiry := 0 }
+
+def CommitmentTxOutput.htlc (h : CommitmentHTLCOutput) (script : ScriptPubKey) :
+    CommitmentTxOutput :=
+  { kind := .htlc h.direction, valueSat := h.amountSat, scriptPubKey := script,
+    cltvExpiry := h.cltvExpiry }
+
+def CommitmentTxOutput.localAnchor (script : ScriptPubKey) : CommitmentTxOutput :=
+  { kind := .localAnchor, valueSat := anchorOutputSat, scriptPubKey := script,
+    cltvExpiry := 0 }
+
+def CommitmentTxOutput.remoteAnchor (script : ScriptPubKey) : CommitmentTxOutput :=
+  { kind := .remoteAnchor, valueSat := anchorOutputSat, scriptPubKey := script,
+    cltvExpiry := 0 }
+
+/-- The `to_local` output of the rich commitment model, or `none` when its
+value is below the owner's dust limit. -/
+def CommitmentTx.toLocalOutput (tx : CommitmentTx) : Option CommitmentTxOutput :=
+  if tx.dustLimitSat ≤ tx.commitment.toLocalSat then
+    some (CommitmentTxOutput.toLocal tx.commitment.toLocalSat tx.toLocalScript)
+  else none
+
+/-- The `to_remote` output, or `none` when below the owner's dust limit. -/
+def CommitmentTx.toRemoteOutput (tx : CommitmentTx) : Option CommitmentTxOutput :=
+  if tx.dustLimitSat ≤ tx.commitment.toRemoteSat then
+    some (CommitmentTxOutput.toRemote tx.commitment.toRemoteSat tx.toRemoteScript)
+  else none
+
+/-- The HTLC output for `h`, or `none` when its post-second-stage-fee value
+is below the owner's dust limit.  This is BOLT 3's trimming test
+`amount - second_stage_fee < dust_limit_satoshis`. -/
+def CommitmentTx.htlcOutput (tx : CommitmentTx) (h : CommitmentHTLCOutput) :
+    Option CommitmentTxOutput :=
+  if tx.dustLimitSat ≤ h.amountSat then
+    some (CommitmentTxOutput.htlc h (tx.htlcScript h))
+  else none
+
+def CommitmentTx.localAnchorOutput (tx : CommitmentTx) : Option CommitmentTxOutput :=
+  if tx.commitment.anchorOutputs then
+    some (CommitmentTxOutput.localAnchor tx.localAnchorScript)
+  else none
+
+def CommitmentTx.remoteAnchorOutput (tx : CommitmentTx) : Option CommitmentTxOutput :=
+  if tx.commitment.anchorOutputs then
+    some (CommitmentTxOutput.remoteAnchor tx.remoteAnchorScript)
+  else none
+
+/-- The output list before BOLT 3 sorting: trimmed non-HTLC outputs in the
+construction order `to_local, to_remote`, then the surviving HTLCs in the
+commitment's HTLC order, then the anchors. -/
+def CommitmentTx.outputsUnsorted (tx : CommitmentTx) : List CommitmentTxOutput :=
+  tx.toLocalOutput.toList ++
+    (tx.toRemoteOutput.toList ++
+      (tx.commitment.htlcs.filterMap tx.htlcOutput ++
+        (tx.localAnchorOutput.toList ++ tx.remoteAnchorOutput.toList)))
+
+/-- The BOLT 3 commitment output list: the trimmed construction, sorted by
+value, then script, then CLTV.  This is the object of `outputs_spec` and of the
+catalog target `output_ordering`. -/
+def CommitmentTx.outputs (tx : CommitmentTx) : List CommitmentTxOutput :=
+  sortOutputs tx.outputsUnsorted
+
+theorem CommitmentTx.outputs_perm (tx : CommitmentTx) :
+    tx.outputs.Perm tx.outputsUnsorted :=
+  sortOutputs_perm tx.outputsUnsorted
+
+theorem CommitmentTx.mem_outputs_iff {tx : CommitmentTx} {o : CommitmentTxOutput} :
+    o ∈ tx.outputs ↔ o ∈ tx.outputsUnsorted :=
+  (sortOutputs_perm tx.outputsUnsorted).mem_iff
+
+theorem CommitmentTx.mem_outputsUnsorted_iff {tx : CommitmentTx} {o : CommitmentTxOutput} :
+    o ∈ tx.outputsUnsorted ↔
+      o ∈ tx.toLocalOutput.toList ∨
+      o ∈ tx.toRemoteOutput.toList ∨
+      o ∈ tx.commitment.htlcs.filterMap tx.htlcOutput ∨
+      o ∈ tx.localAnchorOutput.toList ∨
+      o ∈ tx.remoteAnchorOutput.toList := by
+  simp [CommitmentTx.outputsUnsorted, List.mem_append]
+
+theorem CommitmentTx.mem_toLocalOutput_iff {tx : CommitmentTx} {o : CommitmentTxOutput} :
+    o ∈ tx.toLocalOutput.toList ↔
+      tx.dustLimitSat ≤ tx.commitment.toLocalSat ∧
+        o = CommitmentTxOutput.toLocal tx.commitment.toLocalSat tx.toLocalScript := by
+  unfold CommitmentTx.toLocalOutput
+  by_cases h : tx.dustLimitSat ≤ tx.commitment.toLocalSat <;> simp [h]
+
+theorem CommitmentTx.mem_toRemoteOutput_iff {tx : CommitmentTx} {o : CommitmentTxOutput} :
+    o ∈ tx.toRemoteOutput.toList ↔
+      tx.dustLimitSat ≤ tx.commitment.toRemoteSat ∧
+        o = CommitmentTxOutput.toRemote tx.commitment.toRemoteSat tx.toRemoteScript := by
+  unfold CommitmentTx.toRemoteOutput
+  by_cases h : tx.dustLimitSat ≤ tx.commitment.toRemoteSat <;> simp [h]
+
+theorem CommitmentTx.mem_htlcOutput_iff {tx : CommitmentTx} {h : CommitmentHTLCOutput}
+    {o : CommitmentTxOutput} :
+    tx.htlcOutput h = some o ↔
+      tx.dustLimitSat ≤ h.amountSat ∧
+        o = CommitmentTxOutput.htlc h (tx.htlcScript h) := by
+  unfold CommitmentTx.htlcOutput
+  by_cases hd : tx.dustLimitSat ≤ h.amountSat <;> simp [hd, eq_comm]
+
+theorem CommitmentTx.htlcOutput_eq_none_of_dust (tx : CommitmentTx)
+    (h : CommitmentHTLCOutput) (hd : h.amountSat < tx.dustLimitSat) :
+    tx.htlcOutput h = none := by
+  unfold CommitmentTx.htlcOutput
+  simp [Nat.not_le.mpr hd]
+
+theorem CommitmentTx.htlcOutput_mem_outputs (tx : CommitmentTx)
+    (h : CommitmentHTLCOutput) (hmem : h ∈ tx.commitment.htlcs)
+    (hd : tx.dustLimitSat ≤ h.amountSat) :
+    CommitmentTxOutput.htlc h (tx.htlcScript h) ∈ tx.outputs := by
+  rw [CommitmentTx.mem_outputs_iff, CommitmentTx.mem_outputsUnsorted_iff]
+  right; right; left
+  rw [List.mem_filterMap]
+  exact ⟨h, hmem, (CommitmentTx.mem_htlcOutput_iff).2 ⟨hd, rfl⟩⟩
+
+/-- Every emitted output other than an anchor is at or above the dust limit.
+Anchors are exempt: BOLT 3 fixes them at 330 satoshis and adds them whenever
+`option_anchors` is negotiated (the single-anchor exception is out of scope). -/
+theorem CommitmentTx.nonAnchor_output_value_ge_dust (tx : CommitmentTx)
+    {o : CommitmentTxOutput} (ho : o ∈ tx.outputs)
+    (hl : o.kind ≠ .localAnchor) (hr : o.kind ≠ .remoteAnchor) :
+    tx.dustLimitSat ≤ o.valueSat := by
+  rw [CommitmentTx.mem_outputs_iff, CommitmentTx.mem_outputsUnsorted_iff] at ho
+  rcases ho with h | h | h | h | h
+  · rw [CommitmentTx.mem_toLocalOutput_iff] at h
+    rw [h.2]
+    exact h.1
+  · rw [CommitmentTx.mem_toRemoteOutput_iff] at h
+    rw [h.2]
+    exact h.1
+  · rw [List.mem_filterMap] at h
+    obtain ⟨a, _, ha⟩ := h
+    rw [CommitmentTx.mem_htlcOutput_iff] at ha
+    rw [ha.2]
+    exact ha.1
+  · unfold CommitmentTx.localAnchorOutput at h
+    by_cases ha : tx.commitment.anchorOutputs
+    · simp [ha] at h
+      have hk : o.kind = .localAnchor := by rw [h]; rfl
+      exact absurd hk hl
+    · simp [ha] at h
+  · unfold CommitmentTx.remoteAnchorOutput at h
+    by_cases ha : tx.commitment.anchorOutputs
+    · simp [ha] at h
+      have hk : o.kind = .remoteAnchor := by rw [h]; rfl
+      exact absurd hk hr
+    · simp [ha] at h
+
+
+
+
+def CommitmentTxOutput.toCommitmentOutput (o : CommitmentTxOutput) : CommitmentOutput :=
+  match o.kind with
+  | .toLocal => .toLocal o.valueSat
+  | .toRemote => .toRemote o.valueSat
+  | .htlc d => .htlc d o.valueSat
+  | .localAnchor => .localAnchor
+  | .remoteAnchor => .remoteAnchor
+
+/-- With dust limit zero and non-zero `to_local`/`to_remote`, the kind/value
+projection of the rich pre-sort output list is exactly the legacy
+`Commitment.commitmentOutputs`.  The extension therefore adds script, CLTV, and
+dust data without changing the non-dust output set. -/
+theorem CommitmentTx.map_toCommitmentOutput_outputsUnsorted (tx : CommitmentTx)
+    (hdust : tx.dustLimitSat = 0)
+    (hl : tx.commitment.toLocalSat ≠ 0) (hr : tx.commitment.toRemoteSat ≠ 0) :
+    (tx.outputsUnsorted.map CommitmentTxOutput.toCommitmentOutput) =
+      tx.commitment.commitmentOutputs := by
+  by_cases ha : tx.commitment.anchorOutputs <;>
+  simp [CommitmentTx.outputsUnsorted, CommitmentTx.toLocalOutput,
+    CommitmentTx.toRemoteOutput, CommitmentTx.htlcOutput,
+    CommitmentTx.localAnchorOutput, CommitmentTx.remoteAnchorOutput,
+    Commitment.commitmentOutputs, CommitmentTxOutput.toCommitmentOutput,
+    CommitmentTxOutput.htlc, CommitmentTxOutput.toLocal,
+    CommitmentTxOutput.toRemote, CommitmentTxOutput.localAnchor,
+    CommitmentTxOutput.remoteAnchor, hdust, hl, hr, ha, List.map_filterMap]
+
+
+
+
+theorem CommitmentTx.outputs_pairwise (tx : CommitmentTx) :
+    tx.outputs.Pairwise CommitmentTxOutput.le :=
+  sortOutputs_pairwise tx.outputsUnsorted
+
+theorem CommitmentTx.outputs_values_sorted (tx : CommitmentTx) :
+    (tx.outputs.map (fun o => o.valueSat)).Pairwise (· ≤ ·) := by
+  rw [List.pairwise_map]
+  exact sortOutputs_values tx.outputsUnsorted
+
+theorem CommitmentTx.outputs_scripts_sorted (tx : CommitmentTx) :
+    tx.outputs.Pairwise (fun a b =>
+      a.valueSat = b.valueSat → a.scriptPubKey.le b.scriptPubKey) :=
+  sortOutputs_scripts tx.outputsUnsorted
+
+theorem CommitmentTx.outputs_cltvs_sorted (tx : CommitmentTx) :
+    tx.outputs.Pairwise (fun a b =>
+      a.valueSat = b.valueSat → a.scriptPubKey = b.scriptPubKey →
+        a.cltvExpiry ≤ b.cltvExpiry) :=
+  sortOutputs_cltvs tx.outputsUnsorted
+
+theorem CommitmentTx.toLocal_trimmed_iff (tx : CommitmentTx) :
+    tx.toLocalOutput = none ↔ tx.commitment.toLocalSat < tx.dustLimitSat := by
+  unfold CommitmentTx.toLocalOutput
+  by_cases h : tx.dustLimitSat ≤ tx.commitment.toLocalSat <;>
+    simp [h] <;> omega
+
+theorem CommitmentTx.toRemote_trimmed_iff (tx : CommitmentTx) :
+    tx.toRemoteOutput = none ↔ tx.commitment.toRemoteSat < tx.dustLimitSat := by
+  unfold CommitmentTx.toRemoteOutput
+  by_cases h : tx.dustLimitSat ≤ tx.commitment.toRemoteSat <;>
+    simp [h] <;> omega
+
+theorem CommitmentTx.no_dust_htlc_output (tx : CommitmentTx)
+    {o : CommitmentTxOutput} (ho : o ∈ tx.outputs) (hk : ∃ dir, o.kind = .htlc dir) :
+    tx.dustLimitSat ≤ o.valueSat := by
+  apply CommitmentTx.nonAnchor_output_value_ge_dust tx ho
+  · rintro h
+    obtain ⟨dir, hd⟩ := hk
+    rw [h] at hd
+    cases hd
+  · rintro h
+    obtain ⟨dir, hd⟩ := hk
+    rw [h] at hd
+    cases hd
+
+/-- **Rich-model specification of `LN-CH-003`.**  The sorted output list is a
+permutation of the trimmed construction; it satisfies the three BOLT 3 order
+components; `to_local`/`to_remote` are trimmed exactly below the dust limit;
+dust HTLCs produce no output and non-dust HTLCs produce theirs; and every
+non-anchor emitted output is at or above the dust limit. -/
+theorem CommitmentTx.outputs_spec (tx : CommitmentTx) :
+    tx.outputs.Perm tx.outputsUnsorted ∧
+    tx.outputs.Pairwise CommitmentTxOutput.le ∧
+    (tx.outputs.map (fun o => o.valueSat)).Pairwise (· ≤ ·) ∧
+    tx.outputs.Pairwise (fun a b =>
+      a.valueSat = b.valueSat → a.scriptPubKey.le b.scriptPubKey) ∧
+    tx.outputs.Pairwise (fun a b =>
+      a.valueSat = b.valueSat → a.scriptPubKey = b.scriptPubKey →
+        a.cltvExpiry ≤ b.cltvExpiry) ∧
+    (tx.toLocalOutput = none ↔ tx.commitment.toLocalSat < tx.dustLimitSat) ∧
+    (tx.toRemoteOutput = none ↔ tx.commitment.toRemoteSat < tx.dustLimitSat) ∧
+    (∀ h ∈ tx.commitment.htlcs, h.amountSat < tx.dustLimitSat → tx.htlcOutput h = none) ∧
+    (∀ h ∈ tx.commitment.htlcs, tx.dustLimitSat ≤ h.amountSat →
+      CommitmentTxOutput.htlc h (tx.htlcScript h) ∈ tx.outputs) ∧
+    (∀ o ∈ tx.outputs, o.kind ≠ .localAnchor → o.kind ≠ .remoteAnchor →
+      tx.dustLimitSat ≤ o.valueSat) := by
+  exact ⟨CommitmentTx.outputs_perm tx, CommitmentTx.outputs_pairwise tx,
+    CommitmentTx.outputs_values_sorted tx, CommitmentTx.outputs_scripts_sorted tx,
+    CommitmentTx.outputs_cltvs_sorted tx, CommitmentTx.toLocal_trimmed_iff tx,
+    CommitmentTx.toRemote_trimmed_iff tx, fun h _ hd => CommitmentTx.htlcOutput_eq_none_of_dust tx h hd,
+    fun h hm hd => CommitmentTx.htlcOutput_mem_outputs tx h hm hd,
+    fun o ho => CommitmentTx.nonAnchor_output_value_ge_dust tx ho⟩
 
 end LnLean.Channel

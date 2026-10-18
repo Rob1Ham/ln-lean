@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "repair/**"]
+  pull_request:
+    branches: [main, "repair/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  # Pinned in refs/PINNED.md. The anchor checker reads refs/rust-lightning.
+  RUST_LIGHTNING_SHA: fe4900930c6bd5786ec4203274d7cf312776a5a6
+
+jobs:
+  source-gates:
+    name: Source-level gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check obligation catalog (strict audit)
+        run: python3 scripts/check-catalog.py --audit
+
+      - name: Check forbidden constructs, sorry markers, and duplicate ids
+        run: ./scripts/check.sh
+
+      - name: Check file selection and root imports
+        run: python3 scripts/check-final.py
+
+      - name: Fetch pinned rust-lightning reference for anchor checks
+        run: |
+          set -euo pipefail
+          mkdir -p refs
+          if [ ! -d refs/rust-lightning/.git ]; then
+            git init -q refs/rust-lightning
+            git -C refs/rust-lightning remote add origin \
+              https://github.com/lightningdevkit/rust-lightning.git
+          fi
+          git -C refs/rust-lightning fetch --depth 1 origin "$RUST_LIGHTNING_SHA"
+          git -C refs/rust-lightning checkout -q --detach FETCH_HEAD
+
+      - name: Check BOLT/LDK path:line anchors
+        run: python3 scripts/verify-anchors.py
+
+  build:
+    name: Full build (requires the vendored btc-lean snapshot)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # vendor/btc-lean-core is deliberately excluded from version control by
+      # .gitignore, so a clean public checkout cannot build without the pinned
+      # snapshot being provisioned. Keep the job green and explicit when it is
+      # absent; the source-gates job above remains the required CI signal.
+      - name: Check for the vendored btc-lean snapshot
+        id: vendor
+        run: |
+          if [ -f vendor/btc-lean-core/lakefile.lean ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Vendor snapshot absent::vendor/btc-lean-core is not present in this checkout; skipping lake build and vendor checksum verification. Provision the pinned read-only snapshot to enable this job."
+          fi
+
+      - name: Install pinned Lean toolchain and run lake build
+        if: steps.vendor.outputs.present == 'true'
+        uses: leanprover/lean-action@v1
+        with:
+          auto-config: false
+          build: true
+          use-mathlib-cache: false
+
+      - name: Verify vendored snapshot checksums
+        if: steps.vendor.outputs.present == 'true'
+        run: ./scripts/verify-vendor.sh

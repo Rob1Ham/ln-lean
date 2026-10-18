@@ -494,9 +494,11 @@ is a list invariant.  The strongest facts available in this module are:
 The unconditional claim is false in this model: `liveHtlcIdsNodup_unconditional_false`
 exhibits a live list with two distinct records carrying the same id.  That is
 protocol-conforming because BOLT 2 allocates ids from one counter per sender,
-and `HTLCRecord` has neither a counter nor a distinctness field.  A faithful
-exact target therefore requires a channel/ledger record carrying the per-sender
-counters (as in `LnLean.Proofs.WaveD.D16`) or a `Nodup` invariant on the state.
+and `HTLCRecord` has neither a counter nor a distinctness field.  The
+channel-level allocator `HtlcBook` below supplies those counters and proves
+per-sender uniqueness from construction (`HtlcBook.reachable_liveOf_id_unique`);
+the global form additionally needs `HtlcBook.CrossDisjoint`, which the
+per-sender counters do not imply (`HtlcBook.reachable_cross_direction_duplicate`).
 -/
 
 /-- The BOLT 2 ids of a list of HTLC records, in list order. -/
@@ -711,12 +713,14 @@ exact targets are `LnLean.Channel.HTLC.amount_conservation` and
 names without changing any earlier declaration.
 
 Both theorems restate H01's results with the same explicit hypotheses; neither
-premise is discharged by the model.  In particular:
+premise is discharged by the bare record list.  In particular:
 
 * `amount_conservation` still takes the channel-ledger invariant as a
   hypothesis because `HTLCRecord` has no balance, fee, or funding field;
 * `id_unique` still takes live-id distinctness as a hypothesis because the
-  unconditional claim is false (`liveHtlcIdsNodup_unconditional_false`). -/
+  unconditional global claim is false (`liveHtlcIdsNodup_unconditional_false`).
+  The allocator API added below discharges the per-sender form from
+  construction (`dir_id_unique`); the global form needs `CrossDisjoint`. -/
 
 namespace HTLC
 
@@ -747,11 +751,614 @@ This is exactly `liveHtlcIdsNodup_unique`.  The hypothesis `hnd` is the live-id
 distinctness invariant; it is not automatic.  The model allows two distinct live
 records with the same id (`liveHtlcIdsNodup_unconditional_false`), and
 `addHTLC` performs no id check (`addHTLC_same_id_distinct_amounts_ok`), so the
-unconditional catalog wording is not claimed here. -/
+unconditional catalog wording is not claimed here.
+
+This declaration is retained unchanged for compatibility.  The construction-based
+replacement is `HTLC.dir_id_unique` (per sender, unconditional over
+`HtlcBook.Reachable`); the global conditional form is
+`HTLC.id_unique_of_reachable_cross`. -/
 theorem id_unique (hs : List HTLCRecord)
     (hnd : liveHtlcIdsNodup hs) :
     ∀ h1 ∈ htlcSet hs, ∀ h2 ∈ htlcSet hs, h1.id = h2.id → h1 = h2 :=
   liveHtlcIdsNodup_unique hs hnd
+
+end HTLC
+
+/-! ## A channel-level id allocator for `LN-HT-004`
+
+`addHTLC` alone cannot enforce id uniqueness: it takes the id from the caller
+and never sees the channel's record list.  BOLT 2 §Adding an HTLC supplies the
+missing discipline — the first HTLC of a sender has id 0 and each successive
+offer increments it by one (`refs/bolts/02-peer-protocol.md:2838-2843`) — and
+rust-lightning implements it with the two counters `next_holder_htlc_id` and
+`next_counterparty_htlc_id` (`lightning/src/ln/channel.rs:3719-3720`).
+
+`HtlcBook` below adds exactly those two per-sender counters to the record list.
+`allocate` takes the id from the sender's counter, `push` inserts a record and
+advances that counter, and `add` runs the existing `addHTLC` guard with the
+allocated id.  The invariant `HtlcBook.WF` is established for the empty book
+(`empty_wf`) and preserved by insertion (`push_wf`, `insert_wf`, `add_wf`), so
+it is a property of every reachable book, not an assumption about an arbitrary
+list.
+
+The counter bound in `WF` does real work: `nextId_not_mem_liveIdsOf` derives
+from it that the next allocation cannot collide with a live id of the same
+sender.  Per-sender uniqueness (`liveIdsOf_nodup`, `liveOf_id_unique`) follows
+unconditionally.  Global uniqueness across directions does **not**: both
+senders start at 0, so a local and a remote HTLC may carry the same id.
+`cross_direction_duplicate` is the checked counterexample; the global form
+needs the explicit `CrossDisjoint` premise (`liveIds_nodup_of_cross`,
+`live_id_unique_of_cross`). -/
+
+/-- A channel's HTLC record list together with the two BOLT 2 per-sender id
+counters.  `records` may still contain settled records, exactly as in the
+existing list model; only the live ones matter for id uniqueness. -/
+structure HtlcBook where
+  /-- All HTLC records of the channel. -/
+  records : List HTLCRecord
+  /-- BOLT 2 id counter for HTLCs we offer. -/
+  nextLocalId : Nat
+  /-- BOLT 2 id counter for HTLCs we receive. -/
+  nextRemoteId : Nat
+deriving Repr
+
+namespace HtlcBook
+
+/-- The empty book: no records, both counters at zero. -/
+def empty : HtlcBook := ⟨[], 0, 0⟩
+
+/-- The next id of one sender. -/
+def nextId (b : HtlcBook) : Direction → Nat
+  | .local => b.nextLocalId
+  | .remote => b.nextRemoteId
+
+/-- The live records of one sender, most recently added first. -/
+def liveOf (b : HtlcBook) (dir : Direction) : List HTLCRecord :=
+  (htlcSet b.records).filter (fun r => decide (r.direction = dir))
+
+/-- The live ids of one sender, most recently added first. -/
+def liveIdsOf (b : HtlcBook) (dir : Direction) : List Nat :=
+  (b.liveOf dir).map HTLCRecord.id
+
+/-- The live ids of the whole channel, the list `liveHtlcIds` of the existing
+model. -/
+def liveIds (b : HtlcBook) : List Nat :=
+  (htlcSet b.records).map HTLCRecord.id
+
+/-- Total value currently in flight; this is the `currentTotal` argument of
+`addHTLC`. -/
+def totalInFlight (b : HtlcBook) : Msat :=
+  ⟨totalHtlcValue (htlcSet b.records)⟩
+
+/-- Allocate the sender's next id and build the corresponding live record.
+This is the BOLT 2 rule: the id is the counter, and the initial state is
+`offered` for a local HTLC and `received` for a remote one. -/
+def allocate (b : HtlcBook) (dir : Direction) (amount : Msat)
+    (ph : PaymentHash) (cltv : Height) : HTLCRecord :=
+  { id := b.nextId dir
+    direction := dir
+    amountMsat := amount
+    paymentHash := ph
+    cltvExpiry := cltv
+    state := match dir with
+      | .local => .offered
+      | .remote => .received }
+
+/-- Insert `r`, which must belong to `dir`, and advance that sender's counter.
+The other sender's counter is untouched. -/
+def push (b : HtlcBook) (dir : Direction) (r : HTLCRecord) : HtlcBook :=
+  match dir with
+  | .local =>
+      { records := r :: b.records
+        nextLocalId := b.nextLocalId + 1
+        nextRemoteId := b.nextRemoteId }
+  | .remote =>
+      { records := r :: b.records
+        nextLocalId := b.nextLocalId
+        nextRemoteId := b.nextRemoteId + 1 }
+
+/-- Allocate and insert in one step.  This is the id-allocation API: the id is
+not caller-supplied, so a live id of the same sender can never be reused. -/
+def insert (b : HtlcBook) (dir : Direction) (amount : Msat)
+    (ph : PaymentHash) (cltv : Height) : HtlcBook :=
+  b.push dir (b.allocate dir amount ph cltv)
+
+/-- The guarded insertion through the existing model transition: `addHTLC` is
+run with the counter-allocated id and the book's current in-flight total.
+A rejected add leaves both the records and the counters unchanged. -/
+def add (b : HtlcBook) (maxHtlcValue : Msat) (dir : Direction)
+    (amount : Msat) (ph : PaymentHash) (cltv : Height) : Result HtlcBook :=
+  match addHTLC maxHtlcValue b.totalInFlight (b.nextId dir) dir amount ph cltv with
+  | .ok r => .ok (b.push dir r)
+  | .error e => .error e
+
+/-- The channel invariant: each sender's live ids lie strictly below that
+sender's next counter, and are pairwise distinct within the sender.
+
+The `bound_*` fields are what make the next allocation fresh; the `nodup_*`
+fields are an inductive invariant that `empty_wf` establishes and
+`push_wf`/`add_wf` preserve.  Neither field mentions uniqueness across senders,
+which would be false (see `cross_direction_duplicate`). -/
+structure WF (b : HtlcBook) : Prop where
+  /-- Every live local id is below the local counter. -/
+  bound_local : ∀ r ∈ htlcSet b.records, r.direction = .local →
+    r.id < b.nextLocalId
+  /-- Every live remote id is below the remote counter. -/
+  bound_remote : ∀ r ∈ htlcSet b.records, r.direction = .remote →
+    r.id < b.nextRemoteId
+  /-- The live local ids are pairwise distinct. -/
+  nodup_local : (b.liveIdsOf .local).Nodup
+  /-- The live remote ids are pairwise distinct. -/
+  nodup_remote : (b.liveIdsOf .remote).Nodup
+
+/-! ### Basic projections of the allocator -/
+
+theorem push_records (b : HtlcBook) (dir : Direction) (r : HTLCRecord) :
+    (b.push dir r).records = r :: b.records := by
+  cases dir <;> rfl
+
+theorem push_nextId_same (b : HtlcBook) (dir : Direction) (r : HTLCRecord) :
+    (b.push dir r).nextId dir = b.nextId dir + 1 := by
+  cases dir <;> rfl
+
+theorem push_nextId_other (b : HtlcBook) (dir dir' : Direction)
+    (r : HTLCRecord) (hne : dir' ≠ dir) :
+    (b.push dir r).nextId dir' = b.nextId dir' := by
+  cases dir <;> cases dir' <;> simp_all [push, nextId]
+
+theorem allocate_id (b : HtlcBook) (dir : Direction) (amount : Msat)
+    (ph : PaymentHash) (cltv : Height) :
+    (b.allocate dir amount ph cltv).id = b.nextId dir := rfl
+
+theorem allocate_direction (b : HtlcBook) (dir : Direction) (amount : Msat)
+    (ph : PaymentHash) (cltv : Height) :
+    (b.allocate dir amount ph cltv).direction = dir := rfl
+
+theorem allocate_isLive (b : HtlcBook) (dir : Direction) (amount : Msat)
+    (ph : PaymentHash) (cltv : Height) :
+    (b.allocate dir amount ph cltv).isLive = true := by
+  cases dir <;> rfl
+
+theorem insert_nextId_same (b : HtlcBook) (dir : Direction) (amount : Msat)
+    (ph : PaymentHash) (cltv : Height) :
+    (b.insert dir amount ph cltv).nextId dir = b.nextId dir + 1 :=
+  push_nextId_same b dir (b.allocate dir amount ph cltv)
+
+theorem insert_nextId_other (b : HtlcBook) (dir dir' : Direction)
+    (amount : Msat) (ph : PaymentHash) (cltv : Height) (hne : dir' ≠ dir) :
+    (b.insert dir amount ph cltv).nextId dir' = b.nextId dir' :=
+  push_nextId_other b dir dir' (b.allocate dir amount ph cltv) hne
+
+theorem insert_liveOf_same (b : HtlcBook) (dir : Direction) (amount : Msat)
+    (ph : PaymentHash) (cltv : Height) :
+    (b.insert dir amount ph cltv).liveOf dir =
+      b.allocate dir amount ph cltv :: b.liveOf dir := by
+  unfold insert
+  unfold liveOf
+  rw [push_records]
+  rw [htlcSet_cons_live _ _ (allocate_isLive b dir amount ph cltv)]
+  simp [allocate_direction]
+
+theorem insert_liveIdsOf_same (b : HtlcBook) (dir : Direction) (amount : Msat)
+    (ph : PaymentHash) (cltv : Height) :
+    (b.insert dir amount ph cltv).liveIdsOf dir =
+      b.nextId dir :: b.liveIdsOf dir := by
+  unfold liveIdsOf
+  rw [insert_liveOf_same, List.map_cons, allocate_id]
+
+/-! ### The counter bound supplies freshness -/
+
+/-- Every live id of a sender is strictly below that sender's next counter.
+This is the part of the invariant that the allocator uses to rule out a
+collision at the next allocation. -/
+theorem liveIdsOf_lt_next (b : HtlcBook) (hb : b.WF) (dir : Direction) :
+    ∀ x ∈ b.liveIdsOf dir, x < b.nextId dir := by
+  cases dir
+  · intro x hx
+    unfold liveIdsOf liveOf at hx
+    obtain ⟨r, hr, hid⟩ := List.mem_map.mp hx
+    obtain ⟨hrlive, hrdir⟩ := List.mem_filter.mp hr
+    have hdir : r.direction = .local := of_decide_eq_true hrdir
+    have hlt := hb.bound_local r hrlive hdir
+    simpa [hid, nextId] using hlt
+  · intro x hx
+    unfold liveIdsOf liveOf at hx
+    obtain ⟨r, hr, hid⟩ := List.mem_map.mp hx
+    obtain ⟨hrlive, hrdir⟩ := List.mem_filter.mp hr
+    have hdir : r.direction = .remote := of_decide_eq_true hrdir
+    have hlt := hb.bound_remote r hrlive hdir
+    simpa [hid, nextId] using hlt
+
+/-- The sender's next id is fresh for that sender's live set. -/
+theorem nextId_not_mem_liveIdsOf (b : HtlcBook) (hb : b.WF) (dir : Direction) :
+    b.nextId dir ∉ b.liveIdsOf dir := by
+  intro hmem
+  exact Nat.lt_irrefl _ (liveIdsOf_lt_next b hb dir _ hmem)
+
+/-! ### Preservation of the invariant -/
+
+theorem liveIdsOf_push_same (b : HtlcBook) (dir : Direction)
+    (r : HTLCRecord) (hlive : r.isLive = true)
+    (hdir : r.direction = dir) :
+    (b.push dir r).liveIdsOf dir = r.id :: b.liveIdsOf dir := by
+  cases dir
+  · unfold liveIdsOf liveOf
+    rw [push_records, htlcSet_cons_live r b.records hlive]
+    simp [hdir]
+  · unfold liveIdsOf liveOf
+    rw [push_records, htlcSet_cons_live r b.records hlive]
+    simp [hdir]
+
+theorem liveIdsOf_push_other (b : HtlcBook) (dir dir' : Direction)
+    (r : HTLCRecord) (hlive : r.isLive = true) (hne : r.direction ≠ dir') :
+    (b.push dir r).liveIdsOf dir' = b.liveIdsOf dir' := by
+  cases dir
+  · unfold liveIdsOf liveOf
+    rw [push_records, htlcSet_cons_live r b.records hlive]
+    simp [hne]
+  · unfold liveIdsOf liveOf
+    rw [push_records, htlcSet_cons_live r b.records hlive]
+    simp [hne]
+
+/-- Inserting a freshly allocated record at the sender's counter preserves the
+channel invariant.  This is where the bound does its work: the new id equals
+the counter, so it is not among the old live ids. -/
+theorem push_wf (b : HtlcBook) (hb : b.WF) (dir : Direction)
+    (r : HTLCRecord) (hlive : r.isLive = true)
+    (hdir : r.direction = dir) (hid : r.id = b.nextId dir) :
+    (b.push dir r).WF := by
+  cases dir
+  · -- local insertion
+    have hrid : r.id = b.nextLocalId := by
+      simpa [nextId] using hid
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · intro x hx hxdir
+      rw [push_records] at hx
+      rw [htlcSet_cons_live r b.records hlive] at hx
+      rcases List.mem_cons.mp hx with hxr | hx
+      · rw [hxr]
+        show r.id < b.nextLocalId + 1
+        omega
+      · exact Nat.lt_trans (hb.bound_local x hx hxdir) (Nat.lt_succ_self _)
+    · intro x hx hxdir
+      rw [push_records] at hx
+      rw [htlcSet_cons_live r b.records hlive] at hx
+      rcases List.mem_cons.mp hx with hxr | hx
+      · rw [hxr, hdir] at hxdir
+        exact absurd hxdir (by decide)
+      · exact hb.bound_remote x hx hxdir
+    · rw [liveIdsOf_push_same b .local r hlive hdir, List.nodup_cons]
+      exact ⟨by rw [hrid]; simpa [nextId] using nextId_not_mem_liveIdsOf b hb .local,
+        hb.nodup_local⟩
+    · rw [liveIdsOf_push_other b .local .remote r hlive (by rw [hdir]; decide)]
+      exact hb.nodup_remote
+  · -- remote insertion
+    have hrid : r.id = b.nextRemoteId := by
+      simpa [nextId] using hid
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · intro x hx hxdir
+      rw [push_records] at hx
+      rw [htlcSet_cons_live r b.records hlive] at hx
+      rcases List.mem_cons.mp hx with hxr | hx
+      · rw [hxr, hdir] at hxdir
+        exact absurd hxdir (by decide)
+      · exact hb.bound_local x hx hxdir
+    · intro x hx hxdir
+      rw [push_records] at hx
+      rw [htlcSet_cons_live r b.records hlive] at hx
+      rcases List.mem_cons.mp hx with hxr | hx
+      · rw [hxr]
+        show r.id < b.nextRemoteId + 1
+        omega
+      · exact Nat.lt_trans (hb.bound_remote x hx hxdir) (Nat.lt_succ_self _)
+    · rw [liveIdsOf_push_other b .remote .local r hlive (by rw [hdir]; decide)]
+      exact hb.nodup_local
+    · rw [liveIdsOf_push_same b .remote r hlive hdir, List.nodup_cons]
+      exact ⟨by rw [hrid]; simpa [nextId] using nextId_not_mem_liveIdsOf b hb .remote,
+        hb.nodup_remote⟩
+
+theorem insert_wf (b : HtlcBook) (hb : b.WF) (dir : Direction)
+    (amount : Msat) (ph : PaymentHash) (cltv : Height) :
+    (b.insert dir amount ph cltv).WF := by
+  unfold insert
+  exact push_wf b hb dir (b.allocate dir amount ph cltv)
+    (allocate_isLive b dir amount ph cltv)
+    (allocate_direction b dir amount ph cltv)
+    (allocate_id b dir amount ph cltv)
+
+theorem empty_wf : empty.WF := by
+  refine ⟨?_, ?_, ?_, ?_⟩ <;>
+    simp [empty, htlcSet, liveIdsOf, liveOf]
+
+/-! ### Guarded insertion through `addHTLC` -/
+
+theorem addHTLC_direction (maxHtlcValue currentTotal : Msat) (id : Nat)
+    (dir : Direction) (amount : Msat) (ph : PaymentHash) (cltv : Height)
+    (r : HTLCRecord)
+    (ok : addHTLC maxHtlcValue currentTotal id dir amount ph cltv = .ok r) :
+    r.direction = dir := by
+  unfold addHTLC at ok
+  split at ok
+  · simp only [Result.ok.injEq] at ok
+    subst ok
+    rfl
+  · simp at ok
+
+/-- A successful guarded add is exactly a push of the record produced by
+`addHTLC` at the sender's counter. -/
+theorem add_ok (b : HtlcBook) (maxHtlcValue : Msat) (dir : Direction)
+    (amount : Msat) (ph : PaymentHash) (cltv : Height) (b' : HtlcBook)
+    (ok : b.add maxHtlcValue dir amount ph cltv = .ok b') :
+    ∃ r, addHTLC maxHtlcValue b.totalInFlight (b.nextId dir) dir amount ph
+        cltv = .ok r ∧
+      b' = b.push dir r := by
+  unfold add at ok
+  split at ok
+  · rename_i r hstep
+    simp only [Result.ok.injEq] at ok
+    exact ⟨r, hstep, ok.symm⟩
+  · simp at ok
+
+/-- A successful guarded add preserves the channel invariant. -/
+theorem add_wf (b : HtlcBook) (hb : b.WF) (maxHtlcValue : Msat)
+    (dir : Direction) (amount : Msat) (ph : PaymentHash) (cltv : Height)
+    (b' : HtlcBook)
+    (ok : b.add maxHtlcValue dir amount ph cltv = .ok b') :
+    b'.WF := by
+  obtain ⟨r, hadd, rfl⟩ := add_ok b maxHtlcValue dir amount ph cltv b' ok
+  have hlive := addHTLC_isLive maxHtlcValue b.totalInFlight (b.nextId dir)
+    dir amount ph cltv r hadd
+  have hid := addHTLC_id maxHtlcValue b.totalInFlight (b.nextId dir)
+    dir amount ph cltv r hadd
+  have hdir := addHTLC_direction maxHtlcValue b.totalInFlight (b.nextId dir)
+    dir amount ph cltv r hadd
+  exact push_wf b hb dir r hlive hdir hid
+
+/-- A successful guarded add advances the sender's counter by one. -/
+theorem add_nextId_same (b : HtlcBook) (maxHtlcValue : Msat) (dir : Direction)
+    (amount : Msat) (ph : PaymentHash) (cltv : Height) (b' : HtlcBook)
+    (ok : b.add maxHtlcValue dir amount ph cltv = .ok b') :
+    b'.nextId dir = b.nextId dir + 1 := by
+  obtain ⟨r, _, rfl⟩ := add_ok b maxHtlcValue dir amount ph cltv b' ok
+  exact push_nextId_same b dir r
+
+/-- A successful guarded add prepends exactly the record that `allocate`
+describes. -/
+theorem add_records (b : HtlcBook) (maxHtlcValue : Msat) (dir : Direction)
+    (amount : Msat) (ph : PaymentHash) (cltv : Height) (b' : HtlcBook)
+    (ok : b.add maxHtlcValue dir amount ph cltv = .ok b') :
+    b'.records = b.allocate dir amount ph cltv :: b.records := by
+  obtain ⟨r, hadd, rfl⟩ := add_ok b maxHtlcValue dir amount ph cltv b' ok
+  rw [push_records]
+  congr 1
+  unfold addHTLC at hadd
+  split at hadd
+  · simp only [Result.ok.injEq] at hadd
+    subst hadd
+    rfl
+  · simp at hadd
+/-- Books reachable from the empty book by the allocator: either a
+counter-based insertion or a successful guarded add.  This is a *constructor
+trace*, so a theorem over `Reachable` does not assume uniqueness or any other
+state invariant. -/
+inductive Reachable : HtlcBook → Prop where
+  | empty : Reachable empty
+  | insert {b : HtlcBook} (hb : Reachable b) (dir : Direction) (amount : Msat)
+      (ph : PaymentHash) (cltv : Height) :
+      Reachable (b.insert dir amount ph cltv)
+  | add {b : HtlcBook} (hb : Reachable b) (maxHtlcValue : Msat)
+      (dir : Direction) (amount : Msat) (ph : PaymentHash) (cltv : Height)
+      {b' : HtlcBook} (ok : b.add maxHtlcValue dir amount ph cltv = .ok b') :
+      Reachable b'
+
+/-- Every reachable book satisfies the allocator invariant.  This is the
+induction that turns `empty_wf` and `insert_wf`/`add_wf` into a property of
+constructed states. -/
+theorem reachable_wf {b : HtlcBook} (h : b.Reachable) : b.WF := by
+  induction h with
+  | empty => exact empty_wf
+  | insert hb dir amount ph cltv ih => exact insert_wf _ ih dir amount ph cltv
+  | add hb maxHtlcValue dir amount ph cltv ok ih =>
+      exact add_wf _ ih maxHtlcValue dir amount ph cltv _ ok
+
+/-! ### Per-sender uniqueness -/
+
+theorem liveIdsOf_nodup (b : HtlcBook) (hb : b.WF) (dir : Direction) :
+    (b.liveIdsOf dir).Nodup := by
+  cases dir
+  · exact hb.nodup_local
+  · exact hb.nodup_remote
+
+/-- **Per-sender id uniqueness.**  In a well-formed book, an id determines the
+record among the live HTLCs of one sender.  This is the BOLT 2 per-sender id
+rule, and it is proved from the allocator invariant rather than assumed on an
+arbitrary list. -/
+theorem liveOf_id_unique (b : HtlcBook) (hb : b.WF) (dir : Direction) :
+    ∀ r1 ∈ b.liveOf dir, ∀ r2 ∈ b.liveOf dir, r1.id = r2.id → r1 = r2 := by
+  have hnd : ((b.liveOf dir).map HTLCRecord.id).Nodup := by
+    simpa [liveIdsOf] using liveIdsOf_nodup b hb dir
+  exact eq_of_id_eq_of_htlcIds_nodup hnd
+
+/-! ### Global uniqueness needs cross-direction disjointness -/
+
+/-- No live local id equals a live remote id.  BOLT 2's per-sender counters do
+not imply this: both senders start at 0
+(`cross_direction_duplicate`). -/
+def CrossDisjoint (b : HtlcBook) : Prop :=
+  ∀ r1 ∈ htlcSet b.records, ∀ r2 ∈ htlcSet b.records,
+    r1.direction = .local → r2.direction = .remote → r1.id ≠ r2.id
+
+/-- With cross-direction disjointness, the live ids of the whole channel are
+pairwise distinct.  The per-sender parts come from `WF`; `CrossDisjoint`
+supplies exactly the missing cross-sender part. -/
+theorem liveIds_nodup_of_cross (b : HtlcBook) (hb : b.WF)
+    (hc : b.CrossDisjoint) : b.liveIds.Nodup := by
+  have hlocal : (b.liveIdsOf .local).Nodup := hb.nodup_local
+  have hremote : (b.liveIdsOf .remote).Nodup := hb.nodup_remote
+  have hdisj : ∀ x ∈ b.liveIdsOf .local, ∀ y ∈ b.liveIdsOf .remote, x ≠ y := by
+    intro x hx y hy hxy
+    unfold liveIdsOf liveOf at hx hy
+    obtain ⟨r1, hr1, hid1⟩ := List.mem_map.mp hx
+    obtain ⟨r2, hr2, hid2⟩ := List.mem_map.mp hy
+    have h1 := List.mem_filter.mp hr1
+    have h2 := List.mem_filter.mp hr2
+    have hd1 : r1.direction = .local := of_decide_eq_true h1.2
+    have hd2 : r2.direction = .remote := of_decide_eq_true h2.2
+    have hxy' : r1.id = r2.id := by rw [hid1, hid2]; exact hxy
+    exact hc r1 h1.1 r2 h2.1 hd1 hd2 hxy'
+  have happ : (b.liveIdsOf .local ++ b.liveIdsOf .remote).Nodup :=
+    List.nodup_append.mpr ⟨hlocal, hremote, hdisj⟩
+  have hperm : List.Perm (b.liveIdsOf .local ++ b.liveIdsOf .remote)
+      b.liveIds := by
+    unfold liveIdsOf liveIds liveOf
+    simpa [List.map_append] using
+      (htlc_filter_direction_perm (htlcSet b.records)).map HTLCRecord.id
+  exact hperm.nodup happ
+
+/-- The global form of `LN-HT-004`, under the explicit cross-direction
+disjointness premise.  The premise is not a consequence of the per-sender
+counters; see `cross_direction_duplicate`. -/
+theorem live_id_unique_of_cross (b : HtlcBook) (hb : b.WF)
+    (hc : b.CrossDisjoint) :
+    ∀ r1 ∈ htlcSet b.records, ∀ r2 ∈ htlcSet b.records,
+      r1.id = r2.id → r1 = r2 :=
+  eq_of_id_eq_of_htlcIds_nodup (by simpa [liveIds] using liveIds_nodup_of_cross b hb hc)
+
+/-! ### The faithful counterexample: two senders may both use id 0 -/
+
+/-- Payment hash used by the counterexample. -/
+def sampleHash : PaymentHash := ⟨ByteArray.empty⟩
+
+/-- A well-formed book after one local and one remote add.  BOLT 2 gives each
+sender id 0 for its first HTLC, so the two live records share an id even though
+every allocation was fresh for its own sender. -/
+def crossBook : HtlcBook :=
+  (empty.insert .local ⟨1000⟩ sampleHash 500).insert .remote ⟨2000⟩ sampleHash 600
+
+theorem crossBook_wf : crossBook.WF := by
+  unfold crossBook
+  exact insert_wf
+    (HtlcBook.empty.insert .local ⟨1000⟩ sampleHash 500)
+    (insert_wf HtlcBook.empty HtlcBook.empty_wf .local ⟨1000⟩ sampleHash 500)
+    .remote ⟨2000⟩ sampleHash 600
+
+theorem crossBook_records :
+    crossBook.records =
+      [{ id := 0
+         direction := .remote
+         amountMsat := ⟨2000⟩
+         paymentHash := sampleHash
+         cltvExpiry := 600
+         state := .received },
+       { id := 0
+         direction := .local
+         amountMsat := ⟨1000⟩
+         paymentHash := sampleHash
+         cltvExpiry := 500
+         state := .offered }] := rfl
+
+theorem crossBook_liveIds : crossBook.liveIds = [0, 0] := by
+  unfold HtlcBook.liveIds
+  rw [crossBook_records]
+  decide
+
+/-- The book built by two successful allocations has a duplicate live id
+across the two senders.  This is why the global wording of `LN-HT-004` cannot
+be promoted as an unconditional theorem about the faithful allocator. -/
+theorem crossBook_not_liveHtlcIdsNodup :
+    ¬ liveHtlcIdsNodup crossBook.records := by
+  unfold liveHtlcIdsNodup
+  have h : liveHtlcIds crossBook.records = [0, 0] := crossBook_liveIds
+  rw [h]
+  simp
+
+theorem crossBook_duplicate_pair :
+    ∃ r1 ∈ htlcSet crossBook.records, ∃ r2 ∈ htlcSet crossBook.records,
+      r1 ≠ r2 ∧ r1.id = r2.id := by
+  refine
+    ⟨{ id := 0, direction := .remote, amountMsat := ⟨2000⟩,
+        paymentHash := sampleHash, cltvExpiry := 600, state := .received },
+     ?_,
+     { id := 0, direction := .local, amountMsat := ⟨1000⟩,
+        paymentHash := sampleHash, cltvExpiry := 500, state := .offered },
+     ?_, ?_, rfl⟩
+  · simp [crossBook_records, htlcSet, HTLCRecord.isLive, HTLCState.isLive]
+  · simp [crossBook_records, htlcSet, HTLCRecord.isLive, HTLCState.isLive]
+  · decide
+
+/-- The allocator is faithful but its live set need not be globally id-unique:
+the two senders' independent counters both start at 0. -/
+theorem cross_direction_duplicate :
+    crossBook.WF ∧ ¬ liveHtlcIdsNodup crossBook.records :=
+  ⟨crossBook_wf, crossBook_not_liveHtlcIdsNodup⟩
+
+/-- The empty book is well formed and has no live ids. -/
+theorem empty_liveIds : empty.liveIds = [] := rfl
+
+theorem crossBook_reachable : crossBook.Reachable :=
+  Reachable.insert
+    (Reachable.insert Reachable.empty .local ⟨1000⟩ sampleHash 500)
+    .remote ⟨2000⟩ sampleHash 600
+
+/-- **Even reachable books need not be globally id-unique.**  The two senders'
+independent counters both start at 0, so the allocator itself produces two live
+records with id 0.  This is the precise reason the global wording of
+`LN-HT-004` cannot be promoted unconditionally. -/
+theorem reachable_cross_direction_duplicate :
+    ∃ b : HtlcBook, b.Reachable ∧ ¬ liveHtlcIdsNodup b.records :=
+  ⟨crossBook, crossBook_reachable, crossBook_not_liveHtlcIdsNodup⟩
+
+/-- **Per-sender uniqueness for every constructed book.**  The hypothesis is
+only a constructor trace of allocations, not an id-distinctness invariant. -/
+theorem reachable_liveOf_id_unique {b : HtlcBook} (h : b.Reachable)
+    (dir : Direction) :
+    ∀ r1 ∈ b.liveOf dir, ∀ r2 ∈ b.liveOf dir, r1.id = r2.id → r1 = r2 :=
+  liveOf_id_unique b (reachable_wf h) dir
+
+end HtlcBook
+
+/-! ## Catalog-named target for the narrowed `LN-HT-004`
+
+The narrow theorem below is the faithful reading of "an HTLC id is unique
+within the live HTLC set of a channel": BOLT 2 ids are per sender, and this is
+exactly `HtlcBook.reachable_liveOf_id_unique` (or `liveOf_id_unique` once the
+allocator invariant is in hand).  The original global target
+`LnLean.Channel.HTLC.id_unique` is retained above and still takes the
+uniqueness invariant as a hypothesis; the new API proves that invariant from
+allocation for a reachable book. -/
+
+namespace HTLC
+
+/-- Catalog target `LN-HT-004` (per-sender form): in a book built by the
+allocator, an id determines the record among the live HTLCs of one sender.
+There is no id-distinctness hypothesis. -/
+theorem dir_id_unique {b : HtlcBook} (hb : b.Reachable) (dir : Direction) :
+    ∀ r1 ∈ b.liveOf dir, ∀ r2 ∈ b.liveOf dir, r1.id = r2.id → r1 = r2 :=
+  HtlcBook.reachable_liveOf_id_unique hb dir
+
+/-- The same per-sender uniqueness from the allocator invariant, for callers
+that already hold `WF`. -/
+theorem dir_id_unique_of_wf (b : HtlcBook) (hb : b.WF) (dir : Direction) :
+    ∀ r1 ∈ b.liveOf dir, ∀ r2 ∈ b.liveOf dir, r1.id = r2.id → r1 = r2 :=
+  HtlcBook.liveOf_id_unique b hb dir
+
+/-- Global form of `LN-HT-004` under explicit cross-direction disjointness.
+The literal unconditional global claim is refuted by
+`HtlcBook.cross_direction_duplicate`. -/
+theorem id_unique_of_cross (b : HtlcBook) (hb : b.WF)
+    (hc : b.CrossDisjoint) :
+    ∀ r1 ∈ htlcSet b.records, ∀ r2 ∈ htlcSet b.records,
+      r1.id = r2.id → r1 = r2 :=
+  HtlcBook.live_id_unique_of_cross b hb hc
+
+/-- The global conditional form for every constructed book: a constructor
+trace plus cross-direction disjointness (not a consequence of the allocator)
+gives global uniqueness. -/
+theorem id_unique_of_reachable_cross {b : HtlcBook} (hb : b.Reachable)
+    (hc : b.CrossDisjoint) :
+    ∀ r1 ∈ htlcSet b.records, ∀ r2 ∈ htlcSet b.records,
+      r1.id = r2.id → r1 = r2 :=
+  HtlcBook.live_id_unique_of_cross b (HtlcBook.reachable_wf hb) hc
 
 end HTLC
 

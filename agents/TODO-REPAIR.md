@@ -137,19 +137,31 @@ Five disjoint lanes extended the model and promoted eight more exact targets.
   3 exact-but-retained, 7 definition targets.
 - [x] Full gate and non-force push after integration.
 
-### Remaining planned/statement-only gaps
+### Proof-wave 3 — catalog closed
 
-- `LN-CH-003`: unconditional ordering is false (D12); script/CLTV key absent.
-  This is the only unresolved planned target.
-- `LN-HT-004`: exact `id_unique` assumes `liveHtlcIdsNodup`; promoting it would
-  assume the claimed uniqueness. Needs a model-level id allocator or per-sender
-  counters that proves the invariant from insertion.
-- `LN-PR-003`: wrapper is an iff characterization; the literal validity claim
-  needs signing completeness and key binding.
-- `LN-PR-004`: wrapper assumes the coverage predicate; it does not establish
-  coverage from the wire record.
-- Seven definition-target rows (`LN-L1-001/003/004/006`, `LN-CR-005`,
-  `LN-CH-005`, `LN-RT-006`) are not theorem/lemma promotions.
+- [x] Retargeted and promoted the last eleven rows; catalog is now
+  **48 proved / 0 statementOnly / 0 unresolved**.
+- [x] `LN-CH-003` — rich `CommitmentTx` ordering/dust/CLTV model; D12 legacy
+  refutation retained.
+- [x] `LN-HT-004` — per-sender `dir_id_unique`; global form under
+  `CrossDisjoint`; cross-direction counterexample retained.
+- [x] `LN-PR-003` — `FundingSigningLaw` + `KeyBinding` conditional contract.
+- [x] `LN-PR-004` — coverage from per-output signed data + BOLT 3 equations;
+  wire-only negative results retained.
+- [x] `LN-L1-001/003/004/006`, `LN-CR-005`, `LN-CH-005`, `LN-RT-006` —
+  exact theorem targets with explicit scope caveats.
+- [x] New proof modules root-imported; `Traceability`, `AxiomAudit`,
+  generated indexes, README, and CI status updated.
+- [x] Full gate: build 182 jobs, strict catalog RC 0, `check.sh` RC 0,
+  `check-final.py` 176/174 RC 0, anchors 299/0 bad, vendor 119 OK.
+
+### Wave 4 and beyond
+
+The catalog is no longer the work queue. Open issues are tracked in
+`docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`. Wave 4
+targets L1 spendability, vendor/CI reproducibility, conformance vectors, wire
+completeness, global HTLC ids, fee/dust integration, gossip attribution, and
+release packaging.
 
 ## Commands
 

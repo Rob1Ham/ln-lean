@@ -6,9 +6,8 @@ kept in sync with it; every id below appears in `docs/TRACEABILITY.md` and in
 the Lean catalog, and vice versa.
 
 The proof-wave lanes added declarations and replaced `statement-only` rows with
-proved theorems. At the time of writing, 37 rows are `proved` (the target
-theorem exists in the tree) and 11 are `statement-only` (no theorem yet; the
-target is the planned declaration). A `proved` row is not a claim that the full
+proved theorems. At the proof-wave 3 gate, all 48 rows are `proved` (the target
+theorem exists in the tree); 0 rows remain `statement-only`. A `proved` row is not a claim that the full
 English property is proved by the cited theorem alone when the row names
 several targets, or when the theorem keeps cryptographic/model hypotheses
 explicit; the targets listed are the declarations that together establish the
@@ -20,48 +19,48 @@ per-lane reports under `agents/reports/`.
 
 | Domain | Obligations | Proved | Statement-only |
 |---|---:|---:|---:|
-| L1 / foundations | 6 | 2 | 4 |
-| Crypto / wire | 6 | 5 | 1 |
-| Channel / commitment | 6 | 4 | 2 |
-| HTLC / revocation | 6 | 5 | 1 |
-| Protocol / peer | 6 | 4 | 2 |
-| Routing / onion | 6 | 5 | 1 |
+| L1 / foundations | 6 | 6 | 0 |
+| Crypto / wire | 6 | 6 | 0 |
+| Channel / commitment | 6 | 6 | 0 |
+| HTLC / revocation | 6 | 6 | 0 |
+| Protocol / peer | 6 | 6 | 0 |
+| Routing / onion | 6 | 6 | 0 |
 | Payments | 6 | 6 | 0 |
 | Security / proofs | 6 | 6 | 0 |
-| **Total** | **48** | **37** | **11** |
+| **Total** | **48** | **48** | **0** |
 
 ## Obligations
 
 | Id | Domain | Claim | Lean target (module/declaration) | Status |
 |---|---|---|---|---|
-| `LN-L1-001` | L1 / foundations | The funding output is P2WSH over the 2-of-2 funding witness script. | `LnLean.Bitcoin.fundingScriptPubKey` | statement-only |
+| `LN-L1-001` | L1 / foundations | The funding output is P2WSH over the constructed 2-of-2 funding witness script, conditional on the witness-script hash link and a finite pair-level collision-free admission. | `LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo` | proved |
 | `LN-L1-002` | L1 / foundations | If the seam MoneyRange predicate holds for a funding output, the btc-lean L1 MoneyRange predicate holds. | `LnLean.Bitcoin.fundingOutput_moneyRange` | proved |
-| `LN-L1-003` | L1 / foundations | Channel safety is preserved for reorgs within the adversary's depth budget, and deep reorgs are a separate failure mode. | `LnLean.Security.Adversary.reorgAllowed` | statement-only |
-| `LN-L1-004` | L1 / foundations | The to_local commitment output carries the CSV contest delay and the revocation key. | `LnLean.Bitcoin.toLocalScript` | statement-only |
+| `LN-L1-003` | L1 / foundations | Under a common chain tip and the adversary's bounded reorg-depth budget, channel safety is preserved; deep reorgs are a separate failure mode. | `LnLean.Proofs.Security.ReorgTargets.reorg_preserves_channel_safety; LnLean.Proofs.Security.ReorgTargets.deep_reorg_separate_failure_mode` | proved |
+| `LN-L1-004` | L1 / foundations | The full BOLT 3 to_local witness script carries the CSV contest delay and the revocation key, and the commitment output commits to both. | `LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.commitmentOutputs_toLocal_commits_delay_and_revocationKey` | proved |
 | `LN-L1-005` | L1 / foundations | An anchor output is worth exactly 330 satoshis. | `LnLean.Bitcoin.anchorValue_eq` | proved |
-| `LN-L1-006` | L1 / foundations | The commitment base weight is the BOLT 3 constant 724 before HTLC outputs. | `LnLean.Bitcoin.commitmentBaseWeight` | statement-only |
+| `LN-L1-006` | L1 / foundations | The commitment base weight is the BOLT 3 fee-basis constant 724 before HTLC outputs, 1124 with anchors, plus 172 per untrimmed HTLC, with the anchor serialization gap explicit. | `LnLean.Proofs.Bitcoin.commitmentBaseWeight_model_target` | proved |
 | `LN-CR-001` | Crypto / wire | Constructed and opened payment hashes are SHA-256 outputs; under assumption C1 (collision resistance on the 32-byte preimage domain), a payment hash determines at most one valid preimage. | `LnLean.Crypto.Hash.paymentHash_sha256_contract` | proved |
 | `LN-CR-002` | Crypto / wire | Under assumption C3 (ECDSA EUF-CMA), a commitment-domain signature binds its untagged message uniquely and cannot verify in the funding or close signing domain. | `LnLean.Crypto.Sig.commitmentSig_contract` | proved |
 | `LN-CR-003` | Crypto / wire | Onion HMAC-SHA256 tags are 32 bytes; under the finite-execution C8 admission, an authentic tag determines the hop payloads uniquely among the messages of that execution. | `LnLean.Crypto.Hash.onionHmacTag_size_and_bindsOn` | proved |
 | `LN-CR-004` | Crypto / wire | BigSize encoding and decoding are inverse on canonical encodings. | `LnLean.Wire.decode_encode` | proved |
-| `LN-CR-005` | Crypto / wire | A TLV stream is strictly sorted by type and has no duplicate types. | `LnLean.Wire.TLVStream.WellFormed` | statement-only |
+| `LN-CR-005` | Crypto / wire | A TLV stream is well formed exactly when its types are pairwise strictly increasing, and well-formed streams have no duplicate record types. | `LnLean.Wire.TLVStream.wellFormed_iff_pairwise; LnLean.Wire.TLVStream.wellFormed_record_type_unique` | proved |
 | `LN-CR-006` | Crypto / wire | A Lightning message frame's declared length matches the payload actually consumed. | `LnLean.Wire.Message.decode_length` | proved |
 | `LN-CH-001` | Channel / commitment | Every ledger transition preserves funding = local + remote + in-flight + fee. | `LnLean.Security.Ledger.step_conserves` | proved |
 | `LN-CH-002` | Channel / commitment | No commitment output has a negative value and the output sum stays within the funding value. | `LnLean.Channel.Commitment.outputs_nonnegative` | proved |
-| `LN-CH-003` | Channel / commitment | Commitment outputs are ordered by value then script, and dust HTLCs are trimmed. | `LnLean.Channel.Commitment.output_ordering` | statement-only |
+| `LN-CH-003` | Channel / commitment | In the rich commitment-output model, outputs are sorted by value, script, and CLTV, and dust HTLCs are trimmed; the legacy output function remains refuted by D12. | `LnLean.Channel.Commitment.output_ordering` | proved |
 | `LN-CH-004` | Channel / commitment | A committed update never decreases the commitment number. | `LnLean.Security.advance_monotone` | proved |
-| `LN-CH-005` | Channel / commitment | A commitment with an insufficient feerate for its weight is rejected before signing. | `LnLean.Channel.Fee.feeInsufficient` | statement-only |
+| `LN-CH-005` | Channel / commitment | A commitment is rejected before signing exactly when its feerate is insufficient for its weight, equivalently when no checked commitment_signed step exists in the normal phase. | `LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_insufficient; LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_no_checkedSigning` | proved |
 | `LN-CH-006` | Channel / commitment | HTLC exposure and channel reserve bounds are respected by admissible updates. | `LnLean.Channel.Reserve.bounds` | proved |
 | `LN-HT-001` | HTLC / revocation | A fulfilled HTLC carries a preimage whose hash is the payment hash. | `LnLean.Security.HtlcRecord.fulfill_sound` | proved |
 | `LN-HT-002` | HTLC / revocation | An HTLC is failed only at or after its CLTV expiry. | `LnLean.Security.HtlcRecord.fail_only_after_expiry` | proved |
 | `LN-HT-003` | HTLC / revocation | Offered, received, and trimmed HTLC amounts plus balances and fee equal the funding value. | `LnLean.Channel.HTLC.amount_conservation` | proved |
-| `LN-HT-004` | HTLC / revocation | An HTLC id is unique within the live HTLC set of a channel. | `LnLean.Channel.HTLC.id_unique` | statement-only |
+| `LN-HT-004` | HTLC / revocation | An HTLC id is unique among the live HTLCs of one sender in a channel; global uniqueness holds only under explicit cross-direction disjointness. | `LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross` | proved |
 | `LN-HT-005` | HTLC / revocation | A revoked commitment is strictly older than the current commitment and cannot be the current one. | `LnLean.Security.revoked_commitment_is_old` | proved |
 | `LN-HT-006` | HTLC / revocation | A punishable breach has a penalty transaction that spends both commitment outputs. | `LnLean.Security.breach_penalty_spends_both` | proved |
 | `LN-PR-001` | Protocol / peer | open_channel accepts a funding amount only above the dust and minimum-channel bounds. | `LnLean.Protocol.Handshake.open_bounds` | proved |
 | `LN-PR-002` | Protocol / peer | The channel enters normal operation only after both channel_ready messages. | `LnLean.Protocol.Handshake.channel_ready_gate` | proved |
-| `LN-PR-003` | Protocol / peer | funding_signed carries a valid signature over the funding transaction. | `LnLean.Protocol.Handshake.funding_signed_valid` | statement-only |
-| `LN-PR-004` | Protocol / peer | commitment_signed covers exactly the current HTLC set and fee. | `LnLean.Protocol.Messages.commitment_signed_covers` | statement-only |
+| `LN-PR-003` | Protocol / peer | Under an explicit signing law and key-binding hypothesis, funding_signed carries a valid signature over the funding transaction and attributes it to the funding key; C3 alone gives neither. | `LnLean.Protocol.Handshake.funding_signed_signing_contract` | proved |
+| `LN-PR-004` | Protocol / peer | Under a per-output signed-data relation and the BOLT 3 commitment value equations, commitment_signed covers exactly the current HTLC set and fee; the wire record alone determines neither. | `LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state` | proved |
 | `LN-PR-005` | Protocol / peer | channel_reestablish retransmits unacknowledged updates without rolling state back. | `LnLean.Protocol.Peer.reestablish_no_rollback` | proved |
 | `LN-PR-006` | Protocol / peer | Negotiated channel features are the intersection of both peers' supported features. | `LnLean.Protocol.Handshake.feature_intersection` | proved |
 | `LN-RT-001` | Routing / onion | A well-formed route is non-empty, connected end-to-end, and every hop has enough capacity. | `LnLean.Security.Route.wellFormed_connected; LnLean.Security.Route.wellFormed_capacity; LnLean.Security.Route.wellFormed_nonempty` | proved |
@@ -69,7 +68,7 @@ per-lane reports under `agents/reports/`.
 | `LN-RT-003` | Routing / onion | Peeling one onion layer exposes the next hop or a terminal payload, never both. | `LnLean.Routing.Onion.peel_deterministic` | proved |
 | `LN-RT-004` | Routing / onion | An onion layer with an invalid HMAC is rejected rather than forwarded. | `LnLean.Routing.Onion.hmac_sound` | proved |
 | `LN-RT-005` | Routing / onion | The CLTV expiry at each hop increases by at least that hop's cltv_expiry_delta. | `LnLean.Routing.Route.cltv_accumulates` | proved |
-| `LN-RT-006` | Routing / onion | The gossip graph contains only channels with valid announcement signatures. | `LnLean.Routing.Gossip.announcement_valid` | statement-only |
+| `LN-RT-006` | Routing / onion | In every reachable signature-gated gossip state, every graph edge is backed by a stored announcement whose four BOLT 7 signatures verify; raw applyGossip remains unfiltered. | `LnLean.Proofs.Routing.GossipTargets.gossip_graph_only_valid_announcements` | proved |
 | `LN-PM-001` | Payments | A consistent invoice has the payment session's hash and amount. | `LnLean.Security.Invoice.consistent_hash; LnLean.Security.Invoice.consistent_amount` | proved |
 | `LN-PM-002` | Payments | A BOLT 11 invoice signature is valid for the payee node key. | `LnLean.Payment.Invoice.signature_valid` | proved |
 | `LN-PM-003` | Payments | The final onion payload's payment secret matches the invoice's payment secret. | `LnLean.Payment.Invoice.payment_secret_match` | proved |
@@ -117,33 +116,28 @@ of the row's meaning and are also recorded in the lane reports under
   `wt.reports c c.breachHeight`, which implies `wt.live`. A live tower alone
   is insufficient; `LnLean.Proofs.WaveE.E35` contains the counterexample.
 
-The proof-wave 2 promotions add these exact targets and scope notes:
+The proof-wave 2 promotions remain valid and keep their scope notes:
 
-* `LN-CR-001/002/003` were **retargeted** from `PrimitiveModel` fields to
-  standalone conditional contracts. `paymentHash_sha256_contract` covers
-  constructed/opened hashes and C1 preimage uniqueness; D05's well-formed
-  33-byte counterexample refutes the universal range reading.
-  `commitmentSig_contract` covers C3 message binding and funding/close domain
-  separation; it does not claim signing completeness or key attribution.
-  `onionHmacTag_size_and_bindsOn` covers 32-byte tags and finite-execution C8
-  binding; global HMAC PRF is refuted by D07.
-* `LN-CH-002` (`Commitment.outputs_nonnegative`) proves nonnegativity
-  unconditionally and the funding bound under the BOLT 3 balance equation
-  `totalOutputValue + feeSat = fundingValueSat`; D46 retains the unconditional
-  counterexample.
-* `LN-HT-003` (`HTLC.amount_conservation`) is a partition theorem under the
-  explicit ledger invariant `ledger + totalHtlcValue (htlcSet hs) = funding`.
-  `LN-HT-004` remains `statement-only`: its exact `id_unique` target assumes
-  `liveHtlcIdsNodup`, which is the uniqueness property being claimed.
-* `LN-PR-001` (`Handshake.open_bounds`) is the D17 acceptor-bound theorem.
-  `LN-PR-006` (`Handshake.feature_intersection`) is the support-set
-  intersection under BOLT 1's survival hypothesis, not raw bitwise AND.
-  `LN-PR-003/004` remain `statement-only`: their wrappers characterize or
-  assume the claimed predicate rather than prove it from the wire record.
-* `LN-SEC-005` (`Liveness.penalty_economical`) is the bounded-schedule theorem
-  (`FeeScheduleBounded`); D34 retains the unconditional fee-spike
-  counterexample.
+* `LN-CR-001/002/003` are standalone conditional contracts. `paymentHash_sha256_contract` covers constructed/opened hashes and C1 preimage uniqueness; D05's well-formed 33-byte counterexample refutes the universal range reading. `commitmentSig_contract` covers C3 message binding and funding/close domain separation; it does not claim signing completeness or key attribution. `onionHmacTag_size_and_bindsOn` covers 32-byte tags and finite-execution C8 binding; global HMAC PRF is refuted by D07.
+* `LN-CH-002` proves nonnegativity unconditionally and the funding bound under the BOLT 3 balance equation; D46 retains the unconditional counterexample.
+* `LN-HT-003` is a partition theorem under the explicit ledger invariant.
+* `LN-PR-001` is the D17 acceptor-bound theorem. `LN-PR-006` is the support-set intersection under BOLT 1's survival hypothesis, not raw bitwise AND.
+* `LN-SEC-005` is the bounded-schedule theorem (`FeeScheduleBounded`); D34 retains the unconditional fee-spike counterexample.
 
-`LN-CH-003` also remains `statement-only`: D12 refutes the unconditional
-ordering claim and the model has no script/CLTV ordering key.
+### Proof-wave 3 promotion notes
 
+Proof-wave 3 retargeted and promoted the last eleven rows. Each row now names an exact, sorry-free theorem; the following caveats are part of the row's meaning:
+
+* `LN-L1-001` (`fundingScriptPubKey_eq_p2wsh_twoOfTwo`) is conditional on the construction invariant `witnessScriptHash = H(witnessScript.bytes)` and a finite pair-level collision-free admission. C1 in the model covers 32-byte payment preimages, not arbitrary 71-byte witness scripts; no P2WSH interpreter bridge is claimed.
+* `LN-L1-003` (`reorg_preserves_channel_safety` plus `deep_reorg_separate_failure_mode`) keeps a common chain tip, common-prefix confirmation arithmetic, and the bounded-depth invariant explicit. `safety_not_unconditional` records why the unconditional reading is false.
+* `LN-L1-004` now targets the full two-branch BOLT 3 `toLocalScriptFull` model. Containment is unconditional; commitment assumes 33-byte keys and `to_self_delay < 2^16`, and the output-level form assumes an injective `sha256` plus `HashesMatch`. Script execution and CSV/signature enforcement are not modelled. The legacy flat `toLocalScript` is retained and proved distinct.
+* `LN-L1-006` (`commitmentBaseWeight_model_target`) covers the BOLT 3 fee-basis constants `724`/`1124` and `172` per untrimmed HTLC. The anchor constant is a negotiated fee basis, not a literal serialization weight: `weightTargets_serializedWeight_anchor_gap` proves the exact 8 WU gap. Witness serialization and the CompactSize threshold remain explicit gaps.
+* `LN-CR-005` (`wellFormed_iff_pairwise` plus `wellFormed_record_type_unique`) is the exact theorem-level characterization of TLV well-formedness. It includes an exact admission checker and an `InDomain` round trip; the out-of-domain counterexample is retained.
+* `LN-CH-003` (`output_ordering`) is proved for the rich `CommitmentTx` model with script keys, owner dust limit, and `(value, script, CLTV)` sorting. D12 still refutes the unconditional legacy `commitmentOutputs` reading; the legacy function is unchanged.
+* `LN-CH-005` (`commitmentSigningGate_rejected_iff_insufficient` plus `..._iff_no_checkedSigning`) is the exact fee-gate characterization, with the normal-phase transition form explicit.
+* `LN-HT-004` is narrowed to per-sender uniqueness (`dir_id_unique`) plus the explicit `CrossDisjoint` global form. BOLT 2 ids are per-sender and both counters start at zero; `reachable_cross_direction_duplicate` mechanizes the failure of the literal global claim.
+* `LN-PR-003` (`funding_signed_signing_contract`) is conditional on an explicit `FundingSigningLaw` and `KeyBinding`. C3 alone gives neither signing completeness nor key attribution; the lane includes a counterexample.
+* `LN-PR-004` (`commitment_signed_covers_exact_of_state`) is derived from a per-output signed-data relation and the BOLT 3 commitment value equations. The wire record alone determines neither the HTLC set nor the fee; the negative results are retained.
+* `LN-RT-006` (`gossip_graph_only_valid_announcements`) covers reachable states built by the signature-gated `admitGossip` transition. Raw `applyGossip` remains unfiltered; the verifier is abstract and G19 key attribution is separate.
+
+No row is silently weakened: every caveat above is also recorded in the row's source comment and under `agents/reports/swarm3/`. Remaining full-verification gaps are tracked in `docs/OPEN-ISSUES.md`.

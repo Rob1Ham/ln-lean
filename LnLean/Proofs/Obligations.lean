@@ -78,9 +78,9 @@ def obligations : List Obligation :=
   [
   -- Foundations / L1 (6)
   { id := "LN-L1-001", domain := .l1,
-    claim := "The funding output is P2WSH over the 2-of-2 funding witness script.",
-    leanTarget := "LnLean.Bitcoin.fundingScriptPubKey",
-    status := .statementOnly,
+    claim := "The funding output is P2WSH over the constructed 2-of-2 funding witness script, conditional on the witness-script hash link and a finite pair-level collision-free admission.",
+    leanTarget := "LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo",
+    status := .proved,
     boltdoc := "BOLT 2 §Channel Establishment v1; BOLT 3 §Funding Transaction Output",
     rlAnchor := "lightning/src/ln/chan_utils.rs:847" },
   { id := "LN-L1-002", domain := .l1,
@@ -90,15 +90,15 @@ def obligations : List Obligation :=
     boltdoc := "BOLT 2 §The open_channel Message",
     rlAnchor := "lightning/src/ln/channel.rs:2683" },
   { id := "LN-L1-003", domain := .l1,
-    claim := "Channel safety is preserved for reorgs within the adversary's depth budget, and deep reorgs are a separate failure mode.",
-    leanTarget := "LnLean.Security.Adversary.reorgAllowed",
-    status := .statementOnly,
+    claim := "Under a common chain tip and the adversary's bounded reorg-depth budget, channel safety is preserved; deep reorgs are a separate failure mode.",
+    leanTarget := "LnLean.Proofs.Security.ReorgTargets.reorg_preserves_channel_safety; LnLean.Proofs.Security.ReorgTargets.deep_reorg_separate_failure_mode",
+    status := .proved,
     boltdoc := "BOLT 5 §Commitment Transaction",
     rlAnchor := "lightning/src/chain/channelmonitor.rs:514" },
   { id := "LN-L1-004", domain := .l1,
-    claim := "The to_local commitment output carries the CSV contest delay and the revocation key.",
-    leanTarget := "LnLean.Bitcoin.toLocalScript",
-    status := .statementOnly,
+    claim := "The full BOLT 3 to_local witness script carries the CSV contest delay and the revocation key, and the commitment output commits to both.",
+    leanTarget := "LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.commitmentOutputs_toLocal_commits_delay_and_revocationKey",
+    status := .proved,
     boltdoc := "BOLT 3 §to_local Output",
     rlAnchor := "lightning/src/ln/chan_utils.rs:687" },
   { id := "LN-L1-005", domain := .l1,
@@ -108,9 +108,9 @@ def obligations : List Obligation :=
     boltdoc := "BOLT 3 §to_local_anchor and to_remote_anchor Output",
     rlAnchor := "lightning/src/ln/channel.rs:989" },
   { id := "LN-L1-006", domain := .l1,
-    claim := "The commitment base weight is the BOLT 3 constant 724 before HTLC outputs.",
-    leanTarget := "LnLean.Bitcoin.commitmentBaseWeight",
-    status := .statementOnly,
+    claim := "The commitment base weight is the BOLT 3 fee-basis constant 724 before HTLC outputs, 1124 with anchors, plus 172 per untrimmed HTLC, with the anchor serialization gap explicit.",
+    leanTarget := "LnLean.Proofs.Bitcoin.commitmentBaseWeight_model_target",
+    status := .proved,
     boltdoc := "BOLT 3 §Expected Weight of the Commitment Transaction",
     rlAnchor := "lightning/src/ln/chan_utils.rs:281" },
 
@@ -152,9 +152,9 @@ def obligations : List Obligation :=
     boltdoc := "BOLT 1 §Fundamental Types; BOLT 1 Appendix A",
     rlAnchor := "lightning/src/util/ser.rs:442" },
   { id := "LN-CR-005", domain := .cryptoWire,
-    claim := "A TLV stream is strictly sorted by type and has no duplicate types.",
-    leanTarget := "LnLean.Wire.TLVStream.WellFormed",
-    status := .statementOnly,
+    claim := "A TLV stream is well formed exactly when its types are pairwise strictly increasing, and well-formed streams have no duplicate record types.",
+    leanTarget := "LnLean.Wire.TLVStream.wellFormed_iff_pairwise; LnLean.Wire.TLVStream.wellFormed_record_type_unique",
+    status := .proved,
     boltdoc := "BOLT 1 §Type-Length-Value Format",
     rlAnchor := "lightning/src/util/ser.rs:369" },
   { id := "LN-CR-006", domain := .cryptoWire,
@@ -180,12 +180,14 @@ def obligations : List Obligation :=
     status := .proved,
     boltdoc := "BOLT 3 §Commitment Transaction Outputs",
     rlAnchor := "lightning/src/ln/chan_utils.rs:1908" },
-  -- Scope note: D12 refutes the unconditional ordering claim and the model
-  -- has no script/CLTV key; keep statementOnly.
+  -- Scope note: proved for the rich `CommitmentTx` model with explicit
+  -- scriptPubKey, owner dust limit, and deterministic (value, script, CLTV)
+  -- sorting.  D12 still refutes the unconditional legacy
+  -- `commitmentOutputs` reading; the legacy function is unchanged.
   { id := "LN-CH-003", domain := .channel,
-    claim := "Commitment outputs are ordered by value then script, and dust HTLCs are trimmed.",
+    claim := "In the rich commitment-output model, outputs are sorted by value, script, and CLTV, and dust HTLCs are trimmed; the legacy output function remains refuted by D12.",
     leanTarget := "LnLean.Channel.Commitment.output_ordering",
-    status := .statementOnly,
+    status := .proved,
     boltdoc := "BOLT 3 §Transaction Output Ordering; BOLT 3 §Trimmed Outputs",
     rlAnchor := "lightning/src/ln/chan_utils.rs:1985" },
   { id := "LN-CH-004", domain := .channel,
@@ -195,9 +197,9 @@ def obligations : List Obligation :=
     boltdoc := "BOLT 2 §Committing Updates So Far",
     rlAnchor := "lightning/src/ln/channel.rs:6270" },
   { id := "LN-CH-005", domain := .channel,
-    claim := "A commitment with an insufficient feerate for its weight is rejected before signing.",
-    leanTarget := "LnLean.Channel.Fee.feeInsufficient",
-    status := .statementOnly,
+    claim := "A commitment is rejected before signing exactly when its feerate is insufficient for its weight, equivalently when no checked commitment_signed step exists in the normal phase.",
+    leanTarget := "LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_insufficient; LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_no_checkedSigning",
+    status := .proved,
     boltdoc := "BOLT 3 §Fees; BOLT 5 §Commitment Transaction",
     rlAnchor := "lightning/src/ln/channel.rs:3721" },
   { id := "LN-CH-006", domain := .channel,
@@ -228,13 +230,14 @@ def obligations : List Obligation :=
     status := .proved,
     boltdoc := "BOLT 2 §Adding an HTLC",
     rlAnchor := "lightning/src/ln/chan_utils.rs:716" },
-  -- Scope note: the exact target exists, but `id_unique` assumes
-  -- `liveHtlcIdsNodup`, which is the claimed uniqueness property.  Promoting it
-  -- would be tautological; the unconditional counterexample remains.
+  -- Scope note: BOLT 2 ids are per-sender; both counters start at zero.  The
+  -- unconditional global claim is refuted by
+  -- `HtlcBook.reachable_cross_direction_duplicate`, so the row is narrowed to
+  -- per-sender uniqueness plus the explicit `CrossDisjoint` global form.
   { id := "LN-HT-004", domain := .htlcRevocation,
-    claim := "An HTLC id is unique within the live HTLC set of a channel.",
-    leanTarget := "LnLean.Channel.HTLC.id_unique",
-    status := .statementOnly,
+    claim := "An HTLC id is unique among the live HTLCs of one sender in a channel; global uniqueness holds only under explicit cross-direction disjointness.",
+    leanTarget := "LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross",
+    status := .proved,
     boltdoc := "BOLT 2 §Adding an HTLC",
     rlAnchor := "lightning/src/ln/channel.rs:8370" },
   { id := "LN-HT-005", domain := .htlcRevocation,
@@ -265,21 +268,24 @@ def obligations : List Obligation :=
     status := .proved,
     boltdoc := "BOLT 2 §The channel_ready Message",
     rlAnchor := "lightning/src/ln/channelmanager.rs:17614" },
-  -- Scope note: the wrapper is an exact iff characterization of
-  -- `fundingSignedValid`; the literal "carries a valid signature" claim needs
-  -- signing completeness and key binding, so keep statementOnly.
+  -- Scope note: conditional on an explicit `FundingSigningLaw` (signing
+  -- correctness plus wire shape) and `KeyBinding`.  C3/EUF-CMA alone gives
+  -- transaction/message binding, not signing completeness or key attribution;
+  -- the lane includes a counterexample showing that gap.
   { id := "LN-PR-003", domain := .protocol,
-    claim := "funding_signed carries a valid signature over the funding transaction.",
-    leanTarget := "LnLean.Protocol.Handshake.funding_signed_valid",
-    status := .statementOnly,
+    claim := "Under an explicit signing law and key-binding hypothesis, funding_signed carries a valid signature over the funding transaction and attributes it to the funding key; C3 alone gives neither.",
+    leanTarget := "LnLean.Protocol.Handshake.funding_signed_signing_contract",
+    status := .proved,
     boltdoc := "BOLT 2 §The funding_signed Message",
     rlAnchor := "lightning/src/ln/channel.rs:2107" },
-  -- Scope note: the wrapper assumes the coverage predicate and proves its
-  -- consequences; it does not establish coverage from the wire record.
+  -- Scope note: derived from a per-output signed-data relation and the BOLT 3
+  -- commitment value equations.  The wire record alone cannot determine the
+  -- HTLC set or fee; the lane proves that negative result and includes an
+  -- honest covering construction.
   { id := "LN-PR-004", domain := .protocol,
-    claim := "commitment_signed covers exactly the current HTLC set and fee.",
-    leanTarget := "LnLean.Protocol.Messages.commitment_signed_covers",
-    status := .statementOnly,
+    claim := "Under a per-output signed-data relation and the BOLT 3 commitment value equations, commitment_signed covers exactly the current HTLC set and fee; the wire record alone determines neither.",
+    leanTarget := "LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state",
+    status := .proved,
     boltdoc := "BOLT 2 §Committing Updates So Far",
     rlAnchor := "lightning/src/ln/channel.rs:2386; lightning/src/ln/channel.rs:6270" },
   { id := "LN-PR-005", domain := .protocol,
@@ -331,9 +337,9 @@ def obligations : List Obligation :=
     boltdoc := "BOLT 4 §Payload for the Last Node; BOLT 7 §HTLC Fees",
     rlAnchor := "lightning/src/routing/router.rs:657" },
   { id := "LN-RT-006", domain := .routing,
-    claim := "The gossip graph contains only channels with valid announcement signatures.",
-    leanTarget := "LnLean.Routing.Gossip.announcement_valid",
-    status := .statementOnly,
+    claim := "In every reachable signature-gated gossip state, every graph edge is backed by a stored announcement whose four BOLT 7 signatures verify; raw applyGossip remains unfiltered.",
+    leanTarget := "LnLean.Proofs.Routing.GossipTargets.gossip_graph_only_valid_announcements",
+    status := .proved,
     boltdoc := "BOLT 7 §The channel_announcement Message",
     rlAnchor := "lightning/src/routing/gossip.rs:515; lightning/src/routing/gossip.rs:1012" },
 

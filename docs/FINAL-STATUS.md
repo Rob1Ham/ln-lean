@@ -2,12 +2,12 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `2e743673052a41cdf9640a7e19a1207227066a6c` (`[PROOF] add
-proof-wave 2 exact targets, promote 8 catalog rows`).
-**Catalog state:** proof-wave 2 tree: 37 `proved` / 11 `statementOnly`.
-**Remote refs:** `origin/repair/integrated` contains proof-wave 2 commit
-`2e74367` (status commits may advance the tip). `origin/repair/pubbump =
-95fc49d` (separate compatibility branch); `origin/main = b891a59` (untouched).
+**Gate HEAD:** this proof-wave 3 working tree; the following status commit
+records the exact hash.
+**Catalog state:** **48 `proved` / 0 `statementOnly` / 0 unresolved**.
+**Remote refs:** push is non-force to `origin/repair/integrated`. `origin/main`
+is not touched by this work. `origin/repair/pubbump` remains a separate
+compatibility branch.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 **L1 build dependency:** read-only `vendor/btc-lean-core` snapshot
 `f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb`
@@ -26,266 +26,127 @@ starting point of the repair, not its result.
 
 A Lean 4 formal model and proof scaffold for the Lightning Network on top of a
 read-only `btc-lean` Bitcoin L1 model. It is not a completed proof of
-Lightning and it is not a conformance-tested implementation.
+Lightning, and it is not a conformance-tested implementation.
 
-The repair branch adds the Phase-C2 and Phase-C3 modules, replaces the five
-refuted Wave-C sites (`FundingProps`, `ReserveProps`, `GossipProps`), repairs
-the ten remaining false/underspecified sites `R01`–`R10`, makes the crypto
-interface consistent (`M01`, `M02`), adds the exact catalog checker (`K01`),
-pins the public L1 reference (`L01`), and fixes the `CrossChannelRouting`
-elaboration blowup (`CCR01`).
+Proof-wave 3 integrated eleven disjoint lanes. It retargeted and promoted the
+last eleven catalog rows, so every catalog row now names an exact,
+sorry-free theorem. The new modules are:
 
-Proof-wave 1 runs eight disjoint lanes (`W01`, `R01`, `O01`, `H01`, `C01`,
-`P01`, `M01`, `S01`) and promotes eleven exact catalog rows. The new exact
-targets are in message framing, reestablish retransmission, gossip/route/onion
-semantics, invoice/MPP payments, and security/liveness. The lanes that could
-not state a faithful exact target did not fabricate one: `H01` and `C01` added
-partition/trimming/id invariants plus retained counterexamples, and `P01`
-documented the D17/E19/E20/FeatureClosure retargets for the remaining protocol
-rows.
+* `LnLean/Proofs/Bitcoin/FundingScriptTargets.lean`
+* `LnLean/Proofs/Bitcoin/ToLocalScriptTargets.lean`
+* `LnLean/Proofs/Bitcoin/WeightTargets.lean`
+* `LnLean/Proofs/Channel/CommitmentOrderTargets.lean`
+* `LnLean/Proofs/Channel/FeeTargets.lean`
+* `LnLean/Proofs/ProtocolCoverageTargets.lean`
+* `LnLean/Proofs/ProtocolSigningTargets.lean`
+* `LnLean/Proofs/Routing/GossipTargets.lean`
+* `LnLean/Proofs/Security/ReorgTargets.lean`
+* `LnLean/Proofs/Wire/TLVTargets.lean`
 
-Proof-wave 2 runs five more lanes (`SEC05-ECON`, `CH02-WF`, `HT-LEDGER`,
-`PR-WRAPPERS`, `CR-RETARGET`) and promotes eight additional rows:
-`LN-CR-001/002/003`, `LN-CH-002`, `LN-HT-003`, `LN-PR-001`, `LN-PR-006`, and
-`LN-SEC-005`. The crypto rows were retargeted from `PrimitiveModel` fields to
-standalone conditional contracts; the new modules are
-`LnLean/Proofs/CryptoTargets.lean` and `LnLean/Proofs/ProtocolTargets.lean`.
-Three exact targets are deliberately **not** promoted: `LN-HT-004` assumes the
-live-id uniqueness it claims, and `LN-PR-003/004` characterize or assume the
-predicate they are supposed to establish. `LN-CH-003` remains the one
-unresolved planned target. Full scope notes are in `docs/THEOREM-INDEX.md` and
-the reports under `agents/reports/`.
+The model/support additions are `HtlcBook`/reachability/per-sender ids in
+`LnLean/Channel/HTLC.lean`, the rich `CommitmentTx` output model in
+`LnLean/Channel/Commitment.lean`, and the full BOLT 3 `toLocalScriptFull`
+model in `LnLean/Bitcoin/Seam.lean`. Existing legacy declarations are
+preserved; mechanized counterexamples such as D12 and the cross-direction HTLC
+duplicate are retained.
 
 ## Verified state
 
-Commands were run by G01 at the committed HEAD above. The branch was then
-pushed non-force to `origin/repair/integrated`; no existing branch was
-rewritten.
-
 | Check | Command | Result |
 |---|---|---|
-| Full build | `flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (172 jobs).` |
+| Full build | `LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (182 jobs).` |
 | Actual `sorry` | `grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` | **0 matches** (grep RC 1: no lines) |
-| Policy checker | `./scripts/check.sh` | **RC 0**, `files=166 obligations=81 sorry_in_proofs=0`, `check: OK` |
-| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 166 Lean files, 164 root imports |
+| Policy checker | `./scripts/check.sh` | **RC 0**, `files=176 obligations=82 sorry_in_proofs=0`, `check: OK` |
+| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 176 Lean files, 174 root imports |
 | Vendor integrity | `./scripts/verify-vendor.sh` | **RC 0**, `OK (119 files)` |
-| Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=298 bad=0 unanchored_rows=2` |
-| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 1**, 1 unresolved planned `statementOnly` target (`LN-CH-003`), 0 `proved` failures, 3 exact-but-retained candidates |
-| Catalog, planned-aware | `python3 scripts/check-catalog.py --allow-planned` | **RC 0**, `rows=48 proved=37 statementOnly=11 planned=1 proved_failures=0 candidates=3` |
-| Traceability build | `lake build LnLean.Proofs.Traceability` | **RC 0**, 10 jobs |
-| Public-reference pin | `./scripts/check-public-reference.sh` | **RC 0**, public HEAD/tag/vendor checks OK |
-| Generated index | `docs/OBLIGATIONS-GENERATED.md` (regenerated) | `130` proof files, `80` markers, `48` catalog rows, `4151` declarations, `0` `sorry` sites |
+| Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=299 bad=0 unanchored_rows=2` |
+| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 48 proved, 0 statement-only, 0 unresolved, 0 proved failures, 0 candidates |
+| Catalog, planned-aware | `python3 scripts/check-catalog.py --allow-planned` | **RC 0**, `rows=48 proved=48 statementOnly=0 planned=0 proved_failures=0` |
+| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 79 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Generated index | `python3 scripts/collect-obligations.py` | `140` proof files, `81` markers, `48` catalog rows, `4506` declarations, `0` `sorry` sites |
 
-Tree size: **166 Lean files** under `LnLean/`, **164** root imports in
+Tree size: **176 Lean files** under `LnLean/`, **174** root imports in
 `LnLean.lean`; `LnLean.Proofs.All` and the `LnLean.Proofs.PhaseC2` aggregator
-are not root-imported. The full build covers 172 Lake jobs.
+are not root-imported. The full build covers 182 Lake jobs.
 
 The `sorry` grep result is exact: **there are no lines consisting only of
-`sorry` (modulo whitespace) in any `LnLean/**/*.lean` file.** Fifteen files
-still contain the word `sorry` inside prose/comments; those are not proof
-terms.
+`sorry` (modulo whitespace) in any `LnLean/**/*.lean` file.** Prose mentions of
+`sorry` in comments are not proof terms.
 
-## Repair lanes completed
+## Catalog promotions and scope caveats
 
-| Lane | Scope | Result |
+All 48 rows are `proved`, but a `proved` row means the named declaration exists
+and is sorry-free. Several rows keep explicit model, cryptographic, or L1
+hypotheses; the scope caveat is part of the row's meaning.
+
+| Row | Exact target(s) | Scope caveat |
 |---|---|---|
-| `R01`–`R10` | The ten remaining refuted/underspecified sites | Each refuted unconditional declaration and its marker removed; counterexample retained; conditional/admitted-step replacement retained; module builds RC 0 |
-| `M01` | SHA-256 field in `PrimitiveModel` | Removed global `sha256_preimageResistant`; kept `sha256_size` and `sha256_collisionResistant`; `preimageResistant_vacuous` retained as a negative theorem |
-| `M02` | HMAC field in `PrimitiveModel` | Removed global `hmac_prf`; `hmacPrf_vacuous` proves the global predicate impossible; C8 is finite-execution `HmacBindsOn`; D07 positive theorems take the finite contract |
-| `K01` | Catalog checker | Added `scripts/check-catalog.py` / `.sh`: exact target resolution, `sorry`-free `proved` rows, promotion audit |
-| `L01` | Public L1 reference | Pinned public `btc-lean` `main@4f5c4f8`; audited the 87-path vendor/public diff; added offline pin check |
-| `CCR01` | `CrossChannelRouting` | Rewrote `lastAmount` and the telescoping-fee proof; module RC 0 at ~1.7 GiB peak instead of 12–19 GiB |
+| `LN-L1-001` | `FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo` | Witness-script hash link plus finite pair-level C1 admission; no P2WSH interpreter bridge |
+| `LN-L1-003` | `ReorgTargets.reorg_preserves_channel_safety`, `deep_reorg_separate_failure_mode` | Common tip, common-prefix arithmetic, bounded-depth invariant; deep reorg is a separate failure mode |
+| `LN-L1-004` | `ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey`, `..._commits_delay_and_revocationKey`, `commitmentOutputs_toLocal_commits_delay_and_revocationKey` | Full two-branch byte template; no `OP_IF`/`OP_CSV`/`OP_CHECKSIG` execution semantics |
+| `LN-L1-006` | `WeightTargets.commitmentBaseWeight_model_target` | BOLT 3 fee-basis constants `724`/`1124` and `172` per untrimmed HTLC; exact 8 WU anchor serialization gap retained |
+| `LN-CR-005` | `TLVStream.wellFormed_iff_pairwise`, `wellFormed_record_type_unique` | Exact theorem-level characterization; out-of-domain counterexample retained |
+| `LN-CH-003` | `Commitment.output_ordering` | Rich `CommitmentTx` model with script/dust/CLTV; D12 still refutes legacy `commitmentOutputs` |
+| `LN-CH-005` | `Fee.commitmentSigningGate_rejected_iff_insufficient`, `..._iff_no_checkedSigning` | Exact fee gate; normal-phase transition form explicit |
+| `LN-HT-004` | `HTLC.dir_id_unique`, `id_unique_of_reachable_cross` | Per-sender uniqueness; global form needs `CrossDisjoint`; literal global claim refuted |
+| `LN-PR-003` | `Handshake.funding_signed_signing_contract` | Conditional on `FundingSigningLaw` + `KeyBinding`; C3 alone is insufficient |
+| `LN-PR-004` | `ProtocolCoverageTargets.commitment_signed_covers_exact_of_state` | Per-output signed-data relation + BOLT 3 value equations; wire-only negative results retained |
+| `LN-RT-006` | `GossipTargets.gossip_graph_only_valid_announcements` | Reachable signature-gated `admitGossip` states; raw `applyGossip` remains unfiltered; G19 key attribution separate |
 
-### Proof-wave lanes
-
-| Lane | Scope | Exact promotions / retained gaps |
-|---|---|---|
-| `W01` | Wire message framing | `LN-CR-006` `Wire.Message.decode_length` |
-| `R01` | Gossip and route | `LN-RT-002` `Gossip.update_monotone`, `LN-RT-005` `Route.cltv_accumulates` |
-| `O01` | Onion peel/HMAC | `LN-RT-003` `Onion.peel_deterministic`, `LN-RT-004` `Onion.hmac_sound` (checked `openLayer`; D25 raw-peel counterexample preserved) |
-| `P01` | Protocol reestablish | `LN-PR-005` `Peer.reestablish_no_rollback`; `LN-PR-001/003/004/006` left statement-only with D17/E19/E20/FeatureClosure retargets |
-| `M01` | Invoice and MPP | `LN-PM-002` `Invoice.signature_valid`, `LN-PM-005` `MPP.running_total_bound` |
-| `S01` | Security and liveness | `LN-SEC-002` `Conservation.global_conservation`, `LN-SEC-003` `Security.safety_async`, `LN-SEC-006` `Liveness.watchtower_bridge`; `LN-SEC-005` remains statement-only |
-| `H01` | HTLC partition and live ids | No exact target: `LN-HT-003/004` need a balance/fee ledger or per-sender id counters; partition and insertion/filter invariants added, counterexamples retained |
-| `C01` | Commitment outputs | No exact target: `LN-CH-002` needs the conservation premise; `LN-CH-003` is refuted unconditionally by D12; nonnegativity, sum, and trimming lemmas added |
-
-`R01`–`R10` repaired these declarations:
-
-| Lane | Removed unconditional/refuted declaration | Strongest retained replacement |
-|---|---|---|
-| `R01` | `waveE_e40_accepted_update_signature_length` | `waveE_e40_accepted_update_signature_length_of_length_respecting` |
-| `R02` | `committedUpdate_preserves_ledger_unconditional` | `committedUpdate_preserves_ledger` (explicit `Affordable` hypothesis) |
-| `R03` | `waveF_f04_legacy_unconditional_conservation` | `waveF_f04_corrected_conservation` (funder-debit hypotheses) |
-| `R04` | `waveF_f05_accepted_update_key_announced` | `admitChannelUpdate_change_key_announced_after` |
-| `R05` | `bindChannel_capacity_positive` | `bindChannelPositive_capacity_pos`, `bindChannel_capacity_pos_of_announced` |
-| `R06` | `accepted_message_signatures_64` | `accepted_message_signatures_64_of_lengthRespecting` |
-| `R07` | `dust_trim_preserves_conservation` | `conservation_of_dustFeeAccounted` |
-| `R08` | `waveF_f13_unconditional_secret_match` | `accepted_secret_eq` |
-| `R09` | `waveF_f14_running_total_bound` | `runningTotalBound_add` (with `PartFits`) |
-| `R10` | `unconditional_settle_reveals_committed` | `bound_settle_reveals_committed` |
-
-In every case the mechanized counterexample/negative theorem was kept. The
-repair removes a false headline; it does not prove the refuted statement.
-
-## Catalog status
-
-The proof-wave 2 counts are:
-
-- **48 catalog rows**
-- **37 `proved`**
-- **11 `statementOnly`**
-- **1** `statementOnly` row names a planned declaration that does not yet
-  exist (`LN-CH-003`, reported as `PLANNED` by `--allow-planned`)
-- **3** `statementOnly` rows resolve to exact theorems but are deliberately
-  not promoted for scope reasons (`LN-HT-004`, `LN-PR-003`, `LN-PR-004`)
-- **7** `statementOnly` rows resolve exactly but are not theorem/lemma
-  promotion candidates (all seven name `def`s or predicate `def`s)
-- **3** promotion candidates are reported by the checker; all three are the
-  deliberately retained rows above.
-
-The proof-wave 2 promotions are `LN-CR-001`, `LN-CR-002`, `LN-CR-003`,
-`LN-CH-002`, `LN-HT-003`, `LN-PR-001`, `LN-PR-006`, and `LN-SEC-005`.
-The proof-wave 1 promotions remain `LN-CR-006`, `LN-PR-005`, `LN-RT-002`,
-`LN-RT-003`, `LN-RT-004`, `LN-RT-005`, `LN-PM-002`, `LN-PM-005`,
-`LN-SEC-002`, `LN-SEC-003`, and `LN-SEC-006`. The earlier five promoted rows
-(`LN-CH-006`, `LN-PR-002`, `LN-PM-003`, `LN-PM-006`, `LN-CR-004`) remain
-proved. `LN-CR-004` and `LN-CR-005` targets were corrected to the declarations
-that actually exist (`LnLean.Wire.decode_encode`,
-`LnLean.Wire.TLVStream.WellFormed`).
-
-The newer promotions carry explicit scope caveats. `LN-CR-001` covers
-constructed/opened payment hashes plus C1 uniqueness (D05 refutes the universal
-range reading); `LN-CR-002` is C3 message binding and funding/close domain
-separation, not signing completeness or key attribution; `LN-CR-003` is
-32-byte tag width plus finite-execution C8 binding, not global HMAC PRF;
-`LN-CH-002` uses the BOLT 3 balance equation; `LN-HT-003` uses the explicit
-ledger invariant; `LN-PR-001` is the D17 acceptor model; `LN-PR-006` is the
-support-set intersection under BOLT 1 survival, not raw bitwise AND; and
-`LN-SEC-005` is the bounded-schedule theorem. `LN-RT-004` is the checked
-`openLayer` path and raw `peel` retains the D25 HMAC counterexample;
-`LN-PM-002` is a model-level projection from `Invoice.verify` and does not
-prove ECDSA soundness; `LN-SEC-002` covers the multi-channel ledger but not an
-L1 spend set; `LN-SEC-003` keeps the four explicit `Assumptions P`; and
-`LN-SEC-006` requires `wt.reports`, not merely `wt.live`.
-
-A `proved` row means the named Lean declaration exists and is sorry-free. It
-does **not** mean the English claim is fully captured by that declaration;
-that semantic check remains human review. A `statementOnly` row is a tracked
-future theorem, not a result.
+The earlier proof-wave promotions remain valid with their existing caveats
+(`LN-CR-001/002/003`, `LN-CH-002`, `LN-HT-003`, `LN-PR-001`, `LN-PR-006`,
+`LN-SEC-005`, and the wave-1 rows). Full notes are in
+`docs/THEOREM-INDEX.md` and the reports under `agents/reports/`.
 
 ## Trust boundary
 
 ### C1 — SHA-256
 
-`PrimitiveModel` no longer contains a global preimage-resistance field. C1 is
+`PrimitiveModel` has no global preimage-resistance field. C1 is 32-byte
+payment-preimage collision resistance plus a finite, explicitly admitted
+pair-level collision-free condition where a construction needs it. It is not a
+global injectivity axiom and does not by itself bind arbitrary 71-byte funding
+witness scripts.
 
-```lean
-CollisionResistant H :=
-  ∀ x y, x.size = 32 → y.size = 32 → H x = H y → x = y
-```
+### C3 — signatures
 
-applied to `M.sha256`. This is exact algebraic collision/second-preimage
-resistance on the 32-byte payment-preimage domain used by Lightning. It is
-**stronger** than a computational “no efficient collision finder” statement,
-and no computational reduction is claimed.
+C3 is an exact algebraic signing/verification contract plus message binding
+and domain separation. It does not prove signing completeness, key attribution,
+or EUF-CMA. `LN-PR-003` keeps those as explicit hypotheses.
 
-Global injectivity `PreimageResistant H := ∀ x y, H x = H y → x = y` is not a
-model field. `LnLean.Proofs.Crypto.Sha256Props.preimageResistant_vacuous`
-proves that no 32-byte-output hash satisfies it. That theorem is a retained
-negative result; it no longer contradicts `PrimitiveModel`, and theorems over
-`M : PrimitiveModel` are not vacuous for this reason.
+### C7/C8 — onion
 
-### C8 — HMAC-SHA256
+C7 is the deterministic onion construction; C8 is finite-message HMAC binding.
+Global HMAC PRF security is not claimed, and the D07 counterexample remains.
 
-C8 is the finite-execution admission
+### L1 scripts
 
-```lean
-HmacBindsOn hmac mu msgs :=
-  ∀ m₁ ∈ msgs, ∀ m₂ ∈ msgs, hmac mu m₁ = hmac mu m₂ → m₁ = m₂
-```
+Scripts are byte templates and structural commitment statements. There is no
+Bitcoin script interpreter, sighash engine, or consensus-spend theorem in this
+tree. P2WSH/`OP_CHECKMULTISIG` spendability and `to_local` CSV/signature
+execution are open (`L1-01`, `L1-02`, `MODEL-01`).
 
-where `msgs` is the finite list of `hop_payloads || associated_data` values in
-one onion execution. Global HMAC injectivity `HmacPrf` is not a model field;
-`LnLean.Proofs.WaveD.D07.hmacPrf_vacuous` proves it is impossible with the
-32-byte output-width field. The finite contract is satisfiable: it holds by
-construction on a singleton (`hmacBindsOn_singleton`) or whenever the finite
-tags are pairwise distinct.
+### Network / liveness
 
-The caller must supply `msgs` and evidence that `HmacBindsOn` holds for that
-execution. Tag-collision resistance, PRF distinguishing advantage, forgery
-probability, and computational reductions are **outside the model**. The
-mechanical facts (32-byte tag width, verifier equality, stored-tag extraction)
-are proved unconditionally.
+Safety results quantify over the modelled schedules; liveness results keep
+fairness, fee-schedule, or watchtower hypotheses explicit. Computational
+cryptographic reductions and full network semantics are not modelled.
 
-### Bitcoin L1
+## What remains open
 
-The build consumes `vendor/btc-lean-core` at `f950806`, a read-only snapshot
-that is **not an ancestor of public `btc-lean` history**. The authoritative
-public reference is `Rob1Ham/btc-lean` `main@4f5c4f8`; it is pinned for review
-and is not imported by `lakefile.lean`.
+The catalog is closed, but the repository is not release-ready. The living list
+is [`docs/OPEN-ISSUES.md`](OPEN-ISSUES.md). The P0 blockers are:
 
-The current build imports only `Bitcoin.Data.Basic`, `Bitcoin.Data.Script`,
-`Bitcoin.Data.Tx`, and `Bitcoin.RuleAttr`. No theorem in this tree is checked
-against the public `spec/core`. L1 spendability remains conditional on the
-Phase-C2 bridge structures (`FundingSpendBridge`, `HTLCSpendBridge`,
-`PenaltyL1Bridge`) and on explicit script-checker / sighash / C1 hypotheses.
-`toLocalScript` is still a flat seam fragment, not the full BOLT 3 two-branch
-witness script.
+* `OPS-01` — public CI cannot run the full build because the vendor snapshot is
+  not reproducibly available;
+* `OPS-02` — no `LICENSE`;
+* `OPS-03` — no release tag and `main` is behind;
+* `L1-01`/`L1-02` — no script interpreter/spendability bridge.
 
-### Network, economics, liveness
-
-Network results are conditional on explicit scheduling/fairness hypotheses.
-Partial synchrony (delivery within `Δ` after GST) is always a hypothesis, never
-an axiom. The watchtower bridge requires the tower to report the breach (which
-implies liveness); `live` alone is insufficient. Penalty economics is proved
-only under the explicit bounded-feerate-schedule hypothesis
-`FeeScheduleBounded`; the unbounded model has a D34 counterexample and is not
-claimed.
-
-## What remains conditional or planned
-
-- **1 planned `statementOnly` target** does not yet have a declaration:
-  `LN-CH-003` (`Commitment.output_ordering`). D12 refutes the unconditional
-  ordering claim and the model has no script/CLTV ordering key.
-- **3 exact `statementOnly` targets** exist but are deliberately not promoted:
-  `LN-HT-004` assumes `liveHtlcIdsNodup` (the claimed uniqueness), and
-  `LN-PR-003/004` characterize or assume the predicate they should establish.
-- **7 `statementOnly` rows** name `def`s or predicate `def`s rather than
-  theorems, so the theorem/lemma rule cannot promote them.
-- **11 rows remain `statementOnly`** in total; a green build and zero
-  `sorry` sites do not make them proved.
-- **L1 spendability** is conditional on the Phase-C2 bridge fields and on
-  script/sighash semantics that are not imported from the public L1 tree.
-- **Computational cryptography** (collision finding, PRF security, EUF-CMA,
-  IND-CCA, CDH) is not modelled; the model uses exact algebraic laws as
-  over-approximations.
-- **No differential conformance** against `rust-lightning` or BOLT test
-  vectors is claimed.
-- **Full BOLT 3 script interpreter bridge** is not present; `LN-L1-004` is
-  recorded as a flat seam fragment.
-- **Deep-reorg behaviour** is a separate obligation (`LN-CHAIN-REORG`), not a
-  proved property of this tree.
-
-## Residual risks / final-gate findings
-
-1. **The proof-wave gate is green at the commit recorded above.** The full
-   build, vendor, anchors, `check.sh`, `check-final.py`, the planned-aware
-   catalog audit, `LnLean.Proofs.Traceability`, and the exact `sorry` scan all
-   returned the results in the table above.
-2. **Catalog strict mode is RC 1 by design.** The one unresolved
-   `statementOnly` target (`LN-CH-003`) is reported as an error by `--audit`;
-   `--allow-planned` is RC 0 and keeps it `PLANNED`, never `proved`. The
-   committed gate uses `--allow-planned`; the strict audit remains available
-   as the planning report. The three exact-but-retained targets
-   (`LN-HT-004`, `LN-PR-003`, `LN-PR-004`) are listed as promotion candidates
-   but are intentionally not flipped.
-3. **Public/vendor lineage mismatch.** The vendor snapshot `f950806` is not in
-   public `btc-lean` history; a future vendor bump is a separate deliberate
-   change, not part of this repair. A green isolated compatibility branch
-   (`repair/pubbump`) records the public `spec/core` bump but is intentionally
-   not merged here.
-4. **`refs/btc-lean` is an untracked symlink.** It is git-excluded and must
-   not be committed.
+Other open work includes C1/C3/C8 computational reductions, wire completeness
+(`PR-02`), legacy commitment/dust integration (`CH-01`, `CH-02`), global HTLC
+ids (`HT-01`), gossip key attribution (`RT-01`), conformance vectors
+(`CONF-01`), and the missing `Step.update_add_htlc` constructor (`MODEL-02`).
 
 ## Reproduce
 
@@ -293,28 +154,31 @@ claimed.
 export PATH=/home/ubuntu/.elan/toolchains/leanprover--lean4---v4.35.0/bin:$PATH
 cd /home/ubuntu/ln-lean-repair
 
-flock -w 3600 /tmp/ln-build.lock lake build LnLean
+LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build
 grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean' || true
 
-./scripts/verify-vendor.sh
-python3 scripts/verify-anchors.py
 ./scripts/check.sh
+python3 scripts/check-final.py
 python3 scripts/check-catalog.py --audit
 python3 scripts/check-catalog.py --allow-planned
-./scripts/check-public-reference.sh
+python3 scripts/verify-anchors.py
+./scripts/verify-vendor.sh
 ```
 
 Do not run `scripts/collect-obligations.py` merely to inspect status: it
 rewrites `docs/OBLIGATIONS-GENERATED.md` and
-`agents/status/obligations.json`. K02 owns that generated output.
+`agents/status/obligations.json`. Regenerate them deliberately as part of an
+integration commit.
 
 ## Not claimed
 
-- No theorem here is a proof of Lightning Network security, of Bitcoin
-  consensus, or of computational cryptographic hardness.
-- A green build and zero actual `sorry` terms do not imply the 11
-  `statementOnly` rows are proved.
-- The nineteen proof-wave promotions (eleven in wave 1, eight in wave 2) are
-  exact model-level targets; the conditional caveats in this file and in
-  `docs/THEOREM-INDEX.md` are part of their meaning and must not be dropped
-  when citing them.
+- No theorem here is a proof of Lightning Network security, Bitcoin consensus,
+  or computational cryptographic hardness.
+- A green build and zero actual `sorry` terms do not imply the catalog rows are
+  unconditional statements of the English claims. The scope caveats above are
+  part of their meaning.
+- No differential conformance against `rust-lightning` or BOLT test vectors is
+  claimed.
+- The 29 proof-wave promotions (eleven in wave 1, eight in wave 2, eleven in
+  wave 3) are exact model-level targets; describing them as full protocol
+  verification would be false.

@@ -34,6 +34,16 @@ import LnLean.Proofs.Wire.TLVProps
 import LnLean.Proofs.Crypto.EcdsaProps
 import LnLean.Proofs.Bitcoin.ScriptProps
 import LnLean.Proofs.Bitcoin.FundingProps
+import LnLean.Proofs.Bitcoin.FundingScriptTargets
+import LnLean.Proofs.Bitcoin.ToLocalScriptTargets
+import LnLean.Proofs.Bitcoin.WeightTargets
+import LnLean.Proofs.Channel.CommitmentOrderTargets
+import LnLean.Proofs.Channel.FeeTargets
+import LnLean.Proofs.ProtocolCoverageTargets
+import LnLean.Proofs.ProtocolSigningTargets
+import LnLean.Proofs.Routing.GossipTargets
+import LnLean.Proofs.Security.ReorgTargets
+import LnLean.Proofs.Wire.TLVTargets
 
 set_option autoImplicit false
 
@@ -141,6 +151,26 @@ set_option autoImplicit false
 #print axioms LnLean.Protocol.Handshake.feature_intersection
 #print axioms LnLean.Proofs.Liveness.penalty_economical
 
+/-! ## 16. Proof-wave 3 catalog targets -/
+
+#print axioms LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo
+#print axioms LnLean.Proofs.Security.ReorgTargets.reorg_preserves_channel_safety
+#print axioms LnLean.Proofs.Security.ReorgTargets.deep_reorg_separate_failure_mode
+#print axioms LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey
+#print axioms LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_commits_delay_and_revocationKey
+#print axioms LnLean.Proofs.Bitcoin.ToLocalScriptTargets.commitmentOutputs_toLocal_commits_delay_and_revocationKey
+#print axioms LnLean.Proofs.Bitcoin.commitmentBaseWeight_model_target
+#print axioms LnLean.Wire.TLVStream.wellFormed_iff_pairwise
+#print axioms LnLean.Wire.TLVStream.wellFormed_record_type_unique
+#print axioms LnLean.Channel.Commitment.output_ordering
+#print axioms LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_insufficient
+#print axioms LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_no_checkedSigning
+#print axioms LnLean.Channel.HTLC.dir_id_unique
+#print axioms LnLean.Channel.HTLC.id_unique_of_reachable_cross
+#print axioms LnLean.Protocol.Handshake.funding_signed_signing_contract
+#print axioms LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state
+#print axioms LnLean.Proofs.Routing.GossipTargets.gossip_graph_only_valid_announcements
+
 /-! ## 15. Registry
 
   The registry is a plain list of fully-qualified names.  Keeping it in the
@@ -210,6 +240,24 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Channel.HTLC.amount_conservation,
     `LnLean.Protocol.Handshake.open_bounds,
     `LnLean.Protocol.Handshake.feature_intersection,
-    `LnLean.Proofs.Liveness.penalty_economical ]
+    `LnLean.Proofs.Liveness.penalty_economical,
+    `LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo,
+    `LnLean.Proofs.Security.ReorgTargets.reorg_preserves_channel_safety,
+    `LnLean.Proofs.Security.ReorgTargets.deep_reorg_separate_failure_mode,
+    `LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey,
+    `LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_commits_delay_and_revocationKey,
+    `LnLean.Proofs.Bitcoin.ToLocalScriptTargets.commitmentOutputs_toLocal_commits_delay_and_revocationKey,
+    `LnLean.Proofs.Bitcoin.commitmentBaseWeight_model_target,
+    `LnLean.Wire.TLVStream.wellFormed_iff_pairwise,
+    `LnLean.Wire.TLVStream.wellFormed_record_type_unique,
+    `LnLean.Channel.Commitment.output_ordering,
+    `LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_insufficient,
+    `LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_no_checkedSigning,
+    `LnLean.Channel.HTLC.dir_id_unique,
+    `LnLean.Channel.HTLC.id_unique_of_reachable_cross,
+    `LnLean.Protocol.Handshake.funding_signed_signing_contract,
+    `LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state,
+    `LnLean.Proofs.Routing.GossipTargets.gossip_graph_only_valid_announcements,
+    ]
 
-theorem auditedTheorems_length : auditedTheorems.length = 62 := rfl
+theorem auditedTheorems_length : auditedTheorems.length = 79 := rfl

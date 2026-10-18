@@ -1,8 +1,8 @@
 # Traceability: obligation to BOLT and rust-lightning
 
 **Status:** proof-wave traceability. The table has 48 rows, one for each id in
-`LnLean/Proofs/Obligations.lean` and `docs/THEOREM-INDEX.md`; 37 are `proved`
-and 11 remain `statement-only` after the second proof wave.
+`LnLean/Proofs/Obligations.lean` and `docs/THEOREM-INDEX.md`; 48 are `proved`
+and 0 remain `statement-only` after proof-wave 3.
 
 Anchors are at pinned commit `fe4900930c6bd5786ec4203274d7cf312776a5a6`
 for rust-lightning and `1aadb719b4007c4cea0ba6e36b08c4fb53788dee` for the
@@ -12,34 +12,34 @@ currently needs that marker.
 
 | Id | BOLT section | rust-lightning path:line | Lean target | Status |
 |---|---|---|---|---|
-| `LN-L1-001` | BOLT 2 §Channel Establishment v1; BOLT 3 §Funding Transaction Output | `lightning/src/ln/chan_utils.rs:847` | `LnLean.Bitcoin.fundingScriptPubKey` | statement-only |
+| `LN-L1-001` | BOLT 2 §Channel Establishment v1; BOLT 3 §Funding Transaction Output | `lightning/src/ln/chan_utils.rs:847` | `LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo` | proved |
 | `LN-L1-002` | BOLT 2 §The open_channel Message | `lightning/src/ln/channel.rs:2683` | `LnLean.Bitcoin.fundingOutput_moneyRange` | proved |
-| `LN-L1-003` | BOLT 5 §Commitment Transaction | `lightning/src/chain/channelmonitor.rs:514` | `LnLean.Security.Adversary.reorgAllowed` | statement-only |
-| `LN-L1-004` | BOLT 3 §to_local Output | `lightning/src/ln/chan_utils.rs:687` | `LnLean.Bitcoin.toLocalScript` | statement-only |
+| `LN-L1-003` | BOLT 5 §Commitment Transaction | `lightning/src/chain/channelmonitor.rs:514` | `LnLean.Proofs.Security.ReorgTargets.reorg_preserves_channel_safety; LnLean.Proofs.Security.ReorgTargets.deep_reorg_separate_failure_mode` | proved |
+| `LN-L1-004` | BOLT 3 §to_local Output | `lightning/src/ln/chan_utils.rs:687` | `LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.commitmentOutputs_toLocal_commits_delay_and_revocationKey` | proved |
 | `LN-L1-005` | BOLT 3 §to_local_anchor and to_remote_anchor Output | `lightning/src/ln/channel.rs:989` | `LnLean.Bitcoin.anchorValue_eq` | proved |
-| `LN-L1-006` | BOLT 3 §Expected Weight of the Commitment Transaction | `lightning/src/ln/chan_utils.rs:281` | `LnLean.Bitcoin.commitmentBaseWeight` | statement-only |
+| `LN-L1-006` | BOLT 3 §Expected Weight of the Commitment Transaction | `lightning/src/ln/chan_utils.rs:281` | `LnLean.Proofs.Bitcoin.commitmentBaseWeight_model_target` | proved |
 | `LN-CR-001` | BOLT 2 §Adding an HTLC | `lightning/src/ln/channel.rs:8370` | `LnLean.Crypto.Hash.paymentHash_sha256_contract` | proved |
 | `LN-CR-002` | BOLT 3 §Commitment Transaction Construction | `lightning/src/ln/chan_utils.rs:1450` | `LnLean.Crypto.Sig.commitmentSig_contract` | proved |
 | `LN-CR-003` | BOLT 4 §Packet Structure | `lightning/src/ln/onion_payment.rs:505` | `LnLean.Crypto.Hash.onionHmacTag_size_and_bindsOn` | proved |
 | `LN-CR-004` | BOLT 1 §Fundamental Types; BOLT 1 Appendix A | `lightning/src/util/ser.rs:442` | `LnLean.Wire.decode_encode` | proved |
-| `LN-CR-005` | BOLT 1 §Type-Length-Value Format | `lightning/src/util/ser.rs:369` | `LnLean.Wire.TLVStream.WellFormed` | statement-only |
+| `LN-CR-005` | BOLT 1 §Type-Length-Value Format | `lightning/src/util/ser.rs:369` | `LnLean.Wire.TLVStream.wellFormed_iff_pairwise; LnLean.Wire.TLVStream.wellFormed_record_type_unique` | proved |
 | `LN-CR-006` | BOLT 1 §Lightning Message Format | `lightning/src/ln/peer_handler.rs:331` | `LnLean.Wire.Message.decode_length` | proved |
 | `LN-CH-001` | BOLT 3 §Commitment Transaction | `lightning/src/ln/chan_utils.rs:716` | `LnLean.Security.Ledger.step_conserves` | proved |
 | `LN-CH-002` | BOLT 3 §Commitment Transaction Outputs | `lightning/src/ln/chan_utils.rs:1908` | `LnLean.Channel.Commitment.outputs_nonnegative` | proved |
-| `LN-CH-003` | BOLT 3 §Transaction Output Ordering; BOLT 3 §Trimmed Outputs | `lightning/src/ln/chan_utils.rs:1985` | `LnLean.Channel.Commitment.output_ordering` | statement-only |
+| `LN-CH-003` | BOLT 3 §Transaction Output Ordering; BOLT 3 §Trimmed Outputs | `lightning/src/ln/chan_utils.rs:1985` | `LnLean.Channel.Commitment.output_ordering` | proved |
 | `LN-CH-004` | BOLT 2 §Committing Updates So Far | `lightning/src/ln/channel.rs:6270` | `LnLean.Security.advance_monotone` | proved |
-| `LN-CH-005` | BOLT 3 §Fees; BOLT 5 §Commitment Transaction | `lightning/src/ln/channel.rs:3721` | `LnLean.Channel.Fee.feeInsufficient` | statement-only |
+| `LN-CH-005` | BOLT 3 §Fees; BOLT 5 §Commitment Transaction | `lightning/src/ln/channel.rs:3721` | `LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_insufficient; LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_no_checkedSigning` | proved |
 | `LN-CH-006` | BOLT 2 §Bounding exposure to trimmed in-flight HTLCs | `lightning/src/ln/channel.rs:4223` | `LnLean.Channel.Reserve.bounds` | proved |
 | `LN-HT-001` | BOLT 2 §Removing an HTLC | `lightning/src/ln/channel.rs:8640; lightning/src/ln/chan_utils.rs:841` | `LnLean.Security.HtlcRecord.fulfill_sound` | proved |
 | `LN-HT-002` | BOLT 3 §HTLC-Timeout and HTLC-Success Transactions | `lightning/src/ln/chan_utils.rs:875; lightning/src/ln/channel.rs:8671` | `LnLean.Security.HtlcRecord.fail_only_after_expiry` | proved |
 | `LN-HT-003` | BOLT 2 §Adding an HTLC | `lightning/src/ln/chan_utils.rs:716` | `LnLean.Channel.HTLC.amount_conservation` | proved |
-| `LN-HT-004` | BOLT 2 §Adding an HTLC | `lightning/src/ln/channel.rs:8370` | `LnLean.Channel.HTLC.id_unique` | statement-only |
+| `LN-HT-004` | BOLT 2 §Adding an HTLC | `lightning/src/ln/channel.rs:8370` | `LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross` | proved |
 | `LN-HT-005` | BOLT 3 §Per-commitment Secret Requirements | `lightning/src/ln/chan_utils.rs:518` | `LnLean.Security.revoked_commitment_is_old` | proved |
 | `LN-HT-006` | BOLT 5 §Revoked Transaction Close Handling | `lightning/src/ln/channel.rs:9471; lightning/src/chain/channelmonitor.rs:5079` | `LnLean.Security.breach_penalty_spends_both` | proved |
 | `LN-PR-001` | BOLT 2 §The open_channel Message | `lightning/src/ln/channelmanager.rs:17521` | `LnLean.Protocol.Handshake.open_bounds` | proved |
 | `LN-PR-002` | BOLT 2 §The channel_ready Message | `lightning/src/ln/channelmanager.rs:17614` | `LnLean.Protocol.Handshake.channel_ready_gate` | proved |
-| `LN-PR-003` | BOLT 2 §The funding_signed Message | `lightning/src/ln/channel.rs:2107` | `LnLean.Protocol.Handshake.funding_signed_valid` | statement-only |
-| `LN-PR-004` | BOLT 2 §Committing Updates So Far | `lightning/src/ln/channel.rs:2386; lightning/src/ln/channel.rs:6270` | `LnLean.Protocol.Messages.commitment_signed_covers` | statement-only |
+| `LN-PR-003` | BOLT 2 §The funding_signed Message | `lightning/src/ln/channel.rs:2107` | `LnLean.Protocol.Handshake.funding_signed_signing_contract` | proved |
+| `LN-PR-004` | BOLT 2 §Committing Updates So Far | `lightning/src/ln/channel.rs:2386; lightning/src/ln/channel.rs:6270` | `LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state` | proved |
 | `LN-PR-005` | BOLT 2 §Message Retransmission | `lightning/src/ln/channelmanager.rs:17831; lightning/src/ln/channel.rs:10826` | `LnLean.Protocol.Peer.reestablish_no_rollback` | proved |
 | `LN-PR-006` | BOLT 9 §Features; BOLT 2 §Defined Channel Types | `lightning/src/ln/channel.rs:4702` | `LnLean.Protocol.Handshake.feature_intersection` | proved |
 | `LN-RT-001` | BOLT 7 §Recommendations for Routing | `lightning/src/routing/router.rs:825; lightning/src/routing/router.rs:2797` | `LnLean.Security.Route.wellFormed_connected; LnLean.Security.Route.wellFormed_capacity; LnLean.Security.Route.wellFormed_nonempty` | proved |
@@ -47,7 +47,7 @@ currently needs that marker.
 | `LN-RT-003` | BOLT 4 §Onion Decryption | `lightning/src/ln/onion_payment.rs:505` | `LnLean.Routing.Onion.peel_deterministic` | proved |
 | `LN-RT-004` | BOLT 4 §Packet Structure | `lightning/src/ln/onion_payment.rs:505` | `LnLean.Routing.Onion.hmac_sound` | proved |
 | `LN-RT-005` | BOLT 4 §Payload for the Last Node; BOLT 7 §HTLC Fees | `lightning/src/routing/router.rs:657` | `LnLean.Routing.Route.cltv_accumulates` | proved |
-| `LN-RT-006` | BOLT 7 §The channel_announcement Message | `lightning/src/routing/gossip.rs:515; lightning/src/routing/gossip.rs:1012` | `LnLean.Routing.Gossip.announcement_valid` | statement-only |
+| `LN-RT-006` | BOLT 7 §The channel_announcement Message | `lightning/src/routing/gossip.rs:515; lightning/src/routing/gossip.rs:1012` | `LnLean.Proofs.Routing.GossipTargets.gossip_graph_only_valid_announcements` | proved |
 | `LN-PM-001` | BOLT 11 §Tagged Fields | `lightning-invoice/src/lib.rs:1662; lightning-invoice/src/lib.rs:1473` | `LnLean.Security.Invoice.consistent_hash; LnLean.Security.Invoice.consistent_amount` | proved |
 | `LN-PM-002` | BOLT 11 §Data Part; BOLT 11 §Payer / Payee Interactions | `lightning-invoice/src/lib.rs:272; lightning-invoice/src/lib.rs:588` | `LnLean.Payment.Invoice.signature_valid` | proved |
 | `LN-PM-003` | BOLT 4 §Payload for the Last Node; BOLT 11 §Tagged Fields | `lightning-invoice/src/lib.rs:1195; lightning/src/ln/onion_payment.rs:856` | `LnLean.Payment.Invoice.payment_secret_match` | proved |
@@ -79,6 +79,24 @@ the four explicit `Assumptions P`; `LN-SEC-005` is the bounded-schedule
 theorem; and `LN-SEC-006` requires a watchtower report, not merely `live`.
 `LN-PR-006` uses the support-set intersection under BOLT 1 survival, not raw
 bitwise AND. See `docs/THEOREM-INDEX.md` and the lane reports.
+
+**Proof-wave 3 scope notes.** The final eleven rows now name exact, sorry-free
+theorems: `LN-L1-001` is conditional on the witness-script hash link and a
+finite pair-level C1 admission; `LN-L1-003` keeps the common-tip and
+bounded-depth hypotheses explicit and retains a deep-reorg failure mode;
+`LN-L1-004` targets the full two-branch `toLocalScriptFull` model and does not
+claim script execution; `LN-L1-006` distinguishes the BOLT 3 fee-basis
+constants from literal serialization weight and proves the 8 WU anchor gap;
+`LN-CR-005` is the exact pairwise-sorted characterization; `LN-CH-003` is
+proved for the rich `CommitmentTx` model while D12 still refutes the legacy
+function; `LN-CH-005` is the exact fee-gate characterization; `LN-HT-004` is
+per-sender uniqueness plus the explicit `CrossDisjoint` global form (the
+literal global claim is refuted); `LN-PR-003` is conditional on
+`FundingSigningLaw` and `KeyBinding`; `LN-PR-004` is derived from a per-output
+signed-data relation and commitment value equations, with the wire-only
+negative results retained; and `LN-RT-006` covers reachable signature-gated
+gossip states, while raw `applyGossip` remains unfiltered and G19 key
+attribution is separate.
 
 ## Anchor policy
 

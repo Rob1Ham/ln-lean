@@ -1,23 +1,24 @@
 {
-  "files": 130,
-  "obligations": 80,
+  "files": 140,
+  "obligations": 81,
   "catalog_obligations": 48,
-  "declarations": 4151,
+  "declarations": 4506,
   "sorries": 0,
   "by_domain": {
     "Bitcoin": 3,
     "Channel": 23,
     "ModelHardening": 6,
     "Routing": 1,
+    "Security": 1,
     "WaveD": 33,
     "WaveE": 14
   },
   "by_kind": {
-    "abbrev": 18,
-    "def": 957,
-    "inductive": 34,
-    "structure": 98,
-    "theorem": 3044
+    "abbrev": 27,
+    "def": 1034,
+    "inductive": 36,
+    "structure": 101,
+    "theorem": 3308
   },
   "duplicate_ids": [],
   "catalog_duplicate_ids": [],
@@ -252,6 +253,13 @@
       "domain": "Routing",
       "file": "LnLean/Proofs/Routing/GraphProps.lean",
       "line": 512
+    },
+    {
+      "id": "LN-L1-003",
+      "claim": "",
+      "domain": "Security",
+      "file": "LnLean/Proofs/Security/ReorgTargets.lean",
+      "line": 76
     },
     {
       "id": "LN-WD-D01",
@@ -586,11 +594,11 @@
   "catalog_rows": [
     {
       "id": "LN-L1-001",
-      "claim": "The funding output is P2WSH over the 2-of-2 funding witness script.",
-      "lean_target": "LnLean.Bitcoin.fundingScriptPubKey",
+      "claim": "The funding output is P2WSH over the constructed 2-of-2 funding witness script, conditional on the witness-script hash link and a finite pair-level collision-free admission.",
+      "lean_target": "LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo",
       "boltdoc": "BOLT 2 \u00a7Channel Establishment v1; BOLT 3 \u00a7Funding Transaction Output",
       "anchor": "lightning/src/ln/chan_utils.rs:847",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "l1"
     },
     {
@@ -604,20 +612,20 @@
     },
     {
       "id": "LN-L1-003",
-      "claim": "Channel safety is preserved for reorgs within the adversary's depth budget, and deep reorgs are a separate failure mode.",
-      "lean_target": "LnLean.Security.Adversary.reorgAllowed",
+      "claim": "Under a common chain tip and the adversary's bounded reorg-depth budget, channel safety is preserved; deep reorgs are a separate failure mode.",
+      "lean_target": "LnLean.Proofs.Security.ReorgTargets.reorg_preserves_channel_safety; LnLean.Proofs.Security.ReorgTargets.deep_reorg_separate_failure_mode",
       "boltdoc": "BOLT 5 \u00a7Commitment Transaction",
       "anchor": "lightning/src/chain/channelmonitor.rs:514",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "l1"
     },
     {
       "id": "LN-L1-004",
-      "claim": "The to_local commitment output carries the CSV contest delay and the revocation key.",
-      "lean_target": "LnLean.Bitcoin.toLocalScript",
+      "claim": "The full BOLT 3 to_local witness script carries the CSV contest delay and the revocation key, and the commitment output commits to both.",
+      "lean_target": "LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.commitmentOutputs_toLocal_commits_delay_and_revocationKey",
       "boltdoc": "BOLT 3 \u00a7to_local Output",
       "anchor": "lightning/src/ln/chan_utils.rs:687",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "l1"
     },
     {
@@ -631,11 +639,11 @@
     },
     {
       "id": "LN-L1-006",
-      "claim": "The commitment base weight is the BOLT 3 constant 724 before HTLC outputs.",
-      "lean_target": "LnLean.Bitcoin.commitmentBaseWeight",
+      "claim": "The commitment base weight is the BOLT 3 fee-basis constant 724 before HTLC outputs, 1124 with anchors, plus 172 per untrimmed HTLC, with the anchor serialization gap explicit.",
+      "lean_target": "LnLean.Proofs.Bitcoin.commitmentBaseWeight_model_target",
       "boltdoc": "BOLT 3 \u00a7Expected Weight of the Commitment Transaction",
       "anchor": "lightning/src/ln/chan_utils.rs:281",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "l1"
     },
     {
@@ -676,11 +684,11 @@
     },
     {
       "id": "LN-CR-005",
-      "claim": "A TLV stream is strictly sorted by type and has no duplicate types.",
-      "lean_target": "LnLean.Wire.TLVStream.WellFormed",
+      "claim": "A TLV stream is well formed exactly when its types are pairwise strictly increasing, and well-formed streams have no duplicate record types.",
+      "lean_target": "LnLean.Wire.TLVStream.wellFormed_iff_pairwise; LnLean.Wire.TLVStream.wellFormed_record_type_unique",
       "boltdoc": "BOLT 1 \u00a7Type-Length-Value Format",
       "anchor": "lightning/src/util/ser.rs:369",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "cryptoWire"
     },
     {
@@ -712,11 +720,11 @@
     },
     {
       "id": "LN-CH-003",
-      "claim": "Commitment outputs are ordered by value then script, and dust HTLCs are trimmed.",
+      "claim": "In the rich commitment-output model, outputs are sorted by value, script, and CLTV, and dust HTLCs are trimmed; the legacy output function remains refuted by D12.",
       "lean_target": "LnLean.Channel.Commitment.output_ordering",
       "boltdoc": "BOLT 3 \u00a7Transaction Output Ordering; BOLT 3 \u00a7Trimmed Outputs",
       "anchor": "lightning/src/ln/chan_utils.rs:1985",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "channel"
     },
     {
@@ -730,11 +738,11 @@
     },
     {
       "id": "LN-CH-005",
-      "claim": "A commitment with an insufficient feerate for its weight is rejected before signing.",
-      "lean_target": "LnLean.Channel.Fee.feeInsufficient",
+      "claim": "A commitment is rejected before signing exactly when its feerate is insufficient for its weight, equivalently when no checked commitment_signed step exists in the normal phase.",
+      "lean_target": "LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_insufficient; LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_no_checkedSigning",
       "boltdoc": "BOLT 3 \u00a7Fees; BOLT 5 \u00a7Commitment Transaction",
       "anchor": "lightning/src/ln/channel.rs:3721",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "channel"
     },
     {
@@ -775,11 +783,11 @@
     },
     {
       "id": "LN-HT-004",
-      "claim": "An HTLC id is unique within the live HTLC set of a channel.",
-      "lean_target": "LnLean.Channel.HTLC.id_unique",
+      "claim": "An HTLC id is unique among the live HTLCs of one sender in a channel; global uniqueness holds only under explicit cross-direction disjointness.",
+      "lean_target": "LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross",
       "boltdoc": "BOLT 2 \u00a7Adding an HTLC",
       "anchor": "lightning/src/ln/channel.rs:8370",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "htlcRevocation"
     },
     {
@@ -820,20 +828,20 @@
     },
     {
       "id": "LN-PR-003",
-      "claim": "funding_signed carries a valid signature over the funding transaction.",
-      "lean_target": "LnLean.Protocol.Handshake.funding_signed_valid",
+      "claim": "Under an explicit signing law and key-binding hypothesis, funding_signed carries a valid signature over the funding transaction and attributes it to the funding key; C3 alone gives neither.",
+      "lean_target": "LnLean.Protocol.Handshake.funding_signed_signing_contract",
       "boltdoc": "BOLT 2 \u00a7The funding_signed Message",
       "anchor": "lightning/src/ln/channel.rs:2107",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "protocol"
     },
     {
       "id": "LN-PR-004",
-      "claim": "commitment_signed covers exactly the current HTLC set and fee.",
-      "lean_target": "LnLean.Protocol.Messages.commitment_signed_covers",
+      "claim": "Under a per-output signed-data relation and the BOLT 3 commitment value equations, commitment_signed covers exactly the current HTLC set and fee; the wire record alone determines neither.",
+      "lean_target": "LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state",
       "boltdoc": "BOLT 2 \u00a7Committing Updates So Far",
       "anchor": "lightning/src/ln/channel.rs:2386; lightning/src/ln/channel.rs:6270",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "protocol"
     },
     {
@@ -901,11 +909,11 @@
     },
     {
       "id": "LN-RT-006",
-      "claim": "The gossip graph contains only channels with valid announcement signatures.",
-      "lean_target": "LnLean.Routing.Gossip.announcement_valid",
+      "claim": "In every reachable signature-gated gossip state, every graph edge is backed by a stored announcement whose four BOLT 7 signatures verify; raw applyGossip remains unfiltered.",
+      "lean_target": "LnLean.Proofs.Routing.GossipTargets.gossip_graph_only_valid_announcements",
       "boltdoc": "BOLT 7 \u00a7The channel_announcement Message",
       "anchor": "lightning/src/routing/gossip.rs:515; lightning/src/routing/gossip.rs:1012",
-      "status": "statementOnly",
+      "status": "proved",
       "domain": "routing"
     },
     {
