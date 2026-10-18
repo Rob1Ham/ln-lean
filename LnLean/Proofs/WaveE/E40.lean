@@ -150,21 +150,13 @@ theorem waveE_e40_acceptChannelUpdate_mkUpdate_ne (verify : SigVerifier)
 
 /-! ## Accepted `channel_update`s -/
 
-/-- **Faithful unconditional form of `LN-GOSSIP-003`.**  Every accepted
-`channel_update` carries a 64-byte signature.
-
-This is *false* for an arbitrary `SigVerifier`; see
-`waveE_e40_empty_signature_accepted_counterexample`.  The missing model field
-is the admission contract `LengthRespecting verify` on the verifier (or,
-equivalently, a `GossipSignature.Valid` check in `acceptChannelUpdate`).
-The conditional theorem `waveE_e40_accepted_update_signature_length_of_length_respecting`
-and the counterexample below are the proved replacements. -/
--- OBLIGATION: LN-WE-E40 an accepted channel_update has a 64-byte signature (missing admission: SigVerifier may accept a signature whose bytes.size ≠ 64)
-theorem waveE_e40_accepted_update_signature_length (verify : SigVerifier)
-    (s : GossipState) (u : ChannelUpdate)
-    (h : acceptChannelUpdate verify s u ≠ s) :
-    u.signature.Valid := by
-  sorry
+-- REPAIRED: the unconditional `waveE_e40_accepted_update_signature_length` is
+-- false for an arbitrary `SigVerifier`; see the retained counterexample
+-- `waveE_e40_empty_signature_accepted_counterexample`.  The strongest true
+-- replacement is `waveE_e40_accepted_update_signature_length_iff_lengthRespecting`
+-- (acceptance implies a 64-byte signature exactly under `LengthRespecting`);
+-- its forward direction is the conditional
+-- `waveE_e40_accepted_update_signature_length_of_length_respecting`.
 
 /-- **Conditional 64-byte theorem for `channel_update`.**  Under a
 length-respecting verifier, acceptance implies a 64-byte signature.  The
