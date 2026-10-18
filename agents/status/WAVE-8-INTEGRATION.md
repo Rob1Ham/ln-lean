@@ -5,9 +5,11 @@
 **Branch:** `wave-h/48`
 **Code commit:** `2052425` — `[PROOF] integrate wave 8: 43 green modules and 319-byte open_channel`
 **Status commit:** the commit containing this report (docs only)
-**Push:** not attempted; the stored GitHub token is invalid and
-`/tmp/opencode/gh-token` is absent. Push must be non-force to
-`origin/repair/integrated` when credentials are available.
+**Push:** not performed. `git push --dry-run origin wave-h/48:repair/integrated`
+returned `403 Permission to Rob1Ham/ln-lean.git denied to Rob1Ham`; `gh auth
+status` reports the `hosts.yml` token invalid and `/tmp/opencode/gh-token` is
+absent. Push must be non-force to `origin/repair/integrated` when credentials
+are available.
 
 ## Gate
 
