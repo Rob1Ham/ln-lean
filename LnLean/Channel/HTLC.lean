@@ -1362,4 +1362,199 @@ theorem id_unique_of_reachable_cross {b : HtlcBook} (hb : b.Reachable)
 
 end HTLC
 
+/-! ## Direction-tagged channel-wide identifiers
+
+BOLT 2 numbers `update_add_htlc.id` independently for each sender: the wire
+value is a per-sender counter (`refs/bolts/02-peer-protocol.md:2838-2843`), not
+a channel-wide identifier.  The existing record therefore has to be read
+together with `direction`; that is exactly what the per-sender theorem
+`HTLC.dir_id_unique` does, while the literal channel-wide form needs
+`HtlcBook.CrossDisjoint` (`cross_direction_duplicate` shows why).
+
+This section adds the missing namespace explicitly.  `HTLCTag` is
+`Direction × Nat`, and `HTLCRecord.tag` maps a record to `(direction, id)`.
+This is a *view* of the existing fields, not a new wire encoding: it does not
+change `HTLCRecord`, `addHTLC`, either per-sender counter, `HtlcBook`'s public
+API, or any theorem above.  Under this namespace the channel-wide uniqueness
+claim becomes a property of every well-formed (and hence every reachable) book
+without `CrossDisjoint`: the first component separates the two independent
+counters, and `WF` supplies per-sender id distinctness.  The reachability form
+and the `crossBook` connection live in
+`LnLean.Proofs.Channel.HtlcGlobalIdTargets`.
+
+Both BOLT 2 counters are `Nat` in this model (`HtlcBook.nextLocalId`,
+`HtlcBook.nextRemoteId`), so the tag loses no information: `(direction, id)`
+determines both the sender and every bit of that sender's counter value.  A
+single-`Nat` encoding such as `2 * id` / `2 * id + 1` is also injective, but it
+is a model-side encoding with no BOLT 2 wire meaning; the pair is the faithful
+representation and is the one used below. -/
+
+/-- A channel-wide HTLC identifier: the sender (`Direction.local` = offered by
+us, `Direction.remote` = received by us) together with that sender's BOLT 2
+`update_add_htlc.id`. -/
+abbrev HTLCTag : Type := Direction × Nat
+
+namespace HTLCRecord
+
+/-- The direction-tagged, channel-wide identifier of a record.  It is the
+faithful reading of "HTLC id" for a whole channel; the bare `id` field is only
+unique per sender. -/
+def tag (r : HTLCRecord) : HTLCTag := (r.direction, r.id)
+
+@[simp] theorem tag_fst (r : HTLCRecord) : r.tag.1 = r.direction := rfl
+
+@[simp] theorem tag_snd (r : HTLCRecord) : r.tag.2 = r.id := rfl
+
+theorem tag_eq_iff {r1 r2 : HTLCRecord} :
+    r1.tag = r2.tag ↔ r1.direction = r2.direction ∧ r1.id = r2.id := by
+  constructor
+  · intro h
+    exact ⟨congrArg Prod.fst h, congrArg Prod.snd h⟩
+  · rintro ⟨hdir, hid⟩
+    unfold tag
+    rw [hdir, hid]
+
+theorem direction_eq_of_tag_eq {r1 r2 : HTLCRecord} (h : r1.tag = r2.tag) :
+    r1.direction = r2.direction :=
+  (tag_eq_iff.mp h).1
+
+theorem id_eq_of_tag_eq {r1 r2 : HTLCRecord} (h : r1.tag = r2.tag) :
+    r1.id = r2.id :=
+  (tag_eq_iff.mp h).2
+
+theorem tag_congr {r1 r2 : HTLCRecord} (h : r1 = r2) : r1.tag = r2.tag :=
+  congrArg tag h
+
+theorem tag_ne_of_direction_ne {r1 r2 : HTLCRecord}
+    (h : r1.direction ≠ r2.direction) : r1.tag ≠ r2.tag :=
+  fun htag => h (direction_eq_of_tag_eq htag)
+
+theorem tag_ne_of_id_ne {r1 r2 : HTLCRecord} (h : r1.id ≠ r2.id) :
+    r1.tag ≠ r2.tag :=
+  fun htag => h (id_eq_of_tag_eq htag)
+
+end HTLCRecord
+
+/-- The direction-tagged identifiers of a record list, in list order. -/
+def taggedIds (hs : List HTLCRecord) : List HTLCTag :=
+  hs.map HTLCRecord.tag
+
+theorem mem_taggedIds_iff {t : HTLCTag} {hs : List HTLCRecord} :
+    t ∈ taggedIds hs ↔ ∃ r ∈ hs, r.tag = t := by
+  unfold taggedIds
+  exact List.mem_map
+
+/-- Mapping an already duplicate-free list under a function that is injective
+on that list preserves `Nodup`. -/
+theorem nodup_map_of_inj_on {α β : Type} {l : List α} {f : α → β}
+    (hl : l.Nodup) (hinj : ∀ a ∈ l, ∀ b ∈ l, f a = f b → a = b) :
+    (l.map f).Nodup := by
+  rw [List.nodup_iff_eq_of_getElem_eq] at hl ⊢
+  intro i j hi hj heq
+  have hi' : i < l.length := by simpa using hi
+  have hj' : j < l.length := by simpa using hj
+  have heq' : f l[i] = f l[j] := by simpa using heq
+  exact hl i j hi' hj'
+    (hinj l[i] (List.getElem_mem hi') l[j] (List.getElem_mem hj') heq')
+
+/-- A record list whose ids are pairwise distinct has no duplicate records. -/
+theorem nodup_of_map_id_nodup {l : List HTLCRecord}
+    (h : (l.map HTLCRecord.id).Nodup) : l.Nodup := by
+  rw [List.nodup_iff_eq_of_getElem_eq] at h ⊢
+  intro i j hi hj heq
+  exact h i j (by simpa using hi) (by simpa using hj)
+    (by simpa using congrArg HTLCRecord.id heq)
+
+/-- Per-sender id distinctness makes the tagged map injective on the list.
+The direction component of the tag is what supplies the cross-sender part, so
+no `CrossDisjoint` premise appears. -/
+theorem eq_of_tag_eq_of_dir_nodup (l : List HTLCRecord)
+    (hnd : ∀ dir : Direction,
+      ((l.filter (fun r => decide (r.direction = dir))).map HTLCRecord.id).Nodup) :
+    ∀ r1 ∈ l, ∀ r2 ∈ l, r1.tag = r2.tag → r1 = r2 := by
+  intro r1 h1 r2 h2 htag
+  have hdir : r1.direction = r2.direction :=
+    HTLCRecord.direction_eq_of_tag_eq htag
+  have hid : r1.id = r2.id := HTLCRecord.id_eq_of_tag_eq htag
+  have h1f : r1 ∈ l.filter (fun r => decide (r.direction = r1.direction)) :=
+    List.mem_filter.mpr ⟨h1, by simp⟩
+  have h2f : r2 ∈ l.filter (fun r => decide (r.direction = r1.direction)) :=
+    List.mem_filter.mpr ⟨h2, by simp [hdir]⟩
+  exact eq_of_id_eq_of_htlcIds_nodup (hnd r1.direction) r1 h1f r2 h2f hid
+
+namespace HtlcBook
+
+/-- The direction-tagged ids of the live HTLC set.  This is the channel-wide
+counterpart of `liveIds`, which projects only the per-sender id. -/
+def liveTags (b : HtlcBook) : List HTLCTag :=
+  taggedIds (htlcSet b.records)
+
+/-- The direction-tagged ids of one sender's live HTLCs. -/
+def liveTagsOf (b : HtlcBook) (dir : Direction) : List HTLCTag :=
+  (b.liveOf dir).map HTLCRecord.tag
+
+theorem mem_liveTags_iff {t : HTLCTag} {b : HtlcBook} :
+    t ∈ b.liveTags ↔ ∃ r ∈ htlcSet b.records, r.tag = t := by
+  unfold liveTags taggedIds
+  exact List.mem_map
+
+theorem mem_liveTagsOf_iff {t : HTLCTag} {b : HtlcBook} {dir : Direction} :
+    t ∈ b.liveTagsOf dir ↔ ∃ r ∈ b.liveOf dir, r.tag = t := by
+  unfold liveTagsOf
+  exact List.mem_map
+
+/-- A sender's live records have no duplicate record. -/
+theorem liveOf_nodup (b : HtlcBook) (hb : b.WF) (dir : Direction) :
+    (b.liveOf dir).Nodup := by
+  have h := liveIdsOf_nodup b hb dir
+  unfold liveIdsOf at h
+  exact nodup_of_map_id_nodup h
+
+/-- The live record list of a well-formed book has no duplicate record.  The
+per-sender `Nodup` fields rule out a local duplicate and a remote duplicate;
+the two direction filters are disjoint because a record has one direction. -/
+theorem htlcSet_nodup_of_wf (b : HtlcBook) (hb : b.WF) :
+    (htlcSet b.records).Nodup := by
+  have hlocal := liveOf_nodup b hb .local
+  have hremote := liveOf_nodup b hb .remote
+  have hdisj : ∀ a ∈ b.liveOf .local, ∀ c ∈ b.liveOf .remote, a ≠ c := by
+    intro a ha c hc hac
+    have hda : a.direction = .local :=
+      of_decide_eq_true (List.mem_filter.mp ha).2
+    have hdc : c.direction = .remote :=
+      of_decide_eq_true (List.mem_filter.mp hc).2
+    have hdir : a.direction = c.direction := by rw [hac]
+    rw [hda, hdc] at hdir
+    exact absurd hdir (by decide)
+  have happ : (b.liveOf .local ++ b.liveOf .remote).Nodup :=
+    List.nodup_append.mpr ⟨hlocal, hremote, hdisj⟩
+  have hperm : List.Perm (b.liveOf .local ++ b.liveOf .remote)
+      (htlcSet b.records) := by
+    simpa [liveOf] using htlc_filter_direction_perm (htlcSet b.records)
+  exact hperm.nodup happ
+
+/-- **Channel-wide tagged uniqueness from the allocator invariant.**  In a
+well-formed book a direction-tagged id determines the live record, with no
+cross-direction assumption.  The first component of the tag is exactly the
+cross-sender separation that `CrossDisjoint` used to supply for the bare id. -/
+theorem tagged_id_unique_of_wf (b : HtlcBook) (hb : b.WF) :
+    ∀ r1 ∈ htlcSet b.records, ∀ r2 ∈ htlcSet b.records,
+      r1.tag = r2.tag → r1 = r2 := by
+  refine eq_of_tag_eq_of_dir_nodup (htlcSet b.records) ?_
+  intro dir
+  cases dir
+  · simpa [liveIdsOf, liveOf] using hb.nodup_local
+  · simpa [liveIdsOf, liveOf] using hb.nodup_remote
+
+/-- The live direction-tagged ids of a well-formed book are pairwise distinct.
+This is the channel-wide form of `liveIdsOf_nodup`; unlike `liveIds_nodup_of_cross`
+it needs no `CrossDisjoint` field. -/
+theorem liveTags_nodup_of_wf (b : HtlcBook) (hb : b.WF) :
+    b.liveTags.Nodup := by
+  unfold liveTags taggedIds
+  exact nodup_map_of_inj_on (htlcSet_nodup_of_wf b hb)
+    (tagged_id_unique_of_wf b hb)
+
+end HtlcBook
+
 end LnLean.Channel

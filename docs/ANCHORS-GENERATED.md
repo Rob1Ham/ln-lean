@@ -3,8 +3,8 @@
 Extracted from `LnLean/**.lean` by `scripts/collect-anchors.py`.
 The pinned commits are in `refs/PINNED.md`.
 
-- Lean files scanned: **176**
-- files with anchors: **172**
+- Lean files scanned: **182**
+- files with anchors: **178**
 
 | Lean file | Kind | Anchor |
 |---|---|---|
@@ -173,6 +173,8 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Bitcoin/ScriptProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:687` |
 | `LnLean/Proofs/Bitcoin/ScriptProps.lean` | LDK | `lightning/src/ln/channel.rs:6270` |
 | `LnLean/Proofs/Bitcoin/ScriptProps.lean` | LDK | `lightning/src/ln/channel.rs:989` |
+| `LnLean/Proofs/Bitcoin/SpendTargets.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/Bitcoin/SpendTargets.lean` | LDK | `lightning/src/ln/chan_utils.rs:847` |
 | `LnLean/Proofs/Bitcoin/ToLocalScriptTargets.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Bitcoin/ToLocalScriptTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Bitcoin/ToLocalScriptTargets.lean` | LDK | `lightning/src/ln/chan_utils.rs:687` |
@@ -191,6 +193,8 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Channel/BreachProps.lean` | LDK | `lightning/src/chain/channelmonitor.rs:5101` |
 | `LnLean/Proofs/Channel/BreachProps.lean` | LDK | `lightning/src/chain/channelmonitor.rs:5104` |
 | `LnLean/Proofs/Channel/BreachProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:537` |
+| `LnLean/Proofs/Channel/CommitmentIntegrationTargets.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/Channel/CommitmentIntegrationTargets.lean` | LDK | `lightning/src/ln/chan_utils.rs:919` |
 | `LnLean/Proofs/Channel/CommitmentOrderTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Channel/CommitmentTxProps.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Channel/CommitmentTxProps.lean` | BOLT | `BOLT 3` |
@@ -215,6 +219,7 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Channel/HTLCProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:875` |
 | `LnLean/Proofs/Channel/HTLCProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:919` |
 | `LnLean/Proofs/Channel/HTLCProps.lean` | LDK | `lightning/src/ln/channel.rs:8368` |
+| `LnLean/Proofs/Channel/HtlcGlobalIdTargets.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Channel/PenaltyProps.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Channel/PenaltyProps.lean` | BOLT | `BOLT 5` |
 | `LnLean/Proofs/Channel/PenaltyProps.lean` | LDK | `lightning/src/chain/channelmonitor.rs:2424` |
@@ -247,6 +252,8 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Channel/StateMachineProps.lean` | LDK | `lightning/src/ln/channel.rs:1552` |
 | `LnLean/Proofs/Channel/StateMachineProps.lean` | LDK | `lightning/src/ln/channel.rs:799` |
 | `LnLean/Proofs/Channel/StateMachineProps.lean` | LDK | `lightning/src/ln/channelmanager.rs` |
+| `LnLean/Proofs/ConformanceTargets.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/ConformanceTargets.lean` | LDK | `lightning/src/util/ser.rs:442` |
 | `LnLean/Proofs/Conservation.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Conservation.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Conservation.lean` | BOLT | `BOLT 5` |
@@ -601,6 +608,10 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/ProtocolSigningTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/ProtocolTargets.lean` | BOLT | `BOLT 1` |
 | `LnLean/Proofs/ProtocolTargets.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/ProtocolWireTargets.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/ProtocolWireTargets.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/ProtocolWireTargets.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/Routing/GossipAttributionTargets.lean` | BOLT | `BOLT 7` |
 | `LnLean/Proofs/Routing/GossipProps.lean` | BOLT | `BOLT 7` |
 | `LnLean/Proofs/Routing/GossipProps.lean` | LDK | `lightning/src/routing/gossip.rs:1012` |
 | `LnLean/Proofs/Routing/GossipProps.lean` | LDK | `lightning/src/routing/gossip.rs:1534` |
@@ -822,6 +833,7 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Protocol/Laws.lean` | LDK | `lightning/src/ln/wire.rs:452` |
 | `LnLean/Protocol/Messages.lean` | BOLT | `BOLT 1` |
 | `LnLean/Protocol/Messages.lean` | BOLT | `BOLT 2` |
+| `LnLean/Protocol/Messages.lean` | BOLT | `BOLT 3` |
 | `LnLean/Protocol/Messages.lean` | LDK | `lightning/src/ln/msgs.rs:111` |
 | `LnLean/Protocol/Messages.lean` | LDK | `lightning/src/ln/wire.rs` |
 | `LnLean/Protocol/Messages.lean` | LDK | `lightning/src/ln/wire.rs:494` |

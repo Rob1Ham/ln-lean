@@ -155,13 +155,39 @@ Five disjoint lanes extended the model and promoted eight more exact targets.
 - [x] Full gate: build 182 jobs, strict catalog RC 0, `check.sh` RC 0,
   `check-final.py` 176/174 RC 0, anchors 299/0 bad, vendor 119 OK.
 
-### Wave 4 and beyond
+### Proof-wave 4 — non-catalog attack
+
+- [x] `S4-L1-SPEND` — explicit interpreter-law stack model; serializer equals
+  seam templates; conditional 2-of-2 funding and both `to_local` spends;
+  rejection cases; vendored real interpreter identified but not imported.
+- [x] `S4-VENDOR-CI` — pinned `fetch-vendor.sh`, 43-test suite, CI source
+  gates unconditional, explicit clean-build skip unless configured.
+- [x] `S4-CONFORMANCE` — 61 BigSize/TLV vectors, checker with mutation
+  controls, 86 Lean `decide` theorems.
+- [x] `S4-PR-WIRE` — `CommitmentSignedFull`, `ProducedFrom`, conditional exact
+  coverage; legacy no-decoder negatives retained.
+- [x] `S4-HTLC-GLOBAL` — direction-tagged `HTLCTag` namespace with reachable
+  global uniqueness/Nodup; old duplicate maps to distinct tags.
+- [x] `S4-FEE-DUST` — second-stage fee, exact dust threshold, trimming
+  partition, zero-dust legacy permutation, BOLT 3 accounting.
+- [x] `S4-GOSSIP-ATTR` — attributed gossip admission and graph-edge theorem;
+  raw-store caveat retained.
+- [x] `S4-RELEASE` — release checklist and neutral license matrix; no license,
+  tag, merge, or push.
+- [x] Six new modules root-imported; `LN-HT-004` and `LN-PR-004` strengthened;
+  `AxiomAudit` extended to 101 theorems.
+- [x] Full gate: build 188 jobs, strict catalog 61 targets RC 0, `check.sh`
+  182/82/0 RC 0, `check-final.py` 182/180 RC 0, conformance 61/86 RC 0,
+  anchors 299/0 bad, vendor 119 OK.
+
+### Wave 5 and beyond
 
 The catalog is no longer the work queue. Open issues are tracked in
-`docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`. Wave 4
-targets L1 spendability, vendor/CI reproducibility, conformance vectors, wire
-completeness, global HTLC ids, fee/dust integration, gossip attribution, and
-release packaging.
+`docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`. Wave 5
+candidates are the vendored interpreter bridge, commitment gross/net patch,
+BOLT 3 sighash, differential conformance, state-machine constructor, funding
+hash link, gossip dedup, and crypto limits. Human-gated release decisions
+remain outside agent lanes.
 
 ## Commands
 
@@ -174,4 +200,5 @@ python3 scripts/verify-anchors.py
 ./scripts/check.sh
 python3 scripts/check-final.py
 python3 scripts/check-catalog.py --allow-planned
+python3 scripts/check-conformance.py
 ```

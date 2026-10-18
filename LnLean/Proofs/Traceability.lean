@@ -27,7 +27,7 @@ hand-maintained traceability tables:
    `LnLean.*` modules (`obligations_targets_in_table`,
    `target_modules_lnean`);
 7. every `proved` row names at least one declaration, all named declarations
-   occur in the 57-name snapshot `provedDeclarations`, no snapshot name
+   occur in the 61-name snapshot `provedDeclarations`, no snapshot name
    is unused, and every snapshot declaration lives in a module from
    `lneanModules` (`proved_rows_have_decls`, `proved_decls_in_snapshot`,
    `proved_snapshot_all_used`, `proved_declaration_modules_lnean`).  This is
@@ -231,13 +231,13 @@ def targetTable : List TargetEntry :=
   , ⟨"LnLean.Security.HtlcRecord.fulfill_sound", ["LnLean.Security.Invariants"]⟩
   , ⟨"LnLean.Security.HtlcRecord.fail_only_after_expiry", ["LnLean.Security.Invariants"]⟩
   , ⟨"LnLean.Channel.HTLC.amount_conservation", ["LnLean.Channel.HTLC"]⟩
-  , ⟨"LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross", ["LnLean.Channel.HTLC", "LnLean.Channel.HTLC"]⟩
+  , ⟨"LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross; LnLean.Channel.HTLC.tagged_id_unique_of_reachable; LnLean.Channel.HTLC.tagged_ids_nodup_of_reachable; LnLean.Channel.HTLC.cross_direction_duplicate_tagged", ["LnLean.Channel.HTLC", "LnLean.Channel.HTLC", "LnLean.Proofs.Channel.HtlcGlobalIdTargets", "LnLean.Proofs.Channel.HtlcGlobalIdTargets", "LnLean.Proofs.Channel.HtlcGlobalIdTargets"]⟩
   , ⟨"LnLean.Security.revoked_commitment_is_old", ["LnLean.Security.Invariants"]⟩
   , ⟨"LnLean.Security.breach_penalty_spends_both", ["LnLean.Security.Invariants"]⟩
   , ⟨"LnLean.Protocol.Handshake.open_bounds", ["LnLean.Proofs.ProtocolTargets"]⟩
   , ⟨"LnLean.Protocol.Handshake.channel_ready_gate", ["LnLean.Proofs.WaveD.D18"]⟩
   , ⟨"LnLean.Protocol.Handshake.funding_signed_signing_contract", ["LnLean.Proofs.ProtocolSigningTargets"]⟩
-  , ⟨"LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state", ["LnLean.Proofs.ProtocolCoverageTargets"]⟩
+  , ⟨"LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact; LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary", ["LnLean.Proofs.ProtocolWireTargets", "LnLean.Proofs.ProtocolWireTargets"]⟩
   , ⟨"LnLean.Protocol.Peer.reestablish_no_rollback", ["LnLean.Protocol.Peer"]⟩
   , ⟨"LnLean.Protocol.Handshake.feature_intersection", ["LnLean.Proofs.ProtocolTargets"]⟩
   , ⟨"LnLean.Security.Route.wellFormed_connected; LnLean.Security.Route.wellFormed_capacity; LnLean.Security.Route.wellFormed_nonempty", ["LnLean.Security.Invariants", "LnLean.Security.Invariants", "LnLean.Security.Invariants"]⟩
@@ -283,13 +283,13 @@ def provedTable : List ProvedEntry :=
   , ⟨"LnLean.Security.HtlcRecord.fulfill_sound", ["LnLean.Security.HtlcRecord.fulfill_sound"]⟩
   , ⟨"LnLean.Security.HtlcRecord.fail_only_after_expiry", ["LnLean.Security.HtlcRecord.fail_only_after_expiry"]⟩
   , ⟨"LnLean.Channel.HTLC.amount_conservation", ["LnLean.Channel.HTLC.amount_conservation"]⟩
-  , ⟨"LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross", ["LnLean.Channel.HTLC.dir_id_unique", "LnLean.Channel.HTLC.id_unique_of_reachable_cross"]⟩
+  , ⟨"LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross; LnLean.Channel.HTLC.tagged_id_unique_of_reachable; LnLean.Channel.HTLC.tagged_ids_nodup_of_reachable; LnLean.Channel.HTLC.cross_direction_duplicate_tagged", ["LnLean.Channel.HTLC.dir_id_unique", "LnLean.Channel.HTLC.id_unique_of_reachable_cross", "LnLean.Channel.HTLC.tagged_id_unique_of_reachable", "LnLean.Channel.HTLC.tagged_ids_nodup_of_reachable", "LnLean.Channel.HTLC.cross_direction_duplicate_tagged"]⟩
   , ⟨"LnLean.Security.revoked_commitment_is_old", ["LnLean.Security.revoked_commitment_is_old"]⟩
   , ⟨"LnLean.Security.breach_penalty_spends_both", ["LnLean.Security.breach_penalty_spends_both"]⟩
   , ⟨"LnLean.Protocol.Handshake.open_bounds", ["LnLean.Protocol.Handshake.open_bounds"]⟩
   , ⟨"LnLean.Protocol.Handshake.channel_ready_gate", ["LnLean.Protocol.Handshake.channel_ready_gate"]⟩
   , ⟨"LnLean.Protocol.Handshake.funding_signed_signing_contract", ["LnLean.Protocol.Handshake.funding_signed_signing_contract"]⟩
-  , ⟨"LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state", ["LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state"]⟩
+  , ⟨"LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact; LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary", ["LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact", "LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary"]⟩
   , ⟨"LnLean.Protocol.Peer.reestablish_no_rollback", ["LnLean.Protocol.Peer.reestablish_no_rollback"]⟩
   , ⟨"LnLean.Protocol.Handshake.feature_intersection", ["LnLean.Protocol.Handshake.feature_intersection"]⟩
   , ⟨"LnLean.Security.Route.wellFormed_connected; LnLean.Security.Route.wellFormed_capacity; LnLean.Security.Route.wellFormed_nonempty", ["LnLean.Security.Route.wellFormed_connected", "LnLean.Security.Route.wellFormed_capacity", "LnLean.Security.Route.wellFormed_nonempty"]⟩
@@ -379,8 +379,12 @@ def provedDeclarations : List DeclEntry :=
   , ⟨"LnLean.Channel.HTLC.dir_id_unique", "LnLean.Channel.HTLC"⟩
   , ⟨"LnLean.Channel.HTLC.id_unique_of_reachable_cross", "LnLean.Channel.HTLC"⟩
   , ⟨"LnLean.Protocol.Handshake.funding_signed_signing_contract", "LnLean.Proofs.ProtocolSigningTargets"⟩
-  , ⟨"LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state", "LnLean.Proofs.ProtocolCoverageTargets"⟩
   , ⟨"LnLean.Proofs.Routing.GossipTargets.gossip_graph_only_valid_announcements", "LnLean.Proofs.Routing.GossipTargets"⟩
+  , ⟨"LnLean.Channel.HTLC.tagged_id_unique_of_reachable", "LnLean.Proofs.Channel.HtlcGlobalIdTargets"⟩
+  , ⟨"LnLean.Channel.HTLC.tagged_ids_nodup_of_reachable", "LnLean.Proofs.Channel.HtlcGlobalIdTargets"⟩
+  , ⟨"LnLean.Channel.HTLC.cross_direction_duplicate_tagged", "LnLean.Proofs.Channel.HtlcGlobalIdTargets"⟩
+  , ⟨"LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact", "LnLean.Proofs.ProtocolWireTargets"⟩
+  , ⟨"LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary", "LnLean.Proofs.ProtocolWireTargets"⟩
   ]
 
 /-- Modules named by the catalog, all of them under `LnLean`. -/
@@ -427,6 +431,12 @@ def lneanModules : List String :=
   , "LnLean.Proofs.Routing.GossipTargets"
   , "LnLean.Proofs.Security.ReorgTargets"
   , "LnLean.Proofs.Wire.TLVTargets"
+  , "LnLean.Proofs.Bitcoin.SpendTargets"
+  , "LnLean.Proofs.Channel.CommitmentIntegrationTargets"
+  , "LnLean.Proofs.Channel.HtlcGlobalIdTargets"
+  , "LnLean.Proofs.ConformanceTargets"
+  , "LnLean.Proofs.ProtocolWireTargets"
+  , "LnLean.Proofs.Routing.GossipAttributionTargets"
   ]
 
 /-- The 48 ids of `docs/THEOREM-INDEX.md`, in table order. -/

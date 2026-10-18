@@ -139,6 +139,12 @@ def toLocalScript (revocationPubKey : PubKey) (csv : Blocks) : Script :=
      ++ pushData revocationPubKey.bytes
      ++ ByteArray.empty.push OP_CHECKSIG⟩
 
+/-- The two-byte little-endian `to_self_delay` payload **without** the push
+prefix.  This is the stack element that `OP_CSV` inspects in the delayed
+branch of `toLocalScriptFull`; `toLocalDelayPush` is its minimal push. -/
+def toLocalDelayBytes (csv : Blocks) : ByteArray :=
+  (ByteArray.empty.push csv.toUInt8).push (csv >>> 8).toUInt8
+
 /-- Fixed-width two-byte little-endian push of the `to_local`
 `to_self_delay`: `[0x02, d % 256, (d / 256) % 256]`.
 
@@ -148,6 +154,14 @@ scaffold's fixed-width encoding (the same encoding as
 `d < 2^16`, which covers BOLT 2's `u16` `to_self_delay` field. -/
 def toLocalDelayPush (csv : Blocks) : ByteArray :=
   pushData ((ByteArray.empty.push csv.toUInt8).push (csv >>> 8).toUInt8)
+
+theorem toLocalDelayPush_eq_pushData_delayBytes (csv : Blocks) :
+    toLocalDelayPush csv = pushData (toLocalDelayBytes csv) := rfl
+
+theorem toLocalDelayBytes_size (csv : Blocks) :
+    (toLocalDelayBytes csv).size = 2 := by
+  unfold toLocalDelayBytes
+  simp
 
 theorem toLocalDelayPush_size (csv : Blocks) :
     (toLocalDelayPush csv).size = 3 := by

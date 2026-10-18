@@ -1,8 +1,8 @@
 {
-  "files": 140,
+  "files": 146,
   "obligations": 81,
   "catalog_obligations": 48,
-  "declarations": 4506,
+  "declarations": 4834,
   "sorries": 0,
   "by_domain": {
     "Bitcoin": 3,
@@ -14,11 +14,11 @@
     "WaveE": 14
   },
   "by_kind": {
-    "abbrev": 27,
-    "def": 1034,
-    "inductive": 36,
-    "structure": 101,
-    "theorem": 3308
+    "abbrev": 28,
+    "def": 1092,
+    "inductive": 39,
+    "structure": 105,
+    "theorem": 3570
   },
   "duplicate_ids": [],
   "catalog_duplicate_ids": [],
@@ -783,8 +783,8 @@
     },
     {
       "id": "LN-HT-004",
-      "claim": "An HTLC id is unique among the live HTLCs of one sender in a channel; global uniqueness holds only under explicit cross-direction disjointness.",
-      "lean_target": "LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross",
+      "claim": "An HTLC id is unique among the live HTLCs of one sender; a direction-tagged id is globally unique, while the untagged global claim needs explicit cross-direction disjointness.",
+      "lean_target": "LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross; LnLean.Channel.HTLC.tagged_id_unique_of_reachable; LnLean.Channel.HTLC.tagged_ids_nodup_of_reachable; LnLean.Channel.HTLC.cross_direction_duplicate_tagged",
       "boltdoc": "BOLT 2 \u00a7Adding an HTLC",
       "anchor": "lightning/src/ln/channel.rs:8370",
       "status": "proved",
@@ -838,7 +838,7 @@
     {
       "id": "LN-PR-004",
       "claim": "Under a per-output signed-data relation and the BOLT 3 commitment value equations, commitment_signed covers exactly the current HTLC set and fee; the wire record alone determines neither.",
-      "lean_target": "LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state",
+      "lean_target": "LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact; LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary",
       "boltdoc": "BOLT 2 \u00a7Committing Updates So Far",
       "anchor": "lightning/src/ln/channel.rs:2386; lightning/src/ln/channel.rs:6270",
       "status": "proved",

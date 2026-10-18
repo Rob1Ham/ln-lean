@@ -1,4 +1,9 @@
-# Wave 4 — open-issue attack plan
+# Wave 4 — open-issue attack plan (complete)
+
+**Status:** complete and integrated. The eight lanes reported; the parent
+added six modules to the root and axiom audit, strengthened `LN-HT-004` and
+`LN-PR-004`, and reached the 188-job gate. Reports are in
+`agents/reports/swarm4/`.
 
 **Base commit:** `80bad41` (`[STATUS] record proof-wave 3 gate HEAD`)
 **Branch:** `repair/integrated`

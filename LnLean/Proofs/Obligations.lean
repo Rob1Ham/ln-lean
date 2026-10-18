@@ -231,12 +231,14 @@ def obligations : List Obligation :=
     boltdoc := "BOLT 2 §Adding an HTLC",
     rlAnchor := "lightning/src/ln/chan_utils.rs:716" },
   -- Scope note: BOLT 2 ids are per-sender; both counters start at zero.  The
-  -- unconditional global claim is refuted by
-  -- `HtlcBook.reachable_cross_direction_duplicate`, so the row is narrowed to
-  -- per-sender uniqueness plus the explicit `CrossDisjoint` global form.
+  -- unconditional untagged global claim is refuted by
+  -- `HtlcBook.reachable_cross_direction_duplicate`, so the row keeps
+  -- per-sender uniqueness, the explicit `CrossDisjoint` untagged form, and a
+  -- direction-tagged namespace that is globally unique without that
+  -- assumption.
   { id := "LN-HT-004", domain := .htlcRevocation,
-    claim := "An HTLC id is unique among the live HTLCs of one sender in a channel; global uniqueness holds only under explicit cross-direction disjointness.",
-    leanTarget := "LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross",
+    claim := "An HTLC id is unique among the live HTLCs of one sender; a direction-tagged id is globally unique, while the untagged global claim needs explicit cross-direction disjointness.",
+    leanTarget := "LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross; LnLean.Channel.HTLC.tagged_id_unique_of_reachable; LnLean.Channel.HTLC.tagged_ids_nodup_of_reachable; LnLean.Channel.HTLC.cross_direction_duplicate_tagged",
     status := .proved,
     boltdoc := "BOLT 2 §Adding an HTLC",
     rlAnchor := "lightning/src/ln/channel.rs:8370" },
@@ -278,13 +280,14 @@ def obligations : List Obligation :=
     status := .proved,
     boltdoc := "BOLT 2 §The funding_signed Message",
     rlAnchor := "lightning/src/ln/channel.rs:2107" },
-  -- Scope note: derived from a per-output signed-data relation and the BOLT 3
-  -- commitment value equations.  The wire record alone cannot determine the
-  -- HTLC set or fee; the lane proves that negative result and includes an
-  -- honest covering construction.
+  -- Scope note: derived from the `CommitmentSignedFull` `ProducedFrom`
+  -- relation and the BOLT 3 commitment value equations.  The legacy wire
+  -- record alone cannot determine the HTLC set or fee; the lane proves that
+  -- negative result and includes an honest covering construction.  There is
+  -- still no BOLT 3 sighash serializer or C3 derivation of the digests.
   { id := "LN-PR-004", domain := .protocol,
     claim := "Under a per-output signed-data relation and the BOLT 3 commitment value equations, commitment_signed covers exactly the current HTLC set and fee; the wire record alone determines neither.",
-    leanTarget := "LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state",
+    leanTarget := "LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact; LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary",
     status := .proved,
     boltdoc := "BOLT 2 §Committing Updates So Far",
     rlAnchor := "lightning/src/ln/channel.rs:2386; lightning/src/ln/channel.rs:6270" },

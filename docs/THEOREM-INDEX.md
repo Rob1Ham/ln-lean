@@ -6,8 +6,9 @@ kept in sync with it; every id below appears in `docs/TRACEABILITY.md` and in
 the Lean catalog, and vice versa.
 
 The proof-wave lanes added declarations and replaced `statement-only` rows with
-proved theorems. At the proof-wave 3 gate, all 48 rows are `proved` (the target
-theorem exists in the tree); 0 rows remain `statement-only`. A `proved` row is not a claim that the full
+proved theorems. At the proof-wave 4 gate, all 48 rows are `proved` (the target
+theorem exists in the tree); 0 rows remain `statement-only`, and the catalog
+has 61 resolved targets. A `proved` row is not a claim that the full
 English property is proved by the cited theorem alone when the row names
 several targets, or when the theorem keeps cryptographic/model hypotheses
 explicit; the targets listed are the declarations that together establish the
@@ -54,13 +55,13 @@ per-lane reports under `agents/reports/`.
 | `LN-HT-001` | HTLC / revocation | A fulfilled HTLC carries a preimage whose hash is the payment hash. | `LnLean.Security.HtlcRecord.fulfill_sound` | proved |
 | `LN-HT-002` | HTLC / revocation | An HTLC is failed only at or after its CLTV expiry. | `LnLean.Security.HtlcRecord.fail_only_after_expiry` | proved |
 | `LN-HT-003` | HTLC / revocation | Offered, received, and trimmed HTLC amounts plus balances and fee equal the funding value. | `LnLean.Channel.HTLC.amount_conservation` | proved |
-| `LN-HT-004` | HTLC / revocation | An HTLC id is unique among the live HTLCs of one sender in a channel; global uniqueness holds only under explicit cross-direction disjointness. | `LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross` | proved |
+| `LN-HT-004` | HTLC / revocation | An HTLC id is unique among the live HTLCs of one sender; a direction-tagged id is globally unique, while the untagged global claim needs explicit cross-direction disjointness. | `LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross; LnLean.Channel.HTLC.tagged_id_unique_of_reachable; LnLean.Channel.HTLC.tagged_ids_nodup_of_reachable; LnLean.Channel.HTLC.cross_direction_duplicate_tagged` | proved |
 | `LN-HT-005` | HTLC / revocation | A revoked commitment is strictly older than the current commitment and cannot be the current one. | `LnLean.Security.revoked_commitment_is_old` | proved |
 | `LN-HT-006` | HTLC / revocation | A punishable breach has a penalty transaction that spends both commitment outputs. | `LnLean.Security.breach_penalty_spends_both` | proved |
 | `LN-PR-001` | Protocol / peer | open_channel accepts a funding amount only above the dust and minimum-channel bounds. | `LnLean.Protocol.Handshake.open_bounds` | proved |
 | `LN-PR-002` | Protocol / peer | The channel enters normal operation only after both channel_ready messages. | `LnLean.Protocol.Handshake.channel_ready_gate` | proved |
 | `LN-PR-003` | Protocol / peer | Under an explicit signing law and key-binding hypothesis, funding_signed carries a valid signature over the funding transaction and attributes it to the funding key; C3 alone gives neither. | `LnLean.Protocol.Handshake.funding_signed_signing_contract` | proved |
-| `LN-PR-004` | Protocol / peer | Under a per-output signed-data relation and the BOLT 3 commitment value equations, commitment_signed covers exactly the current HTLC set and fee; the wire record alone determines neither. | `LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state` | proved |
+| `LN-PR-004` | Protocol / peer | Under a per-output signed-data relation and the BOLT 3 commitment value equations, commitment_signed covers exactly the current HTLC set and fee; the wire record alone determines neither. | `LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact; LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary` | proved |
 | `LN-PR-005` | Protocol / peer | channel_reestablish retransmits unacknowledged updates without rolling state back. | `LnLean.Protocol.Peer.reestablish_no_rollback` | proved |
 | `LN-PR-006` | Protocol / peer | Negotiated channel features are the intersection of both peers' supported features. | `LnLean.Protocol.Handshake.feature_intersection` | proved |
 | `LN-RT-001` | Routing / onion | A well-formed route is non-empty, connected end-to-end, and every hop has enough capacity. | `LnLean.Security.Route.wellFormed_connected; LnLean.Security.Route.wellFormed_capacity; LnLean.Security.Route.wellFormed_nonempty` | proved |
@@ -135,9 +136,38 @@ Proof-wave 3 retargeted and promoted the last eleven rows. Each row now names an
 * `LN-CR-005` (`wellFormed_iff_pairwise` plus `wellFormed_record_type_unique`) is the exact theorem-level characterization of TLV well-formedness. It includes an exact admission checker and an `InDomain` round trip; the out-of-domain counterexample is retained.
 * `LN-CH-003` (`output_ordering`) is proved for the rich `CommitmentTx` model with script keys, owner dust limit, and `(value, script, CLTV)` sorting. D12 still refutes the unconditional legacy `commitmentOutputs` reading; the legacy function is unchanged.
 * `LN-CH-005` (`commitmentSigningGate_rejected_iff_insufficient` plus `..._iff_no_checkedSigning`) is the exact fee-gate characterization, with the normal-phase transition form explicit.
-* `LN-HT-004` is narrowed to per-sender uniqueness (`dir_id_unique`) plus the explicit `CrossDisjoint` global form. BOLT 2 ids are per-sender and both counters start at zero; `reachable_cross_direction_duplicate` mechanizes the failure of the literal global claim.
+* `LN-HT-004` is per-sender uniqueness (`dir_id_unique`), the explicit `CrossDisjoint` untagged global form, and a direction-tagged namespace (`tagged_id_unique_of_reachable`, `tagged_ids_nodup_of_reachable`). BOLT 2 ids are per-sender and both counters start at zero; `reachable_cross_direction_duplicate` still mechanizes the failure of the literal untagged global claim, while `cross_direction_duplicate_tagged` shows the tagged ids are distinct.
 * `LN-PR-003` (`funding_signed_signing_contract`) is conditional on an explicit `FundingSigningLaw` and `KeyBinding`. C3 alone gives neither signing completeness nor key attribution; the lane includes a counterexample.
-* `LN-PR-004` (`commitment_signed_covers_exact_of_state`) is derived from a per-output signed-data relation and the BOLT 3 commitment value equations. The wire record alone determines neither the HTLC set nor the fee; the negative results are retained.
+* `LN-PR-004` now targets `commitment_signed_full_covers_exact` and `protocol_wire_summary` over `CommitmentSignedFull` and its `ProducedFrom` relation. The record carries commitment number/fee/digest/per-HTLC entries; there is still no BOLT 3 sighash serializer or C3 derivation. The legacy wire record alone determines neither the HTLC set nor the fee; the negative results are retained.
 * `LN-RT-006` (`gossip_graph_only_valid_announcements`) covers reachable states built by the signature-gated `admitGossip` transition. Raw `applyGossip` remains unfiltered; the verifier is abstract and G19 key attribution is separate.
 
 No row is silently weakened: every caveat above is also recorded in the row's source comment and under `agents/reports/swarm3/`. Remaining full-verification gaps are tracked in `docs/OPEN-ISSUES.md`.
+
+### Proof-wave 4 bridge and conformance notes
+
+Proof-wave 4 did not add catalog rows. It added six modules and strengthened two
+targets; the following are the significant caveats:
+
+* `SpendTargets.lean` defines an explicit stack-machine semantics and proves the
+  serializer equal to the seam byte templates. Funding 2-of-2 and both
+  `to_local` branches are conditional on `InterpreterLaws`; sighash is a
+  parameter, CHECKMULTISIG is 2-of-2, NULLDUMMY is ignored, and CSV/CLTV are
+  abstract. It is not a Bitcoin consensus interpreter. A real vendored
+  interpreter exists but is not imported (`L1-07`).
+* `CommitmentIntegrationTargets.lean` computes second-stage fees from the
+  feerate, proves the exact dust threshold and trimming partition, and proves
+  `legacyOutputs` is a permutation of the rich legacy view under zero dust.
+  The rich model still lacks the gross/net fields needed for BOLT-3-exact
+  values (`CH-03`).
+* `HtlcGlobalIdTargets.lean` proves global uniqueness for the direction-tagged
+  `HTLCTag` namespace. The wire remains per-sender; the tag is a model-side
+  namespace, not a new BOLT 2 encoding.
+* `ProtocolWireTargets.lean` proves conditional exact coverage from
+  `ProducedFrom`. Signatures/digests are supplied production data, not derived
+  from a sighash serializer; `PR-02` is mitigated, not closed.
+* `GossipAttributionTargets.lean` proves `admitGossipAttributed` edges have a
+  signed update and an announcement key. Endpoint attribution needs explicit
+  `AttributionConsistent`/`KeyAttribution`; raw `applyGossip` is unchanged.
+* `ConformanceTargets.lean` proves 86 vector expectations for BigSize/TLV. The
+  suite is vector conformance, not a differential implementation test; two TLV
+  value/unknown-type cases are declared model gaps.

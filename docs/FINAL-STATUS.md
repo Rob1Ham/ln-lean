@@ -2,9 +2,11 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `0c99c92` (`[PROOF] integrate proof-wave 3 and close the
-48-row catalog`). Status commits may advance the branch tip.
-**Catalog state:** **48 `proved` / 0 `statementOnly` / 0 unresolved**.
+**Gate HEAD:** this proof-wave 4 working tree; the following status commit
+records the exact hash. Proof-wave 3 code was `0c99c92`; wave 4 launched from
+`47189fe`.
+**Catalog state:** **48 `proved` / 0 `statementOnly` / 0 unresolved / 61
+targets**.
 **Remote refs:** push is non-force to `origin/repair/integrated`. `origin/main`
 is not touched by this work. `origin/repair/pubbump` remains a separate
 compatibility branch.
@@ -30,7 +32,8 @@ Lightning, and it is not a conformance-tested implementation.
 
 Proof-wave 3 integrated eleven disjoint lanes. It retargeted and promoted the
 last eleven catalog rows, so every catalog row now names an exact,
-sorry-free theorem. The new modules are:
+sorry-free theorem. Proof-wave 4 added six bridge/vector modules and
+strengthened two catalog targets without changing the 48-row count.
 
 * `LnLean/Proofs/Bitcoin/FundingScriptTargets.lean`
 * `LnLean/Proofs/Bitcoin/ToLocalScriptTargets.lean`
@@ -42,32 +45,42 @@ sorry-free theorem. The new modules are:
 * `LnLean/Proofs/Routing/GossipTargets.lean`
 * `LnLean/Proofs/Security/ReorgTargets.lean`
 * `LnLean/Proofs/Wire/TLVTargets.lean`
+* `LnLean/Proofs/Bitcoin/SpendTargets.lean`
+* `LnLean/Proofs/Channel/CommitmentIntegrationTargets.lean`
+* `LnLean/Proofs/Channel/HtlcGlobalIdTargets.lean`
+* `LnLean/Proofs/ConformanceTargets.lean`
+* `LnLean/Proofs/ProtocolWireTargets.lean`
+* `LnLean/Proofs/Routing/GossipAttributionTargets.lean`
 
-The model/support additions are `HtlcBook`/reachability/per-sender ids in
-`LnLean/Channel/HTLC.lean`, the rich `CommitmentTx` output model in
-`LnLean/Channel/Commitment.lean`, and the full BOLT 3 `toLocalScriptFull`
-model in `LnLean/Bitcoin/Seam.lean`. Existing legacy declarations are
-preserved; mechanized counterexamples such as D12 and the cross-direction HTLC
-duplicate are retained.
+The model/support additions are `HtlcBook`/reachability/per-sender ids and
+alone direction-tagged `HTLCTag` namespace in `LnLean/Channel/HTLC.lean`, the
+rich `CommitmentTx` output model in `LnLean/Channel/Commitment.lean`, the full
+BOLT 3 `toLocalScriptFull` model plus delay bytes in
+`LnLean/Bitcoin/Seam.lean`, `CommitmentSignedFull` in
+`LnLean/Protocol/Messages.lean`, and the attributed gossip transition in
+`LnLean/Routing/Gossip.lean`. Existing legacy declarations are preserved;
+mechanized counterexamples such as D12 and the cross-direction HTLC duplicate
+are retained.
 
 ## Verified state
 
 | Check | Command | Result |
 |---|---|---|
-| Full build | `LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (182 jobs).` |
+| Full build | `LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (188 jobs).` |
 | Actual `sorry` | `grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` | **0 matches** (grep RC 1: no lines) |
-| Policy checker | `./scripts/check.sh` | **RC 0**, `files=176 obligations=82 sorry_in_proofs=0`, `check: OK` |
-| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 176 Lean files, 174 root imports |
+| Policy checker | `./scripts/check.sh` | **RC 0**, `files=182 obligations=82 sorry_in_proofs=0`, `check: OK` |
+| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 182 Lean files, 180 root imports |
 | Vendor integrity | `./scripts/verify-vendor.sh` | **RC 0**, `OK (119 files)` |
 | Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=299 bad=0 unanchored_rows=2` |
-| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 48 proved, 0 statement-only, 0 unresolved, 0 proved failures, 0 candidates |
+| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 48 proved, 0 statement-only, 61 targets, 0 unresolved, 0 proved failures, 0 candidates |
 | Catalog, planned-aware | `python3 scripts/check-catalog.py --allow-planned` | **RC 0**, `rows=48 proved=48 statementOnly=0 planned=0 proved_failures=0` |
-| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 79 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
-| Generated index | `python3 scripts/collect-obligations.py` | `140` proof files, `81` markers, `48` catalog rows, `4506` declarations, `0` `sorry` sites |
+| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 101 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Generated index | `python3 scripts/collect-obligations.py` | `146` proof files, `81` markers, `48` catalog rows, `4834` declarations, `0` `sorry` sites |
+| Conformance | `python3 scripts/check-conformance.py` | **RC 0**, 61 BigSize/TLV vectors, 86 Lean theorem checks, 2 declared model gaps |
 
-Tree size: **176 Lean files** under `LnLean/`, **174** root imports in
+Tree size: **182 Lean files** under `LnLean/`, **180** root imports in
 `LnLean.lean`; `LnLean.Proofs.All` and the `LnLean.Proofs.PhaseC2` aggregator
-are not root-imported. The full build covers 182 Lake jobs.
+are not root-imported. The full build covers 188 Lake jobs.
 
 The `sorry` grep result is exact: **there are no lines consisting only of
 `sorry` (modulo whitespace) in any `LnLean/**/*.lean` file.** Prose mentions of
@@ -88,9 +101,9 @@ hypotheses; the scope caveat is part of the row's meaning.
 | `LN-CR-005` | `TLVStream.wellFormed_iff_pairwise`, `wellFormed_record_type_unique` | Exact theorem-level characterization; out-of-domain counterexample retained |
 | `LN-CH-003` | `Commitment.output_ordering` | Rich `CommitmentTx` model with script/dust/CLTV; D12 still refutes legacy `commitmentOutputs` |
 | `LN-CH-005` | `Fee.commitmentSigningGate_rejected_iff_insufficient`, `..._iff_no_checkedSigning` | Exact fee gate; normal-phase transition form explicit |
-| `LN-HT-004` | `HTLC.dir_id_unique`, `id_unique_of_reachable_cross` | Per-sender uniqueness; global form needs `CrossDisjoint`; literal global claim refuted |
+| `LN-HT-004` | `HTLC.dir_id_unique`, `id_unique_of_reachable_cross`, `tagged_id_unique_of_reachable`, `tagged_ids_nodup_of_reachable`, `cross_direction_duplicate_tagged` | Per-sender uniqueness; direction-tagged ids are globally unique; the untagged global claim needs `CrossDisjoint` and is otherwise refuted |
 | `LN-PR-003` | `Handshake.funding_signed_signing_contract` | Conditional on `FundingSigningLaw` + `KeyBinding`; C3 alone is insufficient |
-| `LN-PR-004` | `ProtocolCoverageTargets.commitment_signed_covers_exact_of_state` | Per-output signed-data relation + BOLT 3 value equations; wire-only negative results retained |
+| `LN-PR-004` | `ProtocolWireTargets.commitment_signed_full_covers_exact`, `protocol_wire_summary` | `CommitmentSignedFull` production relation + BOLT 3 value equations; no sighash serializer/C3 derivation, and wire-only negative results retained |
 | `LN-RT-006` | `GossipTargets.gossip_graph_only_valid_announcements` | Reachable signature-gated `admitGossip` states; raw `applyGossip` remains unfiltered; G19 key attribution separate |
 
 The earlier proof-wave promotions remain valid with their existing caveats
@@ -121,10 +134,14 @@ Global HMAC PRF security is not claimed, and the D07 counterexample remains.
 
 ### L1 scripts
 
-Scripts are byte templates and structural commitment statements. There is no
-Bitcoin script interpreter, sighash engine, or consensus-spend theorem in this
-tree. P2WSH/`OP_CHECKMULTISIG` spendability and `to_local` CSV/signature
-execution are open (`L1-01`, `L1-02`, `MODEL-01`).
+Scripts are byte templates plus an explicit, abstract stack-machine model in
+`SpendTargets.lean`. The new model proves conditional 2-of-2 funding and
+`to_local` revocation/delayed spend theorems under `InterpreterLaws`, and its
+serializer is proved equal to the seam templates. It is not a consensus
+interpreter: sighash is a parameter, CHECKMULTISIG is 2-of-2, NULLDUMMY is
+ignored, and CSV/CLTV are abstract laws. The vendored tree contains a real
+interpreter (`Bitcoin/Interpreter/Defs.lean`) that is not yet imported;
+connecting it is `L1-01`/`L1-02` next step. `MODEL-01` remains open.
 
 ### Network / liveness
 
@@ -137,16 +154,25 @@ cryptographic reductions and full network semantics are not modelled.
 The catalog is closed, but the repository is not release-ready. The living list
 is [`docs/OPEN-ISSUES.md`](OPEN-ISSUES.md). The P0 blockers are:
 
-* `OPS-01` — public CI cannot run the full build because the vendor snapshot is
-  not reproducibly available;
-* `OPS-02` — no `LICENSE`;
-* `OPS-03` — no release tag and `main` is behind;
-* `L1-01`/`L1-02` — no script interpreter/spendability bridge.
+* `OPS-01` — public CI still cannot build from a clean checkout, but the
+  `fetch-vendor.sh` path and publication recipe are now tested (mitigated);
+* `OPS-02` — no `LICENSE`; a neutral decision matrix is ready;
+* `OPS-03` — no release tag and `main` is behind; a release checklist is ready;
+* `L1-01`/`L1-02` — conditional execution model exists, but the vendored
+  interpreter/sighash bridge is not connected.
 
-Other open work includes C1/C3/C8 computational reductions, wire completeness
-(`PR-02`), legacy commitment/dust integration (`CH-01`, `CH-02`), global HTLC
-ids (`HT-01`), gossip key attribution (`RT-01`), conformance vectors
-(`CONF-01`), and the missing `Step.update_add_htlc` constructor (`MODEL-02`).
+Wave 4 narrowed other gaps: `PR-02` now has a full signed commitment record
+with a conditional exact-coverage theorem; `CH-01`/`CH-02` have a second-stage
+fee/dust/legacy-view module; `HT-01` has a direction-tagged global id
+namespace; `RT-01` has an attributed gossip transition; and `CONF-01` has a
+61-vector BigSize/TLV suite. These remain open in part because the wire model
+is not extended with every derived field and the conformance suite is not a
+differential implementation test.
+
+Also open: C1/C3/C8 computational reductions, the BOLT 3 sighash serializer,
+the gross/net second-stage commitment patch (`CH-03`), differential
+conformance (`CONF-02`), the missing `Step.update_add_htlc` constructor
+(`MODEL-02`), and the vendor interpreter bridge (`L1-07`).
 
 ## Reproduce
 
@@ -161,6 +187,7 @@ grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean' || true
 python3 scripts/check-final.py
 python3 scripts/check-catalog.py --audit
 python3 scripts/check-catalog.py --allow-planned
+python3 scripts/check-conformance.py
 python3 scripts/verify-anchors.py
 ./scripts/verify-vendor.sh
 ```
@@ -177,8 +204,9 @@ integration commit.
 - A green build and zero actual `sorry` terms do not imply the catalog rows are
   unconditional statements of the English claims. The scope caveats above are
   part of their meaning.
-- No differential conformance against `rust-lightning` or BOLT test vectors is
-  claimed.
+- The conformance suite is vector conformance for BigSize/TLV, not a full
+  implementation or differential `rust-lightning` test.
 - The 30 proof-wave promotions (eleven in wave 1, eight in wave 2, eleven in
-  wave 3) are exact model-level targets; describing them as full protocol
-  verification would be false.
+  wave 3) are exact model-level targets; wave 4 strengthens targets rather
+  than adding rows. Describing any of this as full protocol verification would
+  be false.

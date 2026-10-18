@@ -376,4 +376,198 @@ theorem update_monotone (s : GossipState) (u : ChannelUpdate) :
 
 end Gossip
 
+/-! ## Key attribution for `channel_update` admission (additive, `RT-01`)
+
+The store above accepts a `channel_update` on its timestamp alone, and
+`LnLean.Proofs.Routing.GossipProps.acceptChannelUpdate` adds only the
+abstract signature check.  BOLT 7 additionally takes the `node_id` used to
+verify a `channel_update` from the matching `channel_announcement`
+(`refs/bolts/07-routing-gossip.md:544`).  The definitions below make that
+relation explicit:
+
+* `ChannelAnnellation.attributesKey a key` says that `key` is one of the two
+  BOLT 7 `node_id` keys carried by `a`;
+* `GossipState.updateKeyAnnounced s u` says that some stored announcement for
+  `u.shortChannelId` attributes `u.signingKey`;
+* `GossipState.applyUpdateAttributed` is an *additional* store step that
+  requires both the signature predicate and `updateKeyAnnounced`.
+
+Nothing in this section changes `GossipState.applyUpdate`, `applyGossip`, or
+any existing statement: the attributed step is a separate function, so the
+raw-store behaviour and all wave-A theorems remain intact.  The relation
+checks key *equality with an announcement field*; it does not claim that the
+announcement itself verified (that is the separate signature gate) nor that
+the key is owned by the graph node (see `KeyAttribution` in
+`LnLean.Proofs.Routing.GossipTargets`). -/
+
+namespace ChannelAnnellation
+
+/-- **Key attribution to an announcement.**  `a.attributesKey key` holds when
+`key` is one of the two BOLT 7 `node_id` keys that `a` announces for its
+channel.  This is the key set from which a valid `channel_update` signature
+key must be drawn. -/
+def attributesKey (a : ChannelAnnellation) (key : PubKey) : Prop :=
+  a.nodeKey1 = key ∨ a.nodeKey2 = key
+
+/-- **Exact unfolding** of `attributesKey`: a disjunction of the two announced
+node keys, with no hidden conjunct. -/
+theorem attributesKey_iff (a : ChannelAnnellation) (key : PubKey) :
+    a.attributesKey key ↔ a.nodeKey1 = key ∨ a.nodeKey2 = key :=
+  Iff.rfl
+
+/-- The first announced node key is attributed. -/
+theorem attributesKey_node1 (a : ChannelAnnellation) :
+    a.attributesKey a.nodeKey1 :=
+  Or.inl rfl
+
+/-- The second announced node key is attributed. -/
+theorem attributesKey_node2 (a : ChannelAnnellation) :
+    a.attributesKey a.nodeKey2 :=
+  Or.inr rfl
+
+end ChannelAnnellation
+
+namespace GossipState
+
+/-- **`updateKeyAnnounced s u`**: some stored `channel_announcement` for the
+same `short_channel_id` names `u.signingKey` as one of its two BOLT 7 node
+keys.
+
+This is the missing admission predicate from `RT-01` (`LN-GOSSIP-001`).  It
+is a proposition over the current store and deliberately does not include
+signature validity: the signature gate is separate, and in reachable admitted
+states every stored announcement is valid by construction. -/
+def updateKeyAnnounced (s : GossipState) (u : ChannelUpdate) : Prop :=
+  ∃ a ∈ s.announcements, a.shortChannelId = u.shortChannelId ∧
+    a.attributesKey u.signingKey
+
+/-- **Exact unfolding** of `updateKeyAnnounced`. -/
+theorem updateKeyAnnounced_iff (s : GossipState) (u : ChannelUpdate) :
+    s.updateKeyAnnounced u ↔
+      ∃ a ∈ s.announcements, a.shortChannelId = u.shortChannelId ∧
+        a.attributesKey u.signingKey :=
+  Iff.rfl
+
+/-- Introduction form: a stored announcement for the same channel that
+attributes the update's signing key witnesses `updateKeyAnnounced`. -/
+theorem updateKeyAnnounced_of_mem {s : GossipState} {u : ChannelUpdate}
+    {a : ChannelAnnellation} (ha : a ∈ s.announcements)
+    (hscid : a.shortChannelId = u.shortChannelId)
+    (hkey : a.attributesKey u.signingKey) :
+    s.updateKeyAnnounced u :=
+  ⟨a, ha, hscid, hkey⟩
+
+/-- Attribution is monotone in the announcement list: growing the store with
+further announcements cannot un-announce a key. -/
+theorem updateKeyAnnounced_mono {s t : GossipState} {u : ChannelUpdate}
+    (hsub : ∀ a ∈ s.announcements, a ∈ t.announcements)
+    (h : s.updateKeyAnnounced u) : t.updateKeyAnnounced u := by
+  rcases h with ⟨a, ha, hscid, hkey⟩
+  exact ⟨a, hsub a ha, hscid, hkey⟩
+
+/-- Accepting or ignoring an update never changes the announcement list. -/
+theorem applyUpdate_announcements (s : GossipState) (u : ChannelUpdate) :
+    (s.applyUpdate u).announcements = s.announcements := by
+  unfold applyUpdate
+  split <;> rfl
+
+/-- An announced key stays announced after the wave-A update step. -/
+theorem updateKeyAnnounced_applyUpdate (s : GossipState) (u : ChannelUpdate)
+    (h : s.updateKeyAnnounced u) :
+    (s.applyUpdate u).updateKeyAnnounced u := by
+  refine updateKeyAnnounced_mono ?_ h
+  intro a ha
+  rw [applyUpdate_announcements]
+  exact ha
+
+open Classical
+
+/-- **Attributed `channel_update` store step.**  It differs from wave-A
+`GossipState.applyUpdate` by the extra guard: the update's abstract signature
+must verify *and* its signing key must be announced for the same channel.  It
+is an additional function; `applyUpdate` itself is unchanged. -/
+noncomputable def applyUpdateAttributed (s : GossipState) (verify : SigVerifier)
+    (u : ChannelUpdate) : GossipState :=
+  if u.signatureValid verify ∧ s.updateKeyAnnounced u then s.applyUpdate u else s
+
+/-- When both admission conditions hold, the attributed step is exactly the
+wave-A update step: attribution is the only extra gate. -/
+theorem applyUpdateAttributed_eq_applyUpdate_of_admitted (s : GossipState)
+    (verify : SigVerifier) (u : ChannelUpdate)
+    (hsig : u.signatureValid verify) (hk : s.updateKeyAnnounced u) :
+    s.applyUpdateAttributed verify u = s.applyUpdate u := by
+  unfold applyUpdateAttributed
+  rw [ite_eq_left ⟨hsig, hk⟩]
+
+/-- An update whose key was not announced is rejected outright, regardless of
+its signature. -/
+theorem applyUpdateAttributed_eq_self_of_unannounced (s : GossipState)
+    (verify : SigVerifier) (u : ChannelUpdate)
+    (hk : ¬ s.updateKeyAnnounced u) :
+    s.applyUpdateAttributed verify u = s := by
+  unfold applyUpdateAttributed
+  rw [ite_eq_right]
+  rintro ⟨_, hk'⟩
+  exact hk hk'
+
+/-- **Soundness of attributed admission.**  Any change made by the attributed
+step requires both the signature predicate and an announced signing key. -/
+theorem applyUpdateAttributed_change_requires (s : GossipState)
+    (verify : SigVerifier) (u : ChannelUpdate)
+    (h : s.applyUpdateAttributed verify u ≠ s) :
+    u.signatureValid verify ∧ s.updateKeyAnnounced u := by
+  apply Classical.byContradiction
+  intro hcon
+  apply h
+  unfold applyUpdateAttributed
+  rw [ite_eq_right]
+  rintro ⟨hsig, hk⟩
+  exact hcon ⟨hsig, hk⟩
+
+/-- Any change made by the attributed step also requires a strictly newer
+timestamp, because the underlying replacement rule is unchanged. -/
+theorem applyUpdateAttributed_change_requires_newer (s : GossipState)
+    (verify : SigVerifier) (u : ChannelUpdate)
+    (h : s.applyUpdateAttributed verify u ≠ s) :
+    s.latestUpdateTimestamp < u.timestamp := by
+  by_cases hnew : s.latestUpdateTimestamp < u.timestamp
+  · exact hnew
+  · have hle : u.timestamp ≤ s.latestUpdateTimestamp := Nat.le_of_not_lt hnew
+    have heq : s.applyUpdateAttributed verify u = s := by
+      unfold applyUpdateAttributed
+      split
+      · exact applyUpdate_stale s u hle
+      · rfl
+    exact absurd heq h
+
+/-- The attributed step never changes the announcement list. -/
+theorem applyUpdateAttributed_announcements (s : GossipState)
+    (verify : SigVerifier) (u : ChannelUpdate) :
+    (s.applyUpdateAttributed verify u).announcements = s.announcements := by
+  unfold applyUpdateAttributed
+  split
+  · exact applyUpdate_announcements s u
+  · rfl
+
+/-- An announced key stays announced after the attributed step. -/
+theorem updateKeyAnnounced_applyUpdateAttributed (s : GossipState)
+    (verify : SigVerifier) (u : ChannelUpdate) (h : s.updateKeyAnnounced u) :
+    (s.applyUpdateAttributed verify u).updateKeyAnnounced u := by
+  refine updateKeyAnnounced_mono ?_ h
+  intro a ha
+  rw [applyUpdateAttributed_announcements]
+  exact ha
+
+/-- The attributed step never lowers the gossip clock. -/
+theorem latestUpdateTimestamp_applyUpdateAttributed_ge (s : GossipState)
+    (verify : SigVerifier) (u : ChannelUpdate) :
+    s.latestUpdateTimestamp ≤
+      (s.applyUpdateAttributed verify u).latestUpdateTimestamp := by
+  unfold applyUpdateAttributed
+  split
+  · exact latestUpdateTimestamp_applyUpdate_ge s u
+  · exact Nat.le_refl s.latestUpdateTimestamp
+
+end GossipState
+
 end LnLean.Routing

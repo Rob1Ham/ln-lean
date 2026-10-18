@@ -43,6 +43,12 @@ import LnLean.Proofs.ProtocolCoverageTargets
 import LnLean.Proofs.ProtocolSigningTargets
 import LnLean.Proofs.Routing.GossipTargets
 import LnLean.Proofs.Security.ReorgTargets
+import LnLean.Proofs.Bitcoin.SpendTargets
+import LnLean.Proofs.Channel.CommitmentIntegrationTargets
+import LnLean.Proofs.Channel.HtlcGlobalIdTargets
+import LnLean.Proofs.ConformanceTargets
+import LnLean.Proofs.ProtocolWireTargets
+import LnLean.Proofs.Routing.GossipAttributionTargets
 import LnLean.Proofs.Wire.TLVTargets
 
 set_option autoImplicit false
@@ -171,6 +177,31 @@ set_option autoImplicit false
 #print axioms LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state
 #print axioms LnLean.Proofs.Routing.GossipTargets.gossip_graph_only_valid_announcements
 
+/-! ## 17. Wave 4 open-issue targets -/
+
+#print axioms LnLean.Proofs.Bitcoin.SpendTargets.fundingOutput_spendable_output
+#print axioms LnLean.Proofs.Bitcoin.SpendTargets.fundingConfirmed_spendable_output
+#print axioms LnLean.Proofs.Bitcoin.SpendTargets.toLocalOutput_revocation_spendable_output
+#print axioms LnLean.Proofs.Bitcoin.SpendTargets.toLocalOutput_delayed_spendable_output
+#print axioms LnLean.Proofs.Bitcoin.SpendTargets.commitmentOutputs_toLocal_delayed_spendable
+#print axioms LnLean.Proofs.Bitcoin.SpendTargets.fundingSpendableBy2of2_of_both_sign
+#print axioms LnLean.Proofs.Channel.CommitmentIntegration.legacyOutputs_perm_commitmentOutputs
+#print axioms LnLean.Proofs.Channel.CommitmentIntegration.bolt3CommitmentOfRecords_conservation
+#print axioms LnLean.Proofs.Channel.CommitmentIntegration.dust_trimming_not_perm
+#print axioms LnLean.Channel.HTLC.tagged_id_unique_of_reachable
+#print axioms LnLean.Channel.HTLC.tagged_ids_nodup_of_reachable
+#print axioms LnLean.Channel.HTLC.cross_direction_duplicate_tagged
+#print axioms LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact
+#print axioms LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary
+#print axioms LnLean.Proofs.ProtocolWireTargets.legacy_wire_cannot_determine_coverage
+#print axioms LnLean.Proofs.ProtocolWireTargets.projection_forgets_fee_and_number
+#print axioms LnLean.Proofs.Routing.GossipAttributionTargets.gossip_graph_edges_update_attributed
+#print axioms LnLean.Proofs.Routing.GossipAttributionTargets.gossip_graph_edges_update_key_endpoint
+#print axioms LnLean.Proofs.Routing.GossipAttributionTargets.raw_applyGossip_accepts_unannounced_update
+#print axioms LnLean.Proofs.Conformance.bigsize_encode_one_byte_high
+#print axioms LnLean.Proofs.Conformance.bigsize_decode_eight_byte_high
+#print axioms LnLean.Proofs.Conformance.tlv_unknown_even_12_admission
+
 /-! ## 15. Registry
 
   The registry is a plain list of fully-qualified names.  Keeping it in the
@@ -258,6 +289,28 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Protocol.Handshake.funding_signed_signing_contract,
     `LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state,
     `LnLean.Proofs.Routing.GossipTargets.gossip_graph_only_valid_announcements,
+    `LnLean.Proofs.Bitcoin.SpendTargets.fundingOutput_spendable_output,
+    `LnLean.Proofs.Bitcoin.SpendTargets.fundingConfirmed_spendable_output,
+    `LnLean.Proofs.Bitcoin.SpendTargets.toLocalOutput_revocation_spendable_output,
+    `LnLean.Proofs.Bitcoin.SpendTargets.toLocalOutput_delayed_spendable_output,
+    `LnLean.Proofs.Bitcoin.SpendTargets.commitmentOutputs_toLocal_delayed_spendable,
+    `LnLean.Proofs.Bitcoin.SpendTargets.fundingSpendableBy2of2_of_both_sign,
+    `LnLean.Proofs.Channel.CommitmentIntegration.legacyOutputs_perm_commitmentOutputs,
+    `LnLean.Proofs.Channel.CommitmentIntegration.bolt3CommitmentOfRecords_conservation,
+    `LnLean.Proofs.Channel.CommitmentIntegration.dust_trimming_not_perm,
+    `LnLean.Channel.HTLC.tagged_id_unique_of_reachable,
+    `LnLean.Channel.HTLC.tagged_ids_nodup_of_reachable,
+    `LnLean.Channel.HTLC.cross_direction_duplicate_tagged,
+    `LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact,
+    `LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary,
+    `LnLean.Proofs.ProtocolWireTargets.legacy_wire_cannot_determine_coverage,
+    `LnLean.Proofs.ProtocolWireTargets.projection_forgets_fee_and_number,
+    `LnLean.Proofs.Routing.GossipAttributionTargets.gossip_graph_edges_update_attributed,
+    `LnLean.Proofs.Routing.GossipAttributionTargets.gossip_graph_edges_update_key_endpoint,
+    `LnLean.Proofs.Routing.GossipAttributionTargets.raw_applyGossip_accepts_unannounced_update,
+    `LnLean.Proofs.Conformance.bigsize_encode_one_byte_high,
+    `LnLean.Proofs.Conformance.bigsize_decode_eight_byte_high,
+    `LnLean.Proofs.Conformance.tlv_unknown_even_12_admission,
     ]
 
-theorem auditedTheorems_length : auditedTheorems.length = 79 := rfl
+theorem auditedTheorems_length : auditedTheorems.length = 101 := rfl

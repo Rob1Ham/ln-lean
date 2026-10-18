@@ -1,8 +1,9 @@
 # Traceability: obligation to BOLT and rust-lightning
 
 **Status:** proof-wave traceability. The table has 48 rows, one for each id in
-`LnLean/Proofs/Obligations.lean` and `docs/THEOREM-INDEX.md`; 48 are `proved`
-and 0 remain `statement-only` after proof-wave 3.
+`LnLean/Proofs/Obligations.lean` and `docs/THEOREM-INDEX.md`; 48 are `proved`,
+0 remain `statement-only`, and the catalog resolves 61 targets after
+proof-wave 4.
 
 Anchors are at pinned commit `fe4900930c6bd5786ec4203274d7cf312776a5a6`
 for rust-lightning and `1aadb719b4007c4cea0ba6e36b08c4fb53788dee` for the
@@ -33,13 +34,13 @@ currently needs that marker.
 | `LN-HT-001` | BOLT 2 §Removing an HTLC | `lightning/src/ln/channel.rs:8640; lightning/src/ln/chan_utils.rs:841` | `LnLean.Security.HtlcRecord.fulfill_sound` | proved |
 | `LN-HT-002` | BOLT 3 §HTLC-Timeout and HTLC-Success Transactions | `lightning/src/ln/chan_utils.rs:875; lightning/src/ln/channel.rs:8671` | `LnLean.Security.HtlcRecord.fail_only_after_expiry` | proved |
 | `LN-HT-003` | BOLT 2 §Adding an HTLC | `lightning/src/ln/chan_utils.rs:716` | `LnLean.Channel.HTLC.amount_conservation` | proved |
-| `LN-HT-004` | BOLT 2 §Adding an HTLC | `lightning/src/ln/channel.rs:8370` | `LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross` | proved |
+| `LN-HT-004` | BOLT 2 §Adding an HTLC | `lightning/src/ln/channel.rs:8370` | `LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross; LnLean.Channel.HTLC.tagged_id_unique_of_reachable; LnLean.Channel.HTLC.tagged_ids_nodup_of_reachable; LnLean.Channel.HTLC.cross_direction_duplicate_tagged` | proved |
 | `LN-HT-005` | BOLT 3 §Per-commitment Secret Requirements | `lightning/src/ln/chan_utils.rs:518` | `LnLean.Security.revoked_commitment_is_old` | proved |
 | `LN-HT-006` | BOLT 5 §Revoked Transaction Close Handling | `lightning/src/ln/channel.rs:9471; lightning/src/chain/channelmonitor.rs:5079` | `LnLean.Security.breach_penalty_spends_both` | proved |
 | `LN-PR-001` | BOLT 2 §The open_channel Message | `lightning/src/ln/channelmanager.rs:17521` | `LnLean.Protocol.Handshake.open_bounds` | proved |
 | `LN-PR-002` | BOLT 2 §The channel_ready Message | `lightning/src/ln/channelmanager.rs:17614` | `LnLean.Protocol.Handshake.channel_ready_gate` | proved |
 | `LN-PR-003` | BOLT 2 §The funding_signed Message | `lightning/src/ln/channel.rs:2107` | `LnLean.Protocol.Handshake.funding_signed_signing_contract` | proved |
-| `LN-PR-004` | BOLT 2 §Committing Updates So Far | `lightning/src/ln/channel.rs:2386; lightning/src/ln/channel.rs:6270` | `LnLean.Proofs.ProtocolCoverageTargets.commitment_signed_covers_exact_of_state` | proved |
+| `LN-PR-004` | BOLT 2 §Committing Updates So Far | `lightning/src/ln/channel.rs:2386; lightning/src/ln/channel.rs:6270` | `LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact; LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary` | proved |
 | `LN-PR-005` | BOLT 2 §Message Retransmission | `lightning/src/ln/channelmanager.rs:17831; lightning/src/ln/channel.rs:10826` | `LnLean.Protocol.Peer.reestablish_no_rollback` | proved |
 | `LN-PR-006` | BOLT 9 §Features; BOLT 2 §Defined Channel Types | `lightning/src/ln/channel.rs:4702` | `LnLean.Protocol.Handshake.feature_intersection` | proved |
 | `LN-RT-001` | BOLT 7 §Recommendations for Routing | `lightning/src/routing/router.rs:825; lightning/src/routing/router.rs:2797` | `LnLean.Security.Route.wellFormed_connected; LnLean.Security.Route.wellFormed_capacity; LnLean.Security.Route.wellFormed_nonempty` | proved |

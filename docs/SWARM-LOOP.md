@@ -88,6 +88,7 @@ LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build
 python3 scripts/check-catalog.py --audit
 ./scripts/check.sh
 python3 scripts/check-final.py
+python3 scripts/check-conformance.py
 python3 scripts/verify-anchors.py
 ./scripts/verify-vendor.sh
 grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean' || true
@@ -157,12 +158,14 @@ the remaining issues are research-only, or the gate cannot be kept green.
 
 ## Current wave
 
-Wave 3 is complete: 48/48 catalog rows are proved, full build 182 jobs, strict
-catalog audit green. Wave 4 is running from base `47189fe` (plan:
-`agents/swarm/WAVE-4.md`). It targets the non-catalog gaps: L1 spendability,
-vendor/CI, conformance, wire completeness, global HTLC ids, fee/dust
-integration, gossip attribution, and release packaging. Results will be
-integrated under the gate below, then this section will name the next wave.
+Wave 4 is complete: 48/48 catalog rows are proved, 61 targets, full build 188
+jobs, strict catalog audit green, and the BigSize/TLV vector checker is green.
+Reports are in `agents/reports/swarm4/`; the plan is
+`agents/swarm/WAVE-4.md`. Wave 5 candidates (vendor interpreter bridge,
+commitment gross/net patch, BOLT 3 sighash, differential conformance, state
+machine constructor, funding hash link, gossip dedup, and crypto limits) are
+defined in `docs/OPEN-ISSUES.md`. The parent launches them only after the
+wave-4 checkpoint is pushed and the catalog/docs are reconciled.
 
 ## Why this is not a fully autonomous daemon
 

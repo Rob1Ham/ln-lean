@@ -1,4 +1,5 @@
 import LnLean.Basic.Core
+import LnLean.Channel.Types
 
 /-!
 # LnLean.Protocol.Messages
@@ -467,5 +468,184 @@ theorem wellFormed_pubKey {m : Msg} {p : PubKey}
 theorem wellFormed_signature {m : Msg} {s : EcdsaSig}
     (h : wellFormed m) (hs : s ∈ signatures m) : s.bytes.size ≤ 73 :=
   h.2.2.1 s hs
+
+/-! ## Full `commitment_signed` record (PR-02 model extension)
+
+BOLT 2's `commitment_signed` (type 132) carries only a `channel_id`, a
+`signature` over the commitment transaction, and one `HTLC_signature` per
+untrimmed HTLC output.  It carries no commitment number, no commitment
+transaction digest, no fee, and no per-HTLC identification data, so the
+legacy record alone cannot determine what it covers (see
+`LnLean.Proofs.ProtocolCoverageTargets` for the mechanized negative results).
+
+The structures below are an **additive** extension.  `CommitmentSigned` is
+unchanged and remains the wire record; `CommitmentSignedFull` carries the
+additional data that a signer holds when it produces the message, and
+`CommitmentSignedFull.toCommitmentSigned` forgets that data.  Nothing in this
+module asserts that a received message was produced this way: the relation
+between a full record and a channel state is stated and proved in
+`LnLean.Proofs.ProtocolWireTargets`, not assumed here. -/
+
+/-- One per-HTLC signed entry of a full `commitment_signed`: the HTLC
+identification data that the legacy wire record omits, the digest of the
+second-stage signed data, and the DER signature.  `amount` is in
+millisatoshis (BOLT 2 `update_add_htlc`); the commitment output value is its
+satoshi floor. -/
+structure SignedHtlcEntry where
+  /-- BOLT 2 HTLC id, from the `update_add_htlc` that created the HTLC. -/
+  htlcId : Nat
+  /-- `amount_msat` of the HTLC. -/
+  amount : Msat
+  /-- `payment_hash` of the HTLC. -/
+  paymentHash : PaymentHash
+  /-- Direction relative to the commitment holder. -/
+  direction : Direction
+  /-- HTLC lifecycle tag: offered/received outputs have different scripts. -/
+  htlcState : HTLCState
+  /-- `cltv_expiry` of the HTLC. -/
+  cltvExpiry : Nat
+  /-- Digest of the BOLT 3 second-stage signed data for this output.  The
+  model has no sighash serializer, so the digest is explicit data. -/
+  signedDataDigest : ByteArray
+  /-- The DER-encoded `HTLC_signature` for this output. -/
+  signature : EcdsaSig
+deriving Repr, BEq
+
+/-- A full `commitment_signed` record: the legacy wire fields plus the
+commitment number, the paid fee, the commitment-transaction digest, and one
+signed entry per untrimmed HTLC output. -/
+structure CommitmentSignedFull where
+  /-- BOLT 2 `channel_id` (32 bytes). -/
+  channelId : ChannelId
+  /-- BOLT 2 `commitment_number` of the commitment being signed. -/
+  commitmentNumber : Nat
+  /-- The fee paid by the commitment transaction, in millisatoshis. -/
+  feePaid : Msat
+  /-- Digest of the commitment transaction that `commitmentSignature` signs.
+  The model does not construct the BOLT 3 sighash, so this is explicit data. -/
+  commitmentDigest : ByteArray
+  /-- The single signature over the commitment transaction. -/
+  commitmentSignature : EcdsaSig
+  /-- One signed entry per untrimmed HTLC output, in commitment order. -/
+  htlcEntries : List SignedHtlcEntry
+deriving Repr, BEq
+
+/-- Project a signed entry onto the commitment output it signs: BOLT 3 rounds
+the millisatoshi amount down to satoshis, so the projection is the exact
+`CommitmentHTLCOutput` the commitment transaction emits for this entry. -/
+def SignedHtlcEntry.toCommitmentHtlcOutput (e : SignedHtlcEntry) :
+    LnLean.Channel.CommitmentHTLCOutput where
+  direction := e.direction
+  amountSat := e.amount.toSatFloor
+  cltvExpiry := e.cltvExpiry
+  state := e.htlcState
+
+@[simp] theorem SignedHtlcEntry.toCommitmentHtlcOutput_amountSat
+    (e : SignedHtlcEntry) :
+    e.toCommitmentHtlcOutput.amountSat = e.amount.toSatFloor := rfl
+
+@[simp] theorem SignedHtlcEntry.toCommitmentHtlcOutput_direction
+    (e : SignedHtlcEntry) :
+    e.toCommitmentHtlcOutput.direction = e.direction := rfl
+
+/-- The identification tuple of an entry: HTLC id, millisatoshi amount,
+payment hash, direction, and expiry.  This is exactly the data the legacy
+wire record omits. -/
+def SignedHtlcEntry.ident (e : SignedHtlcEntry) :
+    Nat × Msat × PaymentHash × Direction × Nat :=
+  (e.htlcId, e.amount, e.paymentHash, e.direction, e.cltvExpiry)
+
+namespace CommitmentSignedFull
+
+/-- Forget the added data: project a full record onto the legacy BOLT 2 wire
+record.  The channel id and commitment signature are preserved, and the wire
+HTLC-signature list is the image of the signed entries' signatures. -/
+def toCommitmentSigned (f : CommitmentSignedFull) : CommitmentSigned where
+  channelId := f.channelId
+  signature := f.commitmentSignature
+  htlcSignatures := f.htlcEntries.map (fun e => e.signature)
+
+@[simp] theorem toCommitmentSigned_channelId (f : CommitmentSignedFull) :
+    f.toCommitmentSigned.channelId = f.channelId := rfl
+
+@[simp] theorem toCommitmentSigned_signature (f : CommitmentSignedFull) :
+    f.toCommitmentSigned.signature = f.commitmentSignature := rfl
+
+@[simp] theorem toCommitmentSigned_htlcSignatures (f : CommitmentSignedFull) :
+    f.toCommitmentSigned.htlcSignatures =
+      f.htlcEntries.map (fun e => e.signature) := rfl
+
+/-- The legacy signature list of the projection is the commitment signature
+followed by the entries' signatures. -/
+theorem signatures_toCommitmentSigned (f : CommitmentSignedFull) :
+    signatures (.commitmentSigned f.toCommitmentSigned) =
+      f.commitmentSignature :: f.htlcEntries.map (fun e => e.signature) := rfl
+
+/-- The legacy payload length of the projection. -/
+theorem msgLength_toCommitmentSigned (f : CommitmentSignedFull) :
+    msgLength (.commitmentSigned f.toCommitmentSigned) =
+      34 + sigLen f.commitmentSignature +
+        sigListLen (f.htlcEntries.map (fun e => e.signature)) := rfl
+
+/-- A canonical entry carrying only a signature; used to show that the
+extension is conservative over legacy records. -/
+def SignedHtlcEntry.ofSignature (s : EcdsaSig) : SignedHtlcEntry where
+  htlcId := 0
+  amount := ⟨0⟩
+  paymentHash := ⟨ByteArray.empty⟩
+  direction := .local
+  htlcState := .offered
+  cltvExpiry := 0
+  signedDataDigest := ByteArray.empty
+  signature := s
+
+@[simp] theorem SignedHtlcEntry.ofSignature_signature (s : EcdsaSig) :
+    (SignedHtlcEntry.ofSignature s).signature = s := rfl
+
+theorem map_ofSignature_signature (l : List EcdsaSig) :
+    l.map (fun s => (SignedHtlcEntry.ofSignature s).signature) = l := by
+  induction l with
+  | nil => rfl
+  | cons s t ih => simp
+
+theorem map_ofSignature_signature_map (l : List EcdsaSig) :
+    (l.map SignedHtlcEntry.ofSignature).map (fun e => e.signature) = l := by
+  induction l with
+  | nil => rfl
+  | cons s t ih => simp [ih]
+
+/-- Embed a legacy wire record into the full record by supplying empty
+metadata.  This is not an honest signer's record; it proves only that the
+extension does not exclude any legacy record. -/
+def ofWire (m : CommitmentSigned) : CommitmentSignedFull where
+  channelId := m.channelId
+  commitmentNumber := 0
+  feePaid := ⟨0⟩
+  commitmentDigest := ByteArray.empty
+  commitmentSignature := m.signature
+  htlcEntries := m.htlcSignatures.map SignedHtlcEntry.ofSignature
+
+@[simp] theorem ofWire_channelId (m : CommitmentSigned) :
+    (ofWire m).channelId = m.channelId := rfl
+
+@[simp] theorem ofWire_htlcEntries (m : CommitmentSigned) :
+    (ofWire m).htlcEntries = m.htlcSignatures.map SignedHtlcEntry.ofSignature := rfl
+
+/-- The projection of the embedding is the original legacy record, so
+`CommitmentSignedFull` is a conservative extension of `CommitmentSigned` at
+the wire level. -/
+theorem toCommitmentSigned_ofWire (m : CommitmentSigned) :
+    (ofWire m).toCommitmentSigned = m := by
+  cases m with
+  | mk channelId signature htlcSignatures =>
+      simp only [ofWire, toCommitmentSigned]
+      rw [map_ofSignature_signature_map]
+
+/-- Every legacy wire record is the projection of some full record. -/
+theorem toCommitmentSigned_surjective (m : CommitmentSigned) :
+    ∃ f : CommitmentSignedFull, f.toCommitmentSigned = m :=
+  ⟨ofWire m, toCommitmentSigned_ofWire m⟩
+
+end CommitmentSignedFull
 
 end LnLean.Protocol

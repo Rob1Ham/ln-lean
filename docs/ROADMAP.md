@@ -1,7 +1,7 @@
 # Phase C Roadmap
 
 **Status:** historical Phase-C plan, written after the wave-A scaffold. The
-current catalog gate is in `docs/THEOREM-INDEX.md`: after proof-wave 3 all 48
+current catalog gate is in `docs/THEOREM-INDEX.md`: after proof-wave 4 all 48
 tracked obligations (`LN-L1-*`, `LN-CR-*`, `LN-CH-*`, `LN-HT-*`, `LN-PR-*`,
 `LN-RT-*`, `LN-PM-*`, `LN-SEC-*`) are **`proved`**, with 0
 `statement-only` rows. That means every row names a sorry-free
@@ -174,8 +174,9 @@ liveness**. Each step should leave the build green and update
 
 ## 5. Phase-C exit criteria
 
-**Current position (proof-wave 3):** all 48 rows name a `sorry`-free
-theorem; 0 remain `statement-only`, and the strict catalog audit is RC 0. No
+**Current position (proof-wave 4):** all 48 rows name a `sorry`-free
+theorem; 0 remain `statement-only`, the strict catalog audit resolves 61
+targets and is RC 0. No
 row is silently weakened: conditional rows keep their caveats. The Phase-C
 catalog criteria below are met at the model level. The criteria for a public
 release or a full-verification claim are **not** met; see

@@ -1,0 +1,611 @@
+{
+  "schema": "lnlean.conformance.v1",
+  "lane": "S4-CONFORMANCE",
+  "issue": "CONF-01",
+  "scope": "Wire-encoding vector conformance for BOLT 1 BigSize and TLV. This is NOT a full implementation test: it checks the encoded bytes and the modelled accept/reject decisions for a finite vector set. IO, allocation limits, message-specific TLV value decoding, namespace/known-type policy, and rust-lightning byte-for-byte behaviour are out of scope.",
+  "sources": {
+    "bolts": {
+      "path": "refs/bolts/01-messaging.md",
+      "commit": "1aadb719b4007c4cea0ba6e36b08c4fb53788dee",
+      "sections": [
+        "Appendix A: BigSize Test Vectors",
+        "Appendix B: Type-Length-Value Test Vectors",
+        "Type-Length-Value Format"
+      ]
+    },
+    "rust_lightning": {
+      "anchors": [
+        "lightning/src/util/ser.rs:442-490 (BigSize Writeable/Readable and canonicality)"
+      ],
+      "commit": "fe4900930c6bd5786ec4203274d7cf312776a5a6"
+    },
+    "lean_model": {
+      "bigsize": "LnLean/Wire/BigSize.lean",
+      "tlv": "LnLean/Wire/TLV.lean",
+      "admission": "LnLean/Proofs/Wire/TLVTargets.lean",
+      "vector_theorems": "LnLean/Proofs/ConformanceTargets.lean"
+    }
+  },
+  "bigsize": {
+    "encode": [
+      {
+        "id": "bigsize_encode_zero",
+        "category": "canonical",
+        "value": 0,
+        "bytes": "00",
+        "length": 1,
+        "source": "BOLT 1 Appendix A (BigSize Encoding Tests)",
+        "lean": "bigsize_encode_zero"
+      },
+      {
+        "id": "bigsize_encode_one",
+        "category": "canonical",
+        "value": 1,
+        "bytes": "01",
+        "length": 1,
+        "source": "interior boundary, same class as BOLT 1 Appendix A",
+        "lean": "bigsize_encode_one"
+      },
+      {
+        "id": "bigsize_encode_one_byte_high",
+        "category": "canonical",
+        "value": 252,
+        "bytes": "fc",
+        "length": 1,
+        "source": "BOLT 1 Appendix A (BigSize Encoding Tests)",
+        "lean": "bigsize_encode_one_byte_high"
+      },
+      {
+        "id": "bigsize_encode_two_byte_low",
+        "category": "canonical",
+        "value": 253,
+        "bytes": "fd00fd",
+        "length": 3,
+        "source": "BOLT 1 Appendix A (BigSize Encoding Tests)",
+        "lean": "bigsize_encode_two_byte_low"
+      },
+      {
+        "id": "bigsize_encode_two_byte_254",
+        "category": "canonical",
+        "value": 254,
+        "bytes": "fd00fe",
+        "length": 3,
+        "source": "interior boundary just above 0xfd",
+        "lean": "bigsize_encode_two_byte_254"
+      },
+      {
+        "id": "bigsize_encode_two_byte_255",
+        "category": "canonical",
+        "value": 255,
+        "bytes": "fd00ff",
+        "length": 3,
+        "source": "interior boundary (0xff value in the 0xfd class)",
+        "lean": "bigsize_encode_two_byte_255"
+      },
+      {
+        "id": "bigsize_encode_two_byte_256",
+        "category": "canonical",
+        "value": 256,
+        "bytes": "fd0100",
+        "length": 3,
+        "source": "interior boundary (carry into the high byte)",
+        "lean": "bigsize_encode_two_byte_256"
+      },
+      {
+        "id": "bigsize_encode_two_byte_high",
+        "category": "canonical",
+        "value": 65535,
+        "bytes": "fdffff",
+        "length": 3,
+        "source": "BOLT 1 Appendix A (BigSize Encoding Tests)",
+        "lean": "bigsize_encode_two_byte_high"
+      },
+      {
+        "id": "bigsize_encode_four_byte_low",
+        "category": "canonical",
+        "value": 65536,
+        "bytes": "fe00010000",
+        "length": 5,
+        "source": "BOLT 1 Appendix A (BigSize Encoding Tests)",
+        "lean": "bigsize_encode_four_byte_low"
+      },
+      {
+        "id": "bigsize_encode_four_byte_high",
+        "category": "canonical",
+        "value": 4294967295,
+        "bytes": "feffffffff",
+        "length": 5,
+        "source": "BOLT 1 Appendix A (BigSize Encoding Tests)",
+        "lean": "bigsize_encode_four_byte_high"
+      },
+      {
+        "id": "bigsize_encode_eight_byte_low",
+        "category": "canonical",
+        "value": 4294967296,
+        "bytes": "ff0000000100000000",
+        "length": 9,
+        "source": "BOLT 1 Appendix A (BigSize Encoding Tests)",
+        "lean": "bigsize_encode_eight_byte_low"
+      },
+      {
+        "id": "bigsize_encode_eight_byte_high",
+        "category": "canonical",
+        "value": 18446744073709551615,
+        "bytes": "ffffffffffffffffff",
+        "length": 9,
+        "source": "BOLT 1 Appendix A (BigSize Encoding Tests)",
+        "lean": "bigsize_encode_eight_byte_high"
+      }
+    ],
+    "decode": [
+      {
+        "id": "bigsize_decode_zero",
+        "category": "canonical",
+        "bytes": "00",
+        "expect": {"status": "ok", "value": 0, "consumed": 1},
+        "source": "BOLT 1 Appendix A (BigSize Decoding Tests)",
+        "lean": "bigsize_decode_zero"
+      },
+      {
+        "id": "bigsize_decode_one_byte_high",
+        "category": "canonical",
+        "bytes": "fc",
+        "expect": {"status": "ok", "value": 252, "consumed": 1},
+        "source": "BOLT 1 Appendix A (BigSize Decoding Tests)",
+        "lean": "bigsize_decode_one_byte_high"
+      },
+      {
+        "id": "bigsize_decode_two_byte_low",
+        "category": "canonical",
+        "bytes": "fd00fd",
+        "expect": {"status": "ok", "value": 253, "consumed": 3},
+        "source": "BOLT 1 Appendix A (BigSize Decoding Tests)",
+        "lean": "bigsize_decode_two_byte_low"
+      },
+      {
+        "id": "bigsize_decode_two_byte_254",
+        "category": "canonical",
+        "bytes": "fd00fe",
+        "expect": {"status": "ok", "value": 254, "consumed": 3},
+        "source": "interior boundary just above 0xfd",
+        "lean": "bigsize_decode_two_byte_254"
+      },
+      {
+        "id": "bigsize_decode_two_byte_255",
+        "category": "canonical",
+        "bytes": "fd00ff",
+        "expect": {"status": "ok", "value": 255, "consumed": 3},
+        "source": "interior boundary (0xff value in the 0xfd class)",
+        "lean": "bigsize_decode_two_byte_255"
+      },
+      {
+        "id": "bigsize_decode_two_byte_256",
+        "category": "canonical",
+        "bytes": "fd0100",
+        "expect": {"status": "ok", "value": 256, "consumed": 3},
+        "source": "interior boundary (carry into the high byte)",
+        "lean": "bigsize_decode_two_byte_256"
+      },
+      {
+        "id": "bigsize_decode_two_byte_high",
+        "category": "canonical",
+        "bytes": "fdffff",
+        "expect": {"status": "ok", "value": 65535, "consumed": 3},
+        "source": "BOLT 1 Appendix A (BigSize Decoding Tests)",
+        "lean": "bigsize_decode_two_byte_high"
+      },
+      {
+        "id": "bigsize_decode_four_byte_low",
+        "category": "canonical",
+        "bytes": "fe00010000",
+        "expect": {"status": "ok", "value": 65536, "consumed": 5},
+        "source": "BOLT 1 Appendix A (BigSize Decoding Tests)",
+        "lean": "bigsize_decode_four_byte_low"
+      },
+      {
+        "id": "bigsize_decode_four_byte_high",
+        "category": "canonical",
+        "bytes": "feffffffff",
+        "expect": {"status": "ok", "value": 4294967295, "consumed": 5},
+        "source": "BOLT 1 Appendix A (BigSize Decoding Tests)",
+        "lean": "bigsize_decode_four_byte_high"
+      },
+      {
+        "id": "bigsize_decode_eight_byte_low",
+        "category": "canonical",
+        "bytes": "ff0000000100000000",
+        "expect": {"status": "ok", "value": 4294967296, "consumed": 9},
+        "source": "BOLT 1 Appendix A (BigSize Decoding Tests)",
+        "lean": "bigsize_decode_eight_byte_low"
+      },
+      {
+        "id": "bigsize_decode_eight_byte_high",
+        "category": "canonical",
+        "bytes": "ffffffffffffffffff",
+        "expect": {"status": "ok", "value": 18446744073709551615, "consumed": 9},
+        "source": "BOLT 1 Appendix A (BigSize Decoding Tests)",
+        "lean": "bigsize_decode_eight_byte_high"
+      },
+      {
+        "id": "bigsize_decode_trailing_ignored",
+        "category": "streaming",
+        "bytes": "00ff",
+        "expect": {"status": "ok", "value": 0, "consumed": 1},
+        "source": "streaming-decoder behaviour of the model; trailing bytes are not consumed",
+        "lean": "bigsize_decode_trailing_ignored"
+      },
+      {
+        "id": "bigsize_reject_noncanonical_two",
+        "category": "non-canonical",
+        "bytes": "fd00fc",
+        "expect": {"status": "reject", "reason": "non-canonical-bigsize"},
+        "source": "BOLT 1 Appendix A (two byte not canonical)",
+        "lean": "bigsize_reject_noncanonical_two"
+      },
+      {
+        "id": "bigsize_reject_noncanonical_two_zero",
+        "category": "non-canonical",
+        "bytes": "fd0000",
+        "expect": {"status": "reject", "reason": "non-canonical-bigsize"},
+        "source": "0xfd class encoding of zero is non-minimal",
+        "lean": "bigsize_reject_noncanonical_two_zero"
+      },
+      {
+        "id": "bigsize_reject_noncanonical_four",
+        "category": "non-canonical",
+        "bytes": "fe0000ffff",
+        "expect": {"status": "reject", "reason": "non-canonical-bigsize"},
+        "source": "BOLT 1 Appendix A (four byte not canonical)",
+        "lean": "bigsize_reject_noncanonical_four"
+      },
+      {
+        "id": "bigsize_reject_noncanonical_four_zero",
+        "category": "non-canonical",
+        "bytes": "fe00000000",
+        "expect": {"status": "reject", "reason": "non-canonical-bigsize"},
+        "source": "0xfe class encoding of zero is non-minimal",
+        "lean": "bigsize_reject_noncanonical_four_zero"
+      },
+      {
+        "id": "bigsize_reject_noncanonical_eight",
+        "category": "non-canonical",
+        "bytes": "ff00000000ffffffff",
+        "expect": {"status": "reject", "reason": "non-canonical-bigsize"},
+        "source": "BOLT 1 Appendix A (eight byte not canonical)",
+        "lean": "bigsize_reject_noncanonical_eight"
+      },
+      {
+        "id": "bigsize_reject_noncanonical_eight_zero",
+        "category": "non-canonical",
+        "bytes": "ff0000000000000000",
+        "expect": {"status": "reject", "reason": "non-canonical-bigsize"},
+        "source": "0xff class encoding of zero is non-minimal; also the out-of-domain TLV type 2^64 prefix",
+        "lean": "bigsize_reject_noncanonical_eight_zero"
+      },
+      {
+        "id": "bigsize_reject_short_two",
+        "category": "short-read",
+        "bytes": "fd00",
+        "expect": {"status": "reject", "reason": "bigsize-short-read"},
+        "source": "BOLT 1 Appendix A (two byte short read)",
+        "lean": "bigsize_reject_short_two"
+      },
+      {
+        "id": "bigsize_reject_short_four",
+        "category": "short-read",
+        "bytes": "feffff",
+        "expect": {"status": "reject", "reason": "bigsize-short-read"},
+        "source": "BOLT 1 Appendix A (four byte short read)",
+        "lean": "bigsize_reject_short_four"
+      },
+      {
+        "id": "bigsize_reject_short_eight",
+        "category": "short-read",
+        "bytes": "ffffffffff",
+        "expect": {"status": "reject", "reason": "bigsize-short-read"},
+        "source": "BOLT 1 Appendix A (eight byte short read)",
+        "lean": "bigsize_reject_short_eight"
+      },
+      {
+        "id": "bigsize_reject_empty",
+        "category": "short-read",
+        "bytes": "",
+        "expect": {"status": "reject", "reason": "empty-input"},
+        "source": "BOLT 1 Appendix A (one byte no read)",
+        "lean": "bigsize_reject_empty"
+      },
+      {
+        "id": "bigsize_reject_tag_only_two",
+        "category": "short-read",
+        "bytes": "fd",
+        "expect": {"status": "reject", "reason": "bigsize-short-read"},
+        "source": "BOLT 1 Appendix A (two byte no read)",
+        "lean": "bigsize_reject_tag_only_two"
+      },
+      {
+        "id": "bigsize_reject_tag_only_four",
+        "category": "short-read",
+        "bytes": "fe",
+        "expect": {"status": "reject", "reason": "bigsize-short-read"},
+        "source": "BOLT 1 Appendix A (four byte no read)",
+        "lean": "bigsize_reject_tag_only_four"
+      },
+      {
+        "id": "bigsize_reject_tag_only_eight",
+        "category": "short-read",
+        "bytes": "ff",
+        "expect": {"status": "reject", "reason": "bigsize-short-read"},
+        "source": "BOLT 1 Appendix A (eight byte no read)",
+        "lean": "bigsize_reject_tag_only_eight"
+      }
+    ]
+  },
+  "tlv": {
+    "cases": [
+      {
+        "id": "tlv_empty",
+        "category": "empty",
+        "bytes": "",
+        "parser": {"decision": "accept", "records": []},
+        "admission": "accept",
+        "spec": {"decision": "accept", "reason": "empty stream"},
+        "model_scope": "enforced",
+        "source": "BOLT 1 Appendix B (valid stream: empty message)",
+        "lean": {"decode": "tlv_empty_decode", "admission": "tlv_empty_admission"}
+      },
+      {
+        "id": "tlv_sorted_single",
+        "category": "sorted",
+        "bytes": "01012a",
+        "parser": {"decision": "accept", "records": [{"type": 1, "value": "2a"}]},
+        "admission": "accept",
+        "spec": {"decision": "accept", "reason": "single record"},
+        "model_scope": "enforced",
+        "source": "synthetic minimal single-record stream",
+        "lean": {"decode": "tlv_sorted_single_decode", "admission": "tlv_sorted_single_admission"}
+      },
+      {
+        "id": "tlv_sorted_two",
+        "category": "sorted",
+        "bytes": "01012a02022b2c",
+        "parser": {"decision": "accept", "records": [{"type": 1, "value": "2a"}, {"type": 2, "value": "2b2c"}]},
+        "admission": "accept",
+        "spec": {"decision": "accept", "reason": "strictly increasing types"},
+        "model_scope": "enforced",
+        "source": "synthetic two-record strictly increasing stream",
+        "lean": {"decode": "tlv_sorted_two_decode", "admission": "tlv_sorted_two_admission"}
+      },
+      {
+        "id": "tlv_sorted_three_254",
+        "category": "sorted",
+        "bytes": "01000201fffd00fe020226",
+        "parser": {"decision": "accept", "records": [{"type": 1, "value": ""}, {"type": 2, "value": "ff"}, {"type": 254, "value": "0226"}]},
+        "admission": "accept",
+        "spec": {"decision": "accept", "reason": "strictly increasing n1 types including tlv4 (type 254)"},
+        "model_scope": "enforced",
+        "source": "BOLT 1 Appendix B n1 types 1, 2, 254 composed into one stream",
+        "lean": {"decode": "tlv_sorted_three_254_decode", "admission": "tlv_sorted_three_254_admission"}
+      },
+      {
+        "id": "tlv_type_65535",
+        "category": "sorted",
+        "bytes": "fdffff00",
+        "parser": {"decision": "accept", "records": [{"type": 65535, "value": ""}]},
+        "admission": "accept",
+        "spec": {"decision": "accept", "reason": "type at the 0xfd class upper boundary"},
+        "model_scope": "enforced",
+        "source": "BigSize type boundary",
+        "lean": {"decode": "tlv_type_65535_decode", "admission": "tlv_type_65535_admission"}
+      },
+      {
+        "id": "tlv_type_65536",
+        "category": "sorted",
+        "bytes": "fe0001000000",
+        "parser": {"decision": "accept", "records": [{"type": 65536, "value": ""}]},
+        "admission": "accept",
+        "spec": {"decision": "accept", "reason": "type at the 0xfe class lower boundary"},
+        "model_scope": "enforced",
+        "source": "BigSize type boundary",
+        "lean": {"decode": "tlv_type_65536_decode", "admission": "tlv_type_65536_admission"}
+      },
+      {
+        "id": "tlv_max_type",
+        "category": "sorted",
+        "bytes": "ffffffffffffffffff00",
+        "parser": {"decision": "accept", "records": [{"type": 18446744073709551615, "value": ""}]},
+        "admission": "accept",
+        "spec": {"decision": "accept", "reason": "largest uint64 type"},
+        "model_scope": "enforced",
+        "source": "uint64 type boundary",
+        "lean": {"decode": "tlv_max_type_decode", "admission": "tlv_max_type_admission"}
+      },
+      {
+        "id": "tlv_duplicate_type",
+        "category": "duplicate",
+        "bytes": "01012a01012b",
+        "parser": {"decision": "accept", "records": [{"type": 1, "value": "2a"}, {"type": 1, "value": "2b"}]},
+        "admission": "reject",
+        "spec": {"decision": "reject", "reason": "duplicate TLV type"},
+        "model_scope": "enforced-by-admission",
+        "source": "BOLT 1 Appendix B (duplicate TLV type)",
+        "lean": {"decode": "tlv_duplicate_type_decode", "admission": "tlv_duplicate_type_admission"}
+      },
+      {
+        "id": "tlv_out_of_order",
+        "category": "duplicate",
+        "bytes": "02012a01012b",
+        "parser": {"decision": "accept", "records": [{"type": 2, "value": "2a"}, {"type": 1, "value": "2b"}]},
+        "admission": "reject",
+        "spec": {"decision": "reject", "reason": "valid TLV records but invalid ordering"},
+        "model_scope": "enforced-by-admission",
+        "source": "BOLT 1 Appendix B (valid TLV records but invalid ordering)",
+        "lean": {"decode": "tlv_out_of_order_decode", "admission": "tlv_out_of_order_admission"}
+      },
+      {
+        "id": "tlv_bolt_unsorted_1f_0f",
+        "category": "duplicate",
+        "bytes": "1f000f012a",
+        "parser": {"decision": "accept", "records": [{"type": 31, "value": ""}, {"type": 15, "value": "2a"}]},
+        "admission": "reject",
+        "spec": {"decision": "reject", "reason": "valid (ignored) TLV records but invalid ordering"},
+        "model_scope": "enforced-by-admission",
+        "source": "BOLT 1 Appendix B (0x1f 00 0f 01 2a)",
+        "lean": {"decode": "tlv_bolt_unsorted_1f_0f_decode", "admission": "tlv_bolt_unsorted_1f_0f_admission"}
+      },
+      {
+        "id": "tlv_bolt_duplicate_1f",
+        "category": "duplicate",
+        "bytes": "1f001f012a",
+        "parser": {"decision": "accept", "records": [{"type": 31, "value": ""}, {"type": 31, "value": "2a"}]},
+        "admission": "reject",
+        "spec": {"decision": "reject", "reason": "duplicate TLV type (ignored)"},
+        "model_scope": "enforced-by-admission",
+        "source": "BOLT 1 Appendix B (0x1f 00 1f 01 2a)",
+        "lean": {"decode": "tlv_bolt_duplicate_1f_decode", "admission": "tlv_bolt_duplicate_1f_admission"}
+      },
+      {
+        "id": "tlv_out_of_domain_type_2_64",
+        "category": "out-of-domain",
+        "bytes": "ff000000000000000000",
+        "parser": {"decision": "reject", "reason": "non-canonical-bigsize"},
+        "admission": "reject",
+        "spec": {"decision": "reject", "reason": "type 2^64 is outside the BigSize uint64 domain"},
+        "model_scope": "enforced",
+        "source": "model boundary used by LnLean.Proofs.Wire.TLVTargets.outOfDomainStream",
+        "lean": {"decode": "tlv_out_of_domain_type_2_64_decode", "admission": "tlv_out_of_domain_type_2_64_admission"}
+      },
+      {
+        "id": "tlv_out_of_domain_length_2_64",
+        "category": "out-of-domain",
+        "bytes": "01ff0000000000000000",
+        "parser": {"decision": "reject", "reason": "non-canonical-bigsize"},
+        "admission": "reject",
+        "spec": {"decision": "reject", "reason": "length 2^64 is outside the BigSize uint64 domain"},
+        "model_scope": "enforced",
+        "source": "model boundary: value size above 2^64-1 cannot be encoded",
+        "lean": {"decode": "tlv_out_of_domain_length_2_64_decode", "admission": "tlv_out_of_domain_length_2_64_admission"}
+      },
+      {
+        "id": "tlv_noncanonical_type_fe_zero",
+        "category": "out-of-domain",
+        "bytes": "fe0000000000",
+        "parser": {"decision": "reject", "reason": "non-canonical-bigsize"},
+        "admission": "reject",
+        "spec": {"decision": "reject", "reason": "type 0 encoded in the 0xfe class"},
+        "model_scope": "enforced",
+        "source": "BOLT 1 Type-Length-Value Format (minimal encoding)",
+        "lean": {"decode": "tlv_noncanonical_type_fe_zero_decode", "admission": "tlv_noncanonical_type_fe_zero_admission"}
+      },
+      {
+        "id": "tlv_noncanonical_length_fd_zero",
+        "category": "out-of-domain",
+        "bytes": "01fd0000",
+        "parser": {"decision": "reject", "reason": "non-canonical-bigsize"},
+        "admission": "reject",
+        "spec": {"decision": "reject", "reason": "length 0 encoded in the 0xfd class"},
+        "model_scope": "enforced",
+        "source": "BOLT 1 Appendix B (not minimally encoded length)",
+        "lean": {"decode": "tlv_noncanonical_length_fd_zero_decode", "admission": "tlv_noncanonical_length_fd_zero_admission"}
+      },
+      {
+        "id": "tlv_truncated_type_fd",
+        "category": "truncated",
+        "bytes": "fd",
+        "parser": {"decision": "reject", "reason": "bigsize-short-read"},
+        "admission": "reject",
+        "spec": {"decision": "reject", "reason": "type truncated"},
+        "model_scope": "enforced",
+        "source": "BOLT 1 Appendix B (invalid stream 0xfd)",
+        "lean": {"decode": "tlv_truncated_type_fd_decode", "admission": "tlv_truncated_type_fd_admission"}
+      },
+      {
+        "id": "tlv_truncated_type_fd01",
+        "category": "truncated",
+        "bytes": "fd01",
+        "parser": {"decision": "reject", "reason": "bigsize-short-read"},
+        "admission": "reject",
+        "spec": {"decision": "reject", "reason": "type truncated"},
+        "model_scope": "enforced",
+        "source": "BOLT 1 Appendix B (invalid stream 0xfd01)",
+        "lean": {"decode": "tlv_truncated_type_fd01_decode", "admission": "tlv_truncated_type_fd01_admission"}
+      },
+      {
+        "id": "tlv_missing_length",
+        "category": "truncated",
+        "bytes": "fd0101",
+        "parser": {"decision": "reject", "reason": "missing-length"},
+        "admission": "reject",
+        "spec": {"decision": "reject", "reason": "missing length"},
+        "model_scope": "enforced",
+        "source": "BOLT 1 Appendix B (invalid stream 0xfd0101)",
+        "lean": {"decode": "tlv_missing_length_decode", "admission": "tlv_missing_length_admission"}
+      },
+      {
+        "id": "tlv_truncated_length_fd",
+        "category": "truncated",
+        "bytes": "0ffd",
+        "parser": {"decision": "reject", "reason": "bigsize-short-read"},
+        "admission": "reject",
+        "spec": {"decision": "reject", "reason": "length truncated"},
+        "model_scope": "enforced",
+        "source": "BOLT 1 Appendix B (invalid stream 0x0f fd)",
+        "lean": {"decode": "tlv_truncated_length_fd_decode", "admission": "tlv_truncated_length_fd_admission"}
+      },
+      {
+        "id": "tlv_truncated_length_fd26",
+        "category": "truncated",
+        "bytes": "0ffd26",
+        "parser": {"decision": "reject", "reason": "bigsize-short-read"},
+        "admission": "reject",
+        "spec": {"decision": "reject", "reason": "length truncated"},
+        "model_scope": "enforced",
+        "source": "BOLT 1 Appendix B (invalid stream 0x0f fd26)",
+        "lean": {"decode": "tlv_truncated_length_fd26_decode", "admission": "tlv_truncated_length_fd26_admission"}
+      },
+      {
+        "id": "tlv_truncated_value",
+        "category": "truncated",
+        "bytes": "0ffd2602",
+        "parser": {"decision": "reject", "reason": "value-truncated"},
+        "admission": "reject",
+        "spec": {"decision": "reject", "reason": "missing value"},
+        "model_scope": "enforced",
+        "source": "BOLT 1 Appendix B (invalid stream 0x0f fd2602)",
+        "lean": {"decode": "tlv_truncated_value_decode", "admission": "tlv_truncated_value_admission"}
+      },
+      {
+        "id": "tlv_value_truncated_small",
+        "category": "truncated",
+        "bytes": "01032a2b",
+        "parser": {"decision": "reject", "reason": "value-truncated"},
+        "admission": "reject",
+        "spec": {"decision": "reject", "reason": "declared length 3 but only 2 value bytes present"},
+        "model_scope": "enforced",
+        "source": "synthetic truncated-value stream",
+        "lean": {"decode": "tlv_value_truncated_small_decode", "admission": "tlv_value_truncated_small_admission"}
+      },
+      {
+        "id": "tlv_unknown_even_12",
+        "category": "namespace-policy",
+        "bytes": "1200",
+        "parser": {"decision": "accept", "records": [{"type": 18, "value": ""}]},
+        "admission": "accept",
+        "spec": {"decision": "reject", "reason": "unknown even type"},
+        "model_scope": "not-modelled:namespace-policy",
+        "source": "BOLT 1 Appendix B (invalid stream 0x12 00; unknown even type)",
+        "lean": {"decode": "tlv_unknown_even_12_decode", "admission": "tlv_unknown_even_12_admission"}
+      },
+      {
+        "id": "tlv_known_type_nonminimal_value",
+        "category": "known-type-length",
+        "bytes": "01020001",
+        "parser": {"decision": "accept", "records": [{"type": 1, "value": "0001"}]},
+        "admission": "accept",
+        "spec": {"decision": "reject", "reason": "n1 tlv1 amount_msat is not minimally encoded"},
+        "model_scope": "not-modelled:known-type-length",
+        "source": "BOLT 1 Appendix B (0x01 02 0001; not minimal amount_msat)",
+        "lean": {"decode": "tlv_known_type_nonminimal_value_decode", "admission": "tlv_known_type_nonminimal_value_admission"}
+      }
+    ]
+  }
+}
