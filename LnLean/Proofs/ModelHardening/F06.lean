@@ -27,10 +27,12 @@ English claim of this module:
   materialises into a graph whose edges all have positive capacity.
 * The wave-A unconditional statement is **false** as written: a
   zero-capacity announcement with an always-accepting verifier binds
-  successfully.  That faithful statement is therefore kept below as an
-  explicitly marked open obligation, next to a mechanised zero-capacity
-  counterexample and a proof that the new admission gate rejects exactly
-  that announcement.
+  successfully.  That statement has therefore been **removed**; the
+  mechanised counterexample `zero_capacity_bind_counterexample` and the
+  unconditional gated form `bindChannelPositive_capacity_pos` (plus the
+  conditional wave-A form `bindChannel_capacity_pos_of_announced`) are the
+  surviving true results, together with a proof that the new admission gate
+  rejects exactly that announcement.
 
 BOLT sections:
 
@@ -352,15 +354,11 @@ theorem positive_admission_rejects_zero_capacity :
   · apply bindChannelPositive_none_of_not_positive
     simp [zeroCapacityAnn, positiveCapacity]
 
-/-- **`LN-GOSSIP-002`, faithful unconditional statement (false in wave A).**
-A successful `bindChannel` does *not* imply a positive capacity: the
-announcement itself carries no admissibility invariant and the admission
-path does not check it.  The counterexample above is mechanised, and
-`bindChannelPositive_capacity_pos` proves the repaired statement. -/
-theorem bindChannel_capacity_positive {verify : SigVerifier}
-    {a : ChannelAnnellation} {b : ChannelBinding}
-    (h : bindChannel verify a = some b) : positiveCapacity b.capacitySat := by
-  -- OBLIGATION: LN-WF-F06
-  sorry
+-- REPAIRED (LN-WF-F06): the false unconditional `bindChannel_capacity_positive`
+-- was removed.  Counterexample: `zero_capacity_bind_counterexample`
+-- (`bindChannel acceptAll zeroCapacityAnn = some zeroCapacityBinding`, capacity 0).
+-- Strongest true replacements: `bindChannelPositive_capacity_pos` (unconditional,
+-- gated admission) and `bindChannel_capacity_pos_of_announced` (conditional on
+-- `positiveCapacity a.capacitySat`, for the unchanged wave-A `bindChannel`).
 
 end LnLean.Proofs.ModelHardening.F06
