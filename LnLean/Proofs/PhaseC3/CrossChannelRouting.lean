@@ -144,11 +144,12 @@ def senderAmount : List (ChannelEdge × Msat) → Msat
   | [] => Msat.zero
   | p :: _ => p.2
 
-/-- The amount received at the end of the path. -/
-def lastAmount : List (ChannelEdge × Msat) → Nat
-  | [] => 0
-  | [p] => p.2.val
-  | _ :: q :: rest => lastAmount (q :: rest)
+/-- The amount received at the end of the path.  Defined through the list
+library's `getLastD` rather than overlapping patterns: the equation lemmas are
+then the standard `List` ones, which keeps the telescoping induction below
+small enough for Lean's elaborator. -/
+def lastAmount (path : List (ChannelEdge × Msat)) : Nat :=
+  (forwardAmounts path).getLastD 0
 
 /-- The fees actually paid by the sender: every hop fee except the origin
 hop's own advertised policy (the sender does not charge itself). -/
@@ -265,19 +266,18 @@ paid by the sender and is deliberately excluded. -/
 theorem backwardConserves_sender_eq_last_add_feeSum (p : ChannelEdge × Msat) :
     ∀ (rest : List (ChannelEdge × Msat)),
       BackwardConserves (p :: rest) →
-      p.2.val = lastAmount (p :: rest) + (rest.map hopFee).sum
-  | [], _ => by simp
-  | [q], h => by
+      p.2.val = lastAmount (p :: rest) + (rest.map hopFee).sum := by
+  intro rest
+  induction rest generalizing p with
+  | nil =>
+      intro _
+      simp [lastAmount]
+  | cons q rest ih =>
+      intro h
       have h1 : p.2.val = q.2.val + hopFee q := h.1
-      simpa using h1
-  | q :: r :: rest, h => by
-      have h1 : p.2.val = q.2.val + hopFee q := h.1
-      have h2 := backwardConserves_sender_eq_last_add_feeSum q (r :: rest) h.2
-      have hmap : ((q :: r :: rest).map hopFee).sum =
-          hopFee q + ((r :: rest).map hopFee).sum := by simp
-      have hlast : lastAmount (p :: q :: r :: rest) = lastAmount (q :: r :: rest) := rfl
-      rw [hlast, hmap]
-      omega
+      have h2 := ih q h.2
+      rw [lastAmount_cons_cons, List.map_cons, List.sum_cons, h1, h2]
+      ac_rfl
 
 /-- Plan-level form of the telescoping identity, using the explicit
 forwarding-fee total. -/
