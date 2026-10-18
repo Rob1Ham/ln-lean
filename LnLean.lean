@@ -195,6 +195,7 @@ import LnLean.Proofs.WaveH.H04
 import LnLean.Proofs.WaveH.H05
 import LnLean.Proofs.WaveH.H06
 import LnLean.Proofs.WaveH.H07
+import LnLean.Proofs.WaveH.H08
 import LnLean.Proofs.WaveH.H09
 import LnLean.Proofs.WaveH.H10
 import LnLean.Proofs.WaveH.H11

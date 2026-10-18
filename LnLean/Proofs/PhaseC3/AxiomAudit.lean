@@ -74,6 +74,7 @@ import LnLean.Proofs.Crypto.KeyModelTargets
 import LnLean.Proofs.WaveH.H01
 import LnLean.Proofs.WaveH.H04
 import LnLean.Proofs.WaveH.H07
+import LnLean.Proofs.WaveH.H08
 import LnLean.Proofs.WaveH.H09
 import LnLean.Proofs.WaveH.H13
 import LnLean.Proofs.WaveH.H30
@@ -341,6 +342,7 @@ set_option autoImplicit false
 #print axioms LnLean.Proofs.WaveH.H01.txCheckerFor_some_eq_realCheckerOf
 #print axioms LnLean.Proofs.WaveH.H04.scriptLaneTx_oneInput_ok_iff
 #print axioms LnLean.Proofs.WaveH.H07.htlcBip143Preimage_eq_bip143MsgL
+#print axioms LnLean.Proofs.WaveH.H08.htlcWirePreimage_eq_bip143MsgL
 #print axioms LnLean.Proofs.WaveH.H09.htlcBip143Preimage_digest_eq_signatureHashBip143Impl
 #print axioms LnLean.Proofs.WaveH.H13.fixedPayloadLength_eq_319
 #print axioms LnLean.Proofs.WaveH.H30.funding_txCheckerFor_verify_and_spend
@@ -555,6 +557,7 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Proofs.WaveH.H01.txCheckerFor_some_eq_realCheckerOf,
     `LnLean.Proofs.WaveH.H04.scriptLaneTx_oneInput_ok_iff,
     `LnLean.Proofs.WaveH.H07.htlcBip143Preimage_eq_bip143MsgL,
+    `LnLean.Proofs.WaveH.H08.htlcWirePreimage_eq_bip143MsgL,
     `LnLean.Proofs.WaveH.H09.htlcBip143Preimage_digest_eq_signatureHashBip143Impl,
     `LnLean.Proofs.WaveH.H13.fixedPayloadLength_eq_319,
     `LnLean.Proofs.WaveH.H30.funding_txCheckerFor_verify_and_spend,
@@ -566,4 +569,4 @@ def auditedTheorems : List Lean.Name :=
     ]
 
 set_option maxRecDepth 6000 in
-theorem auditedTheorems_length : auditedTheorems.length = 205 := rfl
+theorem auditedTheorems_length : auditedTheorems.length = 206 := rfl
