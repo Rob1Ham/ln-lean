@@ -5,9 +5,9 @@
 **Gate HEAD:** `d2769d20d01e2b69e170e1dafcd2e29e1df888d2` (`[PROOF] add
 eight-lane exact targets, promote 11 catalog rows`)
 **Catalog state:** proof-wave tree: 29 `proved` / 19 `statementOnly`.
-**Remote refs:** `origin/repair/integrated = bf84fee` (this gate);
-`origin/repair/pubbump = 95fc49d` (separate compatibility branch);
-`origin/main = b891a59` (untouched).
+**Remote refs:** `origin/repair/integrated` contains proof commit `d2769d2`
+(status commits may advance the tip); `origin/repair/pubbump = 95fc49d`
+(separate compatibility branch); `origin/main = b891a59` (untouched).
 **Toolchain:** `leanprover/lean4:v4.35.0`
 **L1 build dependency:** read-only `vendor/btc-lean-core` snapshot
 `f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb`
