@@ -34,11 +34,13 @@ invoice agree; a valid invoice forces every accepted payload's secret to be
 
 The unconditional form of LN-PM-003 ("the final payload's secret matches the
 invoice's secret") is false for the shipped model, because nothing constrains
-an arbitrary payload record.  It is retained verbatim below with a single
-`sorry` and the obligation marker, and a mechanized counterexample shows that
-the model's unconstrained acceptance relation admits two accepted payloads
-with different secrets for one valid invoice.  No claim is silently weakened:
-matching is only ever concluded through `FinalPayloadAcceptedFor`.
+an arbitrary payload record.  It was refuted and removed;
+`two_accepted_payloads_distinct_secrets` (and its single-payload form
+`unconstrained_accept_not_match`) mechanizes the counterexample for one valid
+invoice.  The strongest true replacement is `accepted_secret_eq`, which
+concludes matching from the explicit `FinalPayloadAcceptedFor` hypothesis.
+No claim is silently weakened: matching is only ever concluded through
+`FinalPayloadAcceptedFor`.
 
 BOLT anchors (pinned BOLTs commit
 `1aadb719b4007c4cea0ba6e36b08c4fb53788dee`).
@@ -246,22 +248,20 @@ theorem two_accepted_payloads_distinct_secrets :
   have h' : secretZero = secretOne := h
   exact secretZero_ne_secretOne h'
 
-/-! ## The faithful unconditional statement
+/-! ## The repaired statement boundary
 
 LN-PM-003 as written has no bridge hypothesis.  In the shipped model the
 statement is false: `FinalPayload` is a new record, `Invoice` does not mention
 it, and the counterexample above produces two payloads with different secrets
-for one valid invoice.  The statement is kept unchanged, with exactly one
-`sorry`, so the negative result is explicit rather than hidden by a weakened
-conditional theorem. -/
+for one valid invoice.  The refuted unconditional declaration was removed
+rather than retained with an open `sorry`; matching is available only in the
+conditional form `accepted_secret_eq` (and its corollaries), whose explicit
+`FinalPayloadAcceptedFor` hypothesis is the BOLT 4 final-node secret check. -/
 
-/-- **LN-PM-003, unconditional form (false in the shipped model).**  The final
-onion payload's payment secret matches the invoice's payment secret.  Matching
-is only derivable under `FinalPayloadAcceptedFor`; nothing in the model forces
-an arbitrary final payload to carry the invoice's secret. -/
-theorem waveF_f13_unconditional_secret_match (fp : FinalPayload) (i : Invoice) :
-    fp.paymentSecret = i.paymentSecret := by
-  -- OBLIGATION: LN-WF-F13
-  sorry
+-- REPAIRED: `waveF_f13_unconditional_secret_match` was refuted for the
+-- shipped model and removed.  Counterexample:
+-- `two_accepted_payloads_distinct_secrets` (`unconstrained_accept_not_match`
+-- is the single-payload form).  Strongest true replacement:
+-- `accepted_secret_eq : FinalPayloadAcceptedFor fp i → fp.paymentSecret = i.paymentSecret`.
 
 end LnLean.Proofs.ModelHardening.F13
