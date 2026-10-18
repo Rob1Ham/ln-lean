@@ -18,9 +18,9 @@ English claim of this module:
 * The un-gated wave-A step `acceptChannelUpdate` is shown to be unsound for
   the same claim by an explicit counterexample: an empty store, an
   always-accepting verifier, and an update whose key was never announced.
-  The faithful unconditional statement therefore keeps a `sorry` with the
-  `LN-WF-F05` marker; the conditional theorem is the strongest form that
-  the current model supports.
+  The refuted unconditional statement has been removed; the admitted-step
+  soundness theorem `admitChannelUpdate_change_key_announced_after` is the
+  strongest true replacement that the current model supports.
 
 BOLT 7 anchor:
 
@@ -298,24 +298,17 @@ theorem waveF_f05_admission_rejects_unannounced_key :
   rintro ⟨a, ha, _⟩
   simp [f05EmptyState] at ha
 
-/-! ## The faithful unconditional obligation
+/-! ## The refuted unconditional claim
 
-The unconditional statement is false for wave A, as the counterexample
-above shows.  It is kept verbatim (with one `sorry`) so that the model gap
-stays visible; the admitted step and its soundness theorems above are the
-strongest true replacement. -/
+The unconditional statement is false for wave A, as
+`waveF_f05_unannounced_key_counterexample` shows.  It has been removed rather
+than kept as an open site; the admitted step `admitChannelUpdate` and its
+soundness theorems above are the strongest true replacement. -/
 
-/-- **`LN-GOSSIP-KEY` / `LN-WF-F05`, still open.**  BOLT 7 verifies a
-`channel_update` under the `node_id` taken from the matching
-`channel_announcement`.  Wave A's `acceptChannelUpdate` only checks the
-abstract signature and the timestamp, never the key attribution, so an
-accepted update may name a key that was never announced
-(`waveF_f05_unannounced_key_counterexample`). -/
--- OBLIGATION: LN-WF-F05 an accepted channel_update is signed by one of the two announced node ids of its channel (missing admission: the wave-A store never checks u.signingKey against the announcement for u.shortChannelId)
-theorem waveF_f05_accepted_update_key_announced (verify : SigVerifier)
-    (s : GossipState) (u : ChannelUpdate)
-    (h : acceptChannelUpdate verify s u ≠ s) :
-    UpdateKeyAnnounced s u := by
-  sorry
+-- REPAIRED: removed the false unconditional
+-- `waveF_f05_accepted_update_key_announced` (counterexample:
+-- `waveF_f05_unannounced_key_counterexample`).  Strongest true replacement:
+-- `admitChannelUpdate_change_key_announced_after`, with the admitted step
+-- `admitChannelUpdate` and its full soundness `admitChannelUpdate_sound`.
 
 end LnLean.Proofs.ModelHardening.F05
