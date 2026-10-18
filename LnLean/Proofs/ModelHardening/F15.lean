@@ -35,10 +35,12 @@ This module supplies the reusable invariant and states the precise result:
   settlement traces, and is preserved by retry.
 * Under the idealized collision-freeness form of C1, two accepted keysends
   sharing a payment hash can only reveal the same preimage.
-* The unconditional form (no acceptance premise) is **false**.  It is kept
-  below with one `sorry` and the obligation marker, and
-  `unchecked_record_counterexample` mechanizes a record whose settlement
-  reveals a preimage that is not the one committed by its payment hash.
+* The unconditional form (no acceptance premise) is **false**.  It has been
+  removed from the tree after `unchecked_record_counterexample` mechanized a
+  record whose settlement reveals a preimage that is not the one committed by
+  its payment hash.  The strongest true replacement is
+  `bound_settle_reveals_committed`, which requires
+  `SenderPreimageBinding` and the pending state.
 
 No cryptographic hardness claim is made: `sha256` remains an arbitrary
 parameter, and the concrete `exampleHash` used by the counterexample is only
@@ -328,23 +330,11 @@ theorem unchecked_record_counterexample :
   · simpa [PaymentSession.preimageCommits, uncheckedKeysend, Keysend.settle,
       PaymentSession.settle, exampleHash] using forged_not_committed_hash
 
-/-- **Faithful unconditional form of LN-PM-KS.**  Without the acceptance
-premise, a pending keysend that settles successfully exposes a preimage
-committed to by its session's payment hash.  This is false in the wave-A
-model; `unchecked_record_counterexample` above is the witness.  It is kept
-here, with the obligation marker, so the gap is recorded rather than silently
-weakened: the model has no field saying that acceptance checked the preimage.
--/
-theorem unconditional_settle_reveals_committed
-    (sha256 : Preimage → PaymentHash) (k : Keysend)
-    (_hp : k.session.state = .pending) :
-    (k.settle .succeeded).revealedPreimage = some k.preimage ∧
-      PaymentSession.preimageCommits sha256 k.preimage
-        (k.settle .succeeded).session := by
-  -- OBLIGATION: LN-WF-F15: settlement reveals the stored preimage without
-  -- checking it against the payment hash.  The unconditional claim is false;
-  -- see `unchecked_record_counterexample`, and use `AcceptedKeysend` /
-  -- `SenderPreimageBinding` for the provable conditional form.
-  sorry
+-- REPAIRED: the refuted unconditional declaration
+-- `unconditional_settle_reveals_committed` was removed.  The mechanized
+-- counterexample `unchecked_record_counterexample` (above) witnesses the gap;
+-- the strongest true replacement is `bound_settle_reveals_committed`, which
+-- assumes `SenderPreimageBinding sha256 k` and `k.session.state = .pending`
+-- (equivalently `accepted_settle_reveals_committed` under `AcceptedKeysend`).
 
 end LnLean.Proofs.ModelHardening.F15
