@@ -1,11 +1,13 @@
 # Wave 7 — sequence context, preimage equality, consumer migration, and fold refinement
 
-**Status:** launched from `83d90b7`; parent integration pending.
+**Status:** complete; all eight lanes integrated and gated.
 
-**Launch commit:** `83d90b7` (`[STATUS] record proof-wave 6 gate HEAD`)
+**Launch commit:** `3180581` (`[STATUS] define and launch wave 7 residual lanes`)
 **Branch:** `repair/integrated`
 **Catalog at launch:** 48 proved / 0 statementOnly / 73 targets
-**Full build at launch:** 218 jobs, RC 0
+**Catalog at integration:** 48 proved / 0 statementOnly / 79 targets
+**Full build at integration:** 233 jobs, RC 0
+**Axiom audit at integration:** 194 theorems
 **Roadmap:** `docs/OPEN-ISSUES.md`
 **Protocol:** `docs/SWARM-LOOP.md`
 
@@ -34,6 +36,26 @@ parent integrates and records the gate.
 | `S7-CONF-LIVE` | `CONF-02`, `CONF-01` | `tests/conformance/**`, `scripts/check-conformance.py`, `LnLean/Proofs/ConformanceDiffTargets.lean`, report | Complete the pinned cargo cache/live harness where possible and run `cargo test --offline`; compare live rust-lightning output with the committed fixtures. If the cache is unavailable, add a deterministic, reproducible live-harness path and do not claim a live run. Keep the current offline/deterministic checks green. |
 | `S7-L1-FUNDING-AUTH` | `L1-03` | `LnLean/Bitcoin/Funding.lean`, `LnLean/Protocol/Handshake.lean`, new `LnLean/Proofs/Bitcoin/FundingAuthTargets.lean`, report | Add `open_channel` coverage and funding-key authentication, extending the handshake construction without weakening the hash link. Prove the strongest faithful authentication/construction theorem and retain the finite C1 admission. |
 | `S7-PR-KEY` | `PR-01` | new `LnLean/Crypto/KeyModel.lean`, new `LnLean/Proofs/Crypto/KeyModelTargets.lean`, report | Add a secret-key/key-generation model and connect `accept_channel.funding_pubkey` to the signer key, or prove the sharpest conditional contract. Do not assume C3 gives key attribution; retain the counterexample/negative result. |
+
+## Integration result
+
+All eight lanes returned sorry-free results and were integrated with the
+parent-owned catalog, audit, and docs updates.
+
+- Seven new Lean files: `SequenceContextTargets`, `CommitmentConsumerTargets`,
+  `ProtocolEventFoldTargets`, `GossipRawRefinementTargets`,
+  `FundingAuthTargets`, `KeyModelTargets`, and `Crypto/KeyModel`.
+- Six catalog rows strengthened from 73 to 79 targets; `AxiomAudit` extended
+  from 163 to 194 theorems.
+- Closed `CH-01`, `RT-01`, `CONF-02`, `MODEL-02`, and `MODEL-03`.
+- Narrowed `L1-02`/`L1-07` to the `TxValidation.Full` transfer,
+  `PR-05` to the `HtlcWire` instantiation, `L1-03` to the `Messages.openChannel`
+  wire patch, and `PR-01` to the `AcceptChannel`/registration path.
+- Two strong negative results are retained: raw gossip insertion is not a
+  canonical refinement, and the literal unguarded `ProtocolEvent` fold is
+  impossible without falsifying retained counterexamples.
+- Live conformance is now a real pinned run: 26/26 BigSize, 3/3 TLV, 4/4 wire,
+  with a SHA-256-pinned transcript and forged-transcript mutation control.
 
 ## Lane rules
 

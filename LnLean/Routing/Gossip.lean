@@ -1420,4 +1420,378 @@ theorem insertUpdateCanonical_newest {u : ChannelUpdate}
   rw [hvu]
   exact Nat.le_refl u.timestamp
 
+/-! ## Canonical selection of a raw store (additive, `RT-01`, wave 7)
+
+`applyGossip` is append-only: it never replaces an announcement for an existing
+`short_channel_id` and never replaces a `channel_update` slot.  The wave-6
+transition `admitGossipCanonical` (in
+`LnLean.Proofs.Routing.GossipCanonicalTargets`) therefore does not refine raw
+insertion as a *function*: raw insertion has no signature gate, no node-key
+registration gate, and no per-direction slot replacement.
+
+This section adds the store-level primitives needed to state the sharpest true
+relation between the two paths:
+
+* `UpdatesSlotUnique` is the raw-store shape invariant "at most one update per
+  `(short_channel_id, direction)` slot".  Raw insertion does **not** maintain it
+  (a newer update is appended next to the older one); the canonical transition
+  does (`insertUpdateCanonical`).
+* `selectAnnouncements` keeps the **head-most** (newest) record for each
+  `short_channel_id`; `selectUpdates` keeps the head-most record for each
+  direction slot.  These are the canonical *observations* of a raw store: they
+  replace instead of append and therefore have the canonical shape by
+  construction.
+* `canonicalStoreView` applies both selectors to a store without changing its
+  node announcements.
+* The three `canonicalStoreView_applyGossip_*` theorems are the refinement
+  square: observing a raw step is the same as applying the canonical *shape*
+  operation (`insertReplacing`, `insertUpdateCanonical`) to the observation.
+  The admission gates (signature, attribution, registration) are exactly what
+  raw insertion lacks; the wave-7 proof module adds them and proves the
+  agreement theorem on the common domain.
+
+Nothing above changes any existing definition or theorem.  In particular
+`applyGossip`, `GossipState.applyUpdate`, `canonicalView`
+(`dedupAnnouncements`, oldest-record-wins), and every wave-A/5/6 statement keep
+their exact meaning. -/
+
+/-- **At most one stored update per `(short_channel_id, direction)` slot.**
+
+This is the per-slot shape invariant of a production BOLT 7 store.  The raw
+store does not maintain it: `GossipState.applyUpdate` only compares the single
+global timestamp clock, so a newer update for one direction is appended next to
+the older update for that direction. -/
+def UpdatesSlotUnique (l : List ChannelUpdate) : Prop :=
+  ∀ u ∈ l, ∀ v ∈ l, u.shortChannelId = v.shortChannelId →
+    u.direction = v.direction → u = v
+
+/-- The empty update list has no slot collisions. -/
+theorem updatesSlotUnique_nil : UpdatesSlotUnique [] := by
+  intro u hu
+  simp at hu
+
+/-- **Canonical slot insertion preserves slot uniqueness.**  The deleted
+records are exactly the incoming slot, and at most one record remains there. -/
+theorem updatesSlotUnique_insertUpdateCanonical {u : ChannelUpdate}
+    {l : List ChannelUpdate} (h : UpdatesSlotUnique l) :
+    UpdatesSlotUnique (insertUpdateCanonical u l) := by
+  intro x hx y hy hscid hdir
+  rcases mem_insertUpdateCanonical_iff.mp hx with rfl | ⟨hxl, hxne⟩
+  · rcases mem_insertUpdateCanonical_iff.mp hy with rfl | ⟨hyl, hyne⟩
+    · rfl
+    · rcases hyne with hs | hd
+      · exact absurd hscid.symm hs
+      · exact absurd hdir.symm hd
+  · rcases mem_insertUpdateCanonical_iff.mp hy with rfl | ⟨hyl, hyne⟩
+    · rcases hxne with hs | hd
+      · exact absurd hscid hs
+      · exact absurd hdir hd
+    · exact h x hxl y hyl hscid hdir
+
+/-- **Canonical update selection.**  Keep the head-most record for each
+`(short_channel_id, direction)` slot.  Because gossip lists are stored
+newest-first, the head-most record is the newest one; the wave-7 report records
+that raw-reachable stores are timestamp-decreasing and that the selector is
+therefore "newest wins" on them. -/
+def selectUpdates : List ChannelUpdate → List ChannelUpdate
+  | [] => []
+  | u :: l => insertUpdateCanonical u (selectUpdates l)
+
+@[simp] theorem selectUpdates_nil : selectUpdates [] = [] := rfl
+
+/-- Unfolding of the update selector at a cons. -/
+theorem selectUpdates_cons (u : ChannelUpdate) (l : List ChannelUpdate) :
+    selectUpdates (u :: l) = insertUpdateCanonical u (selectUpdates l) := rfl
+
+/-- The selected update list has at most one record per directional slot. -/
+theorem updatesSlotUnique_selectUpdates (l : List ChannelUpdate) :
+    UpdatesSlotUnique (selectUpdates l) := by
+  induction l with
+  | nil => exact updatesSlotUnique_nil
+  | cons u l ih => exact updatesSlotUnique_insertUpdateCanonical ih
+
+/-- Selection removes updates; it never invents one. -/
+theorem mem_selectUpdates {u : ChannelUpdate} {l : List ChannelUpdate}
+    (h : u ∈ selectUpdates l) : u ∈ l := by
+  induction l with
+  | nil => simp [selectUpdates] at h
+  | cons v l ih =>
+      rw [selectUpdates_cons] at h
+      rcases mem_insertUpdateCanonical_iff.mp h with hvu | ⟨hl, _⟩
+      · rw [hvu]
+        exact List.mem_cons_self ..
+      · exact List.mem_cons_of_mem _ (ih hl)
+
+/-- **Every raw slot survives selection.**  For every stored update there is a
+selected update in the same `(short_channel_id, direction)` slot.  Selection
+therefore does not lose a channel/direction, only redundant older records. -/
+theorem exists_mem_selectUpdates_of_mem {u : ChannelUpdate}
+    {l : List ChannelUpdate} (h : u ∈ l) :
+    ∃ v ∈ selectUpdates l, v.shortChannelId = u.shortChannelId ∧
+      v.direction = u.direction := by
+  induction l with
+  | nil => simp at h
+  | cons w l ih =>
+      rw [selectUpdates_cons]
+      rcases List.mem_cons.mp h with rfl | h
+      · exact ⟨u, mem_insertUpdateCanonical_iff.mpr (Or.inl rfl), rfl, rfl⟩
+      · rcases ih h with ⟨v, hv, hscid, hdir⟩
+        by_cases h1 : v.shortChannelId = w.shortChannelId
+        · by_cases h2 : v.direction = w.direction
+          · exact ⟨w, mem_insertUpdateCanonical_iff.mpr (Or.inl rfl),
+              h1.symm.trans hscid, h2.symm.trans hdir⟩
+          · exact ⟨v, mem_insertUpdateCanonical_iff.mpr
+              (Or.inr ⟨hv, Or.inr h2⟩), hscid, hdir⟩
+        · exact ⟨v, mem_insertUpdateCanonical_iff.mpr
+            (Or.inr ⟨hv, Or.inl h1⟩), hscid, hdir⟩
+
+/-- The selected update list has no duplicate records. -/
+theorem selectUpdates_nodup (l : List ChannelUpdate) :
+    (selectUpdates l).Nodup := by
+  induction l with
+  | nil => simp [selectUpdates]
+  | cons u l ih =>
+      rw [selectUpdates_cons]
+      unfold insertUpdateCanonical
+      rw [List.nodup_cons]
+      refine ⟨?_, List.Pairwise.filter _ ih⟩
+      intro hmem
+      rcases List.mem_filter.mp hmem with ⟨_, hdec⟩
+      exact (of_decide_eq_true hdec) ⟨rfl, rfl⟩
+
+/-- **Selection is the identity on a duplicate-free, slot-unique update
+list.**  Such a list is already in canonical shape. -/
+theorem selectUpdates_of_nodup_slotUnique {l : List ChannelUpdate}
+    (hnd : l.Nodup) (hsu : UpdatesSlotUnique l) : selectUpdates l = l := by
+  induction l with
+  | nil => rfl
+  | cons u l ih =>
+      have hndl : l.Nodup := (List.nodup_cons.mp hnd).2
+      have hnotmem : u ∉ l := (List.nodup_cons.mp hnd).1
+      have hsul : UpdatesSlotUnique l := by
+        intro x hx y hy hscid hdir
+        exact hsu x (List.mem_cons_of_mem _ hx) y (List.mem_cons_of_mem _ hy)
+          hscid hdir
+      rw [selectUpdates_cons, ih hndl hsul]
+      unfold insertUpdateCanonical
+      rw [List.filter_eq_self.mpr]
+      intro v hv
+      apply decide_eq_true
+      rintro ⟨hscid, hdir⟩
+      have hvu : v = u :=
+        hsu v (List.mem_cons_of_mem _ hv) u (List.mem_cons_self ..) hscid hdir
+      exact hnotmem (hvu ▸ hv)
+
+/-- **Update selection is idempotent.** -/
+theorem selectUpdates_idempotent (l : List ChannelUpdate) :
+    selectUpdates (selectUpdates l) = selectUpdates l :=
+  selectUpdates_of_nodup_slotUnique (selectUpdates_nodup l)
+    (updatesSlotUnique_selectUpdates l)
+
+/-- **Canonical announcement selection.**  Keep the head-most (newest) record
+for each `short_channel_id`.  This differs from `dedupAnnouncements`, which
+keeps the *last* (oldest) occurrence; both are canonical in the
+`CanonicalAnnouncements` sense, but only the head-most selector matches
+`insertReplacing`, the canonical transition's announcement operation. -/
+def selectAnnouncements : List ChannelAnnellation → List ChannelAnnellation
+  | [] => []
+  | a :: l => insertReplacing a (selectAnnouncements l)
+
+@[simp] theorem selectAnnouncements_nil : selectAnnouncements [] = [] := rfl
+
+/-- Unfolding of the announcement selector at a cons. -/
+theorem selectAnnouncements_cons (a : ChannelAnnellation)
+    (l : List ChannelAnnellation) :
+    selectAnnouncements (a :: l) = insertReplacing a (selectAnnouncements l) :=
+  rfl
+
+/-- The selected announcement list has one record per `short_channel_id`. -/
+theorem canonical_selectAnnouncements (l : List ChannelAnnellation) :
+    CanonicalAnnouncements (selectAnnouncements l) := by
+  induction l with
+  | nil =>
+      intro a ha
+      simp [selectAnnouncements] at ha
+  | cons a l ih =>
+      rw [selectAnnouncements_cons]
+      exact canonical_insertReplacing ih a
+
+/-- Selection removes announcements; it never invents one. -/
+theorem mem_selectAnnouncements {a : ChannelAnnellation}
+    {l : List ChannelAnnellation} (h : a ∈ selectAnnouncements l) : a ∈ l := by
+  induction l with
+  | nil => simp [selectAnnouncements] at h
+  | cons b l ih =>
+      rw [selectAnnouncements_cons] at h
+      rcases mem_insertReplacing_iff.mp h with hba | ⟨hl, _⟩
+      · rw [hba]
+        exact List.mem_cons_self ..
+      · exact List.mem_cons_of_mem _ (ih hl)
+
+/-- **Every raw channel survives selection.**  For every stored announcement
+there is a selected announcement with the same `short_channel_id`. -/
+theorem exists_mem_selectAnnouncements_of_mem {a : ChannelAnnellation}
+    {l : List ChannelAnnellation} (h : a ∈ l) :
+    ∃ b ∈ selectAnnouncements l, b.shortChannelId = a.shortChannelId := by
+  induction l with
+  | nil => simp at h
+  | cons x l ih =>
+      rw [selectAnnouncements_cons]
+      rcases List.mem_cons.mp h with rfl | h
+      · exact ⟨a, mem_insertReplacing_iff.mpr (Or.inl rfl), rfl⟩
+      · rcases ih h with ⟨b, hb, hscid⟩
+        by_cases hsame : b.shortChannelId = x.shortChannelId
+        · exact ⟨x, mem_insertReplacing_iff.mpr (Or.inl rfl),
+            hsame.symm.trans hscid⟩
+        · exact ⟨b, mem_insertReplacing_of_mem_of_ne hb hsame, hscid⟩
+
+/-- The selected announcement list has no duplicate records. -/
+theorem selectAnnouncements_nodup (l : List ChannelAnnellation) :
+    (selectAnnouncements l).Nodup := by
+  induction l with
+  | nil => simp [selectAnnouncements]
+  | cons a l ih =>
+      rw [selectAnnouncements_cons]
+      unfold insertReplacing
+      rw [List.nodup_cons]
+      refine ⟨?_, List.Pairwise.filter _ ih⟩
+      intro hmem
+      rcases List.mem_filter.mp hmem with ⟨_, hdec⟩
+      exact (of_decide_eq_true hdec) rfl
+
+/-- **Selection is the identity on a duplicate-free canonical announcement
+list.** -/
+theorem selectAnnouncements_of_nodup_canonical {l : List ChannelAnnellation}
+    (hnd : l.Nodup) (hc : CanonicalAnnouncements l) :
+    selectAnnouncements l = l := by
+  induction l with
+  | nil => rfl
+  | cons a l ih =>
+      have hndl : l.Nodup := (List.nodup_cons.mp hnd).2
+      have hnotmem : a ∉ l := (List.nodup_cons.mp hnd).1
+      have hcl : CanonicalAnnouncements l := by
+        intro x hx y hy hscid
+        exact hc x (List.mem_cons_of_mem _ hx) y (List.mem_cons_of_mem _ hy) hscid
+      rw [selectAnnouncements_cons, ih hndl hcl]
+      unfold insertReplacing
+      rw [List.filter_eq_self.mpr]
+      intro b hb
+      apply decide_eq_true
+      intro hsame
+      have hab : a = b :=
+        hc a (List.mem_cons_self ..) b (List.mem_cons_of_mem _ hb) hsame.symm
+      exact hnotmem (hab ▸ hb)
+
+/-- **Announcement selection is idempotent.** -/
+theorem selectAnnouncements_idempotent (l : List ChannelAnnellation) :
+    selectAnnouncements (selectAnnouncements l) = selectAnnouncements l :=
+  selectAnnouncements_of_nodup_canonical (selectAnnouncements_nodup l)
+    (canonical_selectAnnouncements l)
+
+/-- **Canonical observation of a raw store.**  Keep the newest announcement per
+channel and the newest update per direction slot.  Node announcements are not
+touched: node-record canonicalisation remains future work (see the `RT-02`
+report). -/
+def canonicalStoreView (s : GossipState) : GossipState :=
+  { s with
+    announcements := selectAnnouncements s.announcements
+    updates := selectUpdates s.updates }
+
+@[simp] theorem canonicalStoreView_announcements (s : GossipState) :
+    (canonicalStoreView s).announcements = selectAnnouncements s.announcements :=
+  rfl
+
+@[simp] theorem canonicalStoreView_updates (s : GossipState) :
+    (canonicalStoreView s).updates = selectUpdates s.updates :=
+  rfl
+
+@[simp] theorem canonicalStoreView_nodeAnnouncements (s : GossipState) :
+    (canonicalStoreView s).nodeAnnouncements = s.nodeAnnouncements :=
+  rfl
+
+/-- The canonical observation always has one announcement per channel. -/
+theorem canonicalStoreView_canonical (s : GossipState) :
+    CanonicalAnnouncements (canonicalStoreView s).announcements :=
+  canonical_selectAnnouncements s.announcements
+
+/-- The canonical observation always has at most one update per direction
+slot. -/
+theorem canonicalStoreView_updates_slotUnique (s : GossipState) :
+    UpdatesSlotUnique (canonicalStoreView s).updates :=
+  updatesSlotUnique_selectUpdates s.updates
+
+/-- The canonical observation is idempotent. -/
+theorem canonicalStoreView_idempotent (s : GossipState) :
+    canonicalStoreView (canonicalStoreView s) = canonicalStoreView s := by
+  cases s with
+  | mk ann upd node =>
+      simp [canonicalStoreView, selectAnnouncements_idempotent,
+        selectUpdates_idempotent]
+
+/-- **A store already in canonical shape.**  Both selectors are the identity, so
+the store already has one (newest) record per channel and per direction slot
+and no duplicate records. -/
+def CanonicalStoreShape (s : GossipState) : Prop :=
+  selectAnnouncements s.announcements = s.announcements ∧
+    selectUpdates s.updates = s.updates
+
+/-- `canonicalStoreView` is the identity exactly on canonical-shaped stores. -/
+theorem canonicalStoreView_eq_self_iff (s : GossipState) :
+    canonicalStoreView s = s ↔ CanonicalStoreShape s := by
+  cases s with
+  | mk ann upd node =>
+      constructor
+      · intro h
+        refine ⟨?_, ?_⟩
+        · simpa [CanonicalStoreShape] using
+            congrArg GossipState.announcements h
+        · simpa [CanonicalStoreShape] using congrArg GossipState.updates h
+      · rintro ⟨hann, hupd⟩
+        simp [canonicalStoreView, hann, hupd]
+
+/-- A raw store with duplicate-free canonical announcements and a duplicate-free
+slot-unique update list is already in canonical shape. -/
+theorem canonicalStoreShape_of_nodup {s : GossipState}
+    (hc : CanonicalAnnouncements s.announcements)
+    (hnda : s.announcements.Nodup)
+    (hsu : UpdatesSlotUnique s.updates) (hndu : s.updates.Nodup) :
+    CanonicalStoreShape s :=
+  ⟨selectAnnouncements_of_nodup_canonical hnda hc,
+    selectUpdates_of_nodup_slotUnique hndu hsu⟩
+
+/-- **Refinement square, announcement branch.**  Observing a raw announcement
+insertion is exactly the canonical replacement `insertReplacing` applied to the
+observation.  No signature gate is needed for this *shape* law: the gates are
+the separate admission conditions that raw insertion does not have. -/
+theorem canonicalStoreView_applyGossip_announcements (s : GossipState)
+    (a : ChannelAnnellation) :
+    (canonicalStoreView (applyGossip s (.channelAnnouncement a))).announcements =
+      insertReplacing a (canonicalStoreView s).announcements := by
+  simp [canonicalStoreView, applyGossip, selectAnnouncements_cons]
+
+/-- **Refinement square, update branch.**  Observing a raw update step is the
+canonical slot insertion `insertUpdateCanonical` applied to the observation,
+under the raw step's own global-clock test.  Note the test is `s`'s global
+clock, not the canonical per-slot `UpdateSupersedes`; wave 7's proof module
+shows that the canonical path can accept an update the raw clock ignores
+(`canonical_admission_strictly_weaker_than_raw_clock`). -/
+theorem canonicalStoreView_applyGossip_updates (s : GossipState)
+    (u : ChannelUpdate) :
+    (canonicalStoreView (applyGossip s (.channelUpdate u))).updates =
+      if s.latestUpdateTimestamp < u.timestamp
+        then insertUpdateCanonical u (canonicalStoreView s).updates
+        else (canonicalStoreView s).updates := by
+  by_cases h : s.latestUpdateTimestamp < u.timestamp
+  · simp [canonicalStoreView, applyGossip, GossipState.applyUpdate, h,
+      selectUpdates_cons]
+  · simp [canonicalStoreView, applyGossip, GossipState.applyUpdate, h]
+
+/-- **Refinement square, node-announcement branch.**  Node announcements are
+appended by both paths and are not selected. -/
+theorem canonicalStoreView_applyGossip_nodeAnnouncements (s : GossipState)
+    (n : NodeAnnouncement) :
+    (canonicalStoreView (applyGossip s (.nodeAnnouncement n))).nodeAnnouncements =
+      n :: s.nodeAnnouncements :=
+  rfl
+
 end LnLean.Routing

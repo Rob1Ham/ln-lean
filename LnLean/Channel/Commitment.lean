@@ -185,7 +185,14 @@ given dust limit and net projection; the stored field is therefore named
 is the future-facing alias recommended by the wave-5 integration note.
 `effectiveFeeSat` is the actual commitment fee,
 `fundingValueSat - totalOutputValue`; when `totalOutputValue` is the emitted
-(survivor) value, it is exactly `feeSat + trimmedTotalSat`. -/
+(survivor) value, it is exactly `feeSat + trimmedTotalSat`.
+
+**Naming decision (CH-01/CH-03, wave 7).**  The stored field stays
+`trimmedTotalSat`.  `trimmedSat` is the established *computed* function used by
+the wave-5 module `CommitmentGrossNetTargets` and by `CommitmentTx.trimmedValue`
+/ `recordTrimmedValue`; renaming either side would be a breaking, coordinated
+API change across files outside this lane.  The pair `trimmedTotalSat` (stored)
+and `trimmedValueFor` (computed alias) is unambiguous and is kept. -/
 
 /-- The gross satoshi value that BOLT 3 trims from a nominal commitment record
 under an owner's dust limit and a net-value projection.  A trimmed
@@ -291,6 +298,26 @@ theorem Commitment.migrateNet_htlcs (c : Commitment) (dustLimitSat : Nat) :
 theorem Commitment.migrateNet_trimmedTotalSat (c : Commitment) (dustLimitSat : Nat) :
     (c.migrateNet dustLimitSat).trimmedTotalSat =
       c.trimmedSat dustLimitSat (fun h => h.netAmountSat) := rfl
+
+/-- Migrate both commitments of a pair to the BOLT 3 net survivor set.  This is
+the pair-level entry point used by the construction sites
+`commitmentPairOfBalances` and by channel-state consumers: each side is
+trimmed against its own caller-supplied dust limit (the protocol passes the
+same value to both sides in the two-party model). -/
+def CommitmentPair.migrateNet (p : CommitmentPair) (dustLimitSat : Nat) :
+    CommitmentPair :=
+  { localCommitment := p.localCommitment.migrateNet dustLimitSat
+    remoteCommitment := p.remoteCommitment.migrateNet dustLimitSat }
+
+theorem CommitmentPair.migrateNet_localCommitment (p : CommitmentPair)
+    (dustLimitSat : Nat) :
+    (p.migrateNet dustLimitSat).localCommitment =
+      p.localCommitment.migrateNet dustLimitSat := rfl
+
+theorem CommitmentPair.migrateNet_remoteCommitment (p : CommitmentPair)
+    (dustLimitSat : Nat) :
+    (p.migrateNet dustLimitSat).remoteCommitment =
+      p.remoteCommitment.migrateNet dustLimitSat := rfl
 
 /-- The weight of a concrete commitment record. -/
 def Commitment.weight (c : Commitment) : Weight :=
@@ -1005,6 +1032,86 @@ theorem CommitmentTx.migrateNet_htlcs (tx : CommitmentTx) :
 
 theorem CommitmentTx.migrateNet_commitment_trimmedTotalSat (tx : CommitmentTx) :
     (tx.migrateNet).commitment.trimmedTotalSat = tx.recordTrimmedValue := rfl
+
+/-! ### Legacy-consumer migration path (CH-01)
+
+The existing consumers of a commitment transaction read a `List
+CommitmentOutput` built from `Commitment.commitmentOutputs` (sighash views,
+`commitment_signed` coverage, reserve checks).  Those consumers do not know
+about `CommitmentTx` scripts, the dust limit, or the net second-stage value.
+The three definitions below make the migration explicit at that boundary:
+
+* `consumerOutputs` is the legacy list they read;
+* `migrateForConsumer` is the drop-in net replacement for the transaction
+  (definitionally `migrateNet`, exposed under a consumer-facing name);
+* `migratedConsumerOutputs` is the legacy-shaped list after migration, so a
+  consumer can keep its output type and change only the commitment it reads.
+
+`netConsumerOutputs` is the sorted rich net list a consumer should read when
+it can consume `CommitmentTxOutput` directly.  The refinement proofs live in
+`LnLean.Proofs.Channel.CommitmentConsumerTargets`. -/
+
+/-- The legacy output list a pre-CH-01 consumer reads from a transaction. -/
+def CommitmentTx.consumerOutputs (tx : CommitmentTx) : List CommitmentOutput :=
+  tx.commitment.commitmentOutputs
+
+/-- Migrate a transaction to the BOLT 3 net path at a legacy consumer
+boundary.  This is the same record migration as `migrateNet`, named for the
+consumer-facing integration step. -/
+def CommitmentTx.migrateForConsumer (tx : CommitmentTx) : CommitmentTx :=
+  tx.migrateNet
+
+/-- The legacy-shaped output list after the net migration.  A consumer that
+expects `List CommitmentOutput` can switch from `consumerOutputs` to this
+function without changing its output type. -/
+def CommitmentTx.migratedConsumerOutputs (tx : CommitmentTx) :
+    List CommitmentOutput :=
+  tx.migrateForConsumer.commitment.commitmentOutputs
+
+/-- The sorted rich net output list at the consumer boundary.  A consumer that
+can consume `CommitmentTxOutput` should read this list instead of
+`migratedConsumerOutputs`; the two differ only by the BOLT 3 sort. -/
+def CommitmentTx.netConsumerOutputs (tx : CommitmentTx) :
+    List CommitmentTxOutput :=
+  tx.migrateForConsumer.outputsNet
+
+theorem CommitmentTx.migrateForConsumer_eq_migrateNet (tx : CommitmentTx) :
+    tx.migrateForConsumer = tx.migrateNet := rfl
+
+theorem CommitmentTx.consumerOutputs_eq (tx : CommitmentTx) :
+    tx.consumerOutputs = tx.commitment.commitmentOutputs := rfl
+
+theorem CommitmentTx.migratedConsumerOutputs_eq (tx : CommitmentTx) :
+    tx.migratedConsumerOutputs =
+      (tx.migrateNet).commitment.commitmentOutputs := rfl
+
+theorem CommitmentTx.netConsumerOutputs_eq (tx : CommitmentTx) :
+    tx.netConsumerOutputs = (tx.migrateNet).outputsNet := rfl
+
+/-- Lift a legacy `Commitment` to a rich `CommitmentTx` at a construction site.
+The caller supplies the owner's dust limit and the per-output scripts; the net
+projection defaults to the record field `CommitmentHTLCOutput.netAmountSat`,
+so a legacy record keeps its gross = net semantics until the caller sets the
+net fields.  This is the construction half of the consumer migration: existing
+`Commitment` producers do not have to change, they wrap the record here. -/
+def CommitmentTx.ofCommitment (c : Commitment) (dustLimitSat : Nat)
+    (toLocalScript toRemoteScript localAnchorScript remoteAnchorScript :
+      ScriptPubKey)
+    (htlcScript : CommitmentHTLCOutput → ScriptPubKey) : CommitmentTx :=
+  { commitment := c
+    dustLimitSat := dustLimitSat
+    toLocalScript := toLocalScript
+    toRemoteScript := toRemoteScript
+    localAnchorScript := localAnchorScript
+    remoteAnchorScript := remoteAnchorScript
+    htlcScript := htlcScript }
+
+theorem CommitmentTx.ofCommitment_commitment (c : Commitment)
+    (dustLimitSat : Nat) (toLocalScript toRemoteScript localAnchorScript
+      remoteAnchorScript : ScriptPubKey)
+    (htlcScript : CommitmentHTLCOutput → ScriptPubKey) :
+    (CommitmentTx.ofCommitment c dustLimitSat toLocalScript toRemoteScript
+      localAnchorScript remoteAnchorScript htlcScript).commitment = c := rfl
 
 theorem CommitmentTx.outputsNet_perm (tx : CommitmentTx) :
     tx.outputsNet.Perm tx.outputsUnsortedNet :=

@@ -233,15 +233,43 @@ Five disjoint lanes extended the model and promoted eight more exact targets.
   197/82/0 RC 0, `check-final.py` 197/195 RC 0, conformance 61+16+9/33/146
   RC 0, anchors 306/0 bad, vendor 119 OK.
 
-### Wave 7 and beyond
+### Proof-wave 7 — sequence, preimage, consumer, fold, and key model
+
+- [x] `S7-L1-SEQUENCE` — exact BIP 68/112 context, policy dependence,
+  delayed branch refinement at `verifyImpl`/`realCheckerOf`, bad-signature
+  failures at every evaluator layer.
+- [x] `S7-PR-PREIMAGE` — preimage byte equality to `encode`/`bip143MsgL`,
+  ten-field order, vendored sub-hashes, 179/412-byte vectors.
+- [x] `S7-CH-CONSUMER` — consumer migration API, canonical permutation,
+  normal-form preservation, coverage counterexample, `trimmedTotalSat` kept.
+- [x] `S7-MODEL-FOLD` — guarded fold/refinement; literal unguarded fold
+  mechanized as impossible; all counterexamples retained.
+- [x] `S7-RT-RAW` — raw gossip non-refinement, canonical-store wrapper,
+  reachable invariant, raw-extension impossibility.
+- [x] `S7-CONF-LIVE` — pinned 188-package cache and live probe;
+  `cargo test --offline --locked`; 26/26 BigSize + 3/3 TLV + 4/4 wire;
+  hash-pinned transcript and forged-transcript mutation.
+- [x] `S7-L1-FUNDING-AUTH` — `OpenChannel`, funding phase machine, joint
+  construction, finite-C1 key-set determination, transport counterexample.
+- [x] `S7-PR-KEY` — secret-key/signer model, conditional attribution,
+  non-vacuous witness, generation-not-attribution counterexample.
+- [x] Seven new files root-imported; six catalog rows strengthened from 73 to
+  79 targets; `AxiomAudit` extended to 194 theorems.
+- [x] Full gate: build 233 jobs, strict catalog 79 targets RC 0, `check.sh`
+  204/82/0 RC 0, `check-final.py` 204/202 RC 0, conformance
+  61+16+9/33/146 RC 0 with live evidence, anchors 306/0 bad, vendor 119 OK.
+- [x] Closed `CH-01`, `RT-01`, `CONF-02`, `MODEL-02`, and `MODEL-03`;
+  retained `L1-02`/`L1-07`, `PR-05`, `L1-03`, and `PR-01` with narrower
+  boundaries.
+
+### Wave 8 and beyond
 
 The catalog is no longer the work queue. Open issues are tracked in
-`docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`. Wave 7
-candidates are decoded sequence/policy context, exact BIP 143 preimage
-equality, legacy commitment-consumer migration, folding `UpdateStep`/`DanceStep`
-into `ProtocolEvent`, raw gossip-store refinement, live cargo conformance,
-`open_channel`/funding-key authentication, and a secret-key/signer model.
-Human-gated release decisions remain outside agent lanes.
+`docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`. Wave 8
+candidates are the `TxValidation.Full` transfer, `HtlcWire` preimage equality,
+`Messages.openChannel`, `AcceptChannel` registration, consumer construction
+sites, a concrete EC bridge, more live encodings, and a gossip store-epoch
+model. Human-gated release decisions remain outside agent lanes.
 
 ## Commands
 

@@ -3,8 +3,8 @@
 Extracted from `LnLean/**.lean` by `scripts/collect-anchors.py`.
 The pinned commits are in `refs/PINNED.md`.
 
-- Lean files scanned: **197**
-- files with anchors: **192**
+- Lean files scanned: **204**
+- files with anchors: **198**
 
 | Lean file | Kind | Anchor |
 |---|---|---|
@@ -90,6 +90,10 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Crypto/Hash.lean` | BOLT | `BOLT 4` |
 | `LnLean/Crypto/Hash.lean` | LDK | `lightning/src/ln/msgs.rs:3553` |
 | `LnLean/Crypto/Hash.lean` | LDK | `lightning/src/util/ser.rs:442` |
+| `LnLean/Crypto/KeyModel.lean` | BOLT | `BOLT 2` |
+| `LnLean/Crypto/KeyModel.lean` | LDK | `lightning/src/crypto/utils.rs:75` |
+| `LnLean/Crypto/KeyModel.lean` | LDK | `lightning/src/ln/chan_utils.rs:600` |
+| `LnLean/Crypto/KeyModel.lean` | LDK | `lightning/src/ln/msgs.rs:3213` |
 | `LnLean/Crypto/Model.lean` | BOLT | `BOLT 1` |
 | `LnLean/Crypto/Model.lean` | BOLT | `BOLT 2` |
 | `LnLean/Crypto/Model.lean` | BOLT | `BOLT 3` |
@@ -157,6 +161,9 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Bitcoin/AnchorProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:1044` |
 | `LnLean/Proofs/Bitcoin/AnchorProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:1926` |
 | `LnLean/Proofs/Bitcoin/AnchorProps.lean` | LDK | `lightning/src/ln/channel.rs:989` |
+| `LnLean/Proofs/Bitcoin/FundingAuthTargets.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/Bitcoin/FundingAuthTargets.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/Bitcoin/FundingAuthTargets.lean` | LDK | `lightning/src/ln/chan_utils.rs:847` |
 | `LnLean/Proofs/Bitcoin/FundingLinkTargets.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Bitcoin/FundingLinkTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Bitcoin/FundingLinkTargets.lean` | LDK | `lightning/src/ln/chan_utils.rs:847` |
@@ -180,6 +187,7 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Bitcoin/ScriptProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:687` |
 | `LnLean/Proofs/Bitcoin/ScriptProps.lean` | LDK | `lightning/src/ln/channel.rs:6270` |
 | `LnLean/Proofs/Bitcoin/ScriptProps.lean` | LDK | `lightning/src/ln/channel.rs:989` |
+| `LnLean/Proofs/Bitcoin/SequenceContextTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Bitcoin/SighashBridgeTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Bitcoin/SpendTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Bitcoin/SpendTargets.lean` | LDK | `lightning/src/ln/chan_utils.rs:847` |
@@ -201,6 +209,7 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Channel/BreachProps.lean` | LDK | `lightning/src/chain/channelmonitor.rs:5101` |
 | `LnLean/Proofs/Channel/BreachProps.lean` | LDK | `lightning/src/chain/channelmonitor.rs:5104` |
 | `LnLean/Proofs/Channel/BreachProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:537` |
+| `LnLean/Proofs/Channel/CommitmentConsumerTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Channel/CommitmentDanceTargets.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Channel/CommitmentDanceTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Channel/CommitmentDanceTargets.lean` | LDK | `lightning/src/ln/channel.rs:773` |
@@ -242,6 +251,8 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Channel/PenaltyProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:2183` |
 | `LnLean/Proofs/Channel/PenaltyProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:537` |
 | `LnLean/Proofs/Channel/PenaltyProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:687` |
+| `LnLean/Proofs/Channel/ProtocolEventFoldTargets.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/Channel/ProtocolEventFoldTargets.lean` | LDK | `lightning/src/ln/channel.rs:773` |
 | `LnLean/Proofs/Channel/ReserveProps.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Channel/ReserveProps.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Channel/ReserveProps.lean` | BOLT | `BOLT 5` |
@@ -302,6 +313,9 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Crypto/EcdsaProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:1587` |
 | `LnLean/Proofs/Crypto/EcdsaProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:2244` |
 | `LnLean/Proofs/Crypto/EcdsaProps.lean` | LDK | `lightning/src/util/message_signing.rs:83` |
+| `LnLean/Proofs/Crypto/KeyModelTargets.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/Crypto/KeyModelTargets.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/Crypto/KeyModelTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Crypto/SchnorrProps.lean` | BOLT | `BOLT 1` |
 | `LnLean/Proofs/Crypto/SchnorrProps.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Crypto/SchnorrProps.lean` | LDK | `lightning/src/ln/interactivetxs.rs:810` |

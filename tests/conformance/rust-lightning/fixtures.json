@@ -1,14 +1,16 @@
 {
   "schema": "lnlean.rust-lightning.differential.v1",
-  "lane": "S5-CONF-DIFF",
+  "lane": "S7-CONF-LIVE",
   "issue": "CONF-02",
   "pinned_commit": "fe4900930c6bd5786ec4203274d7cf312776a5a6",
   "offline": true,
   "generation": {
     "script": "tests/conformance/rust-lightning/generate.py",
-    "mode": "transcribed-from-pinned-source",
-    "live_cargo_test": false,
-    "note": "The committed rows were extracted from the pinned source/unit-test literals; `generate.py --check` re-extracts and compares them, and `generate.py --live` runs the pinned cargo tests only when the offline cache is complete. No live cargo result is claimed here."
+    "mode": "live-cargo-test",
+    "live_cargo_test": true,
+    "live_transcript": "tests/conformance/rust-lightning/live-transcript.json",
+    "live_transcript_sha256": "3dd7a98fc102cb7840c52944977b56ae5656acea7846c1a4a3b86e43d6db8fe6",
+    "note": "The committed rows were extracted from the pinned source/unit-test literals; `generate.py --check` re-extracts and compares them. `generate.py --live --fetch` ran the pinned unit tests and the public-API probe under `cargo --offline --locked` with the committed `pinned/Cargo.lock`; `live-transcript.json` records the comparison. The wire header arithmetic remains a pinned-source check; only `LN_MAX_MSG_LEN` is probed live."
   },
   "scope": "Pinned rust-lightning differential fixtures for BigSize, a TLV reader stream, and the BOLT 8 wire length header. This is NOT a full implementation test: fixtures are finite, were transcribed from the pinned source/unit tests, and are validated offline against the same independent Python references used for the BOLT vectors. No Rust toolchain or network is required to run the checker.",
   "provenance": [

@@ -37,9 +37,14 @@ small valid frames, malformed/truncated frames, and the length-boundary table.
 the pinned rust-lightning unit test `bigsize_encoding_decoding`
 (`lightning/src/util/ser.rs:1857-1901`), the TLV reader test
 `retired_tlvs_skipped_on_read` (`lightning/src/util/ser_macros.rs:2047-2071`),
-and the wire length header described above.  The runner is offline: it reads
+and the wire length header described above.  The checker is offline: it reads
 only committed JSON and this module's source, never the network or a Rust
-toolchain.
+toolchain.  A separate optional harness
+(`tests/conformance/rust-lightning/generate.py --live`) runs the pinned tests
+and a public-API probe under `cargo --offline --locked` with the committed
+`pinned/Cargo.lock`, and records the comparison in `live-transcript.json`; the
+checker verifies that transcript hash and its pinned provenance.  The live run
+is evidence for the same finite rows, not a new model theorem.
 
 **Scope.**  This is vector/differential conformance, not a full implementation
 test.  It does not model Noise encryption, the 16-byte MACs, message dispatch,

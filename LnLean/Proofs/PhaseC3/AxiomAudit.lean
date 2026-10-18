@@ -65,6 +65,12 @@ import LnLean.Proofs.Channel.CommitmentTypesTargets
 import LnLean.Proofs.Channel.SighashViewBindingTargets
 import LnLean.Proofs.Channel.CommitmentDanceTargets
 import LnLean.Proofs.Routing.GossipCanonicalTargets
+import LnLean.Proofs.Bitcoin.SequenceContextTargets
+import LnLean.Proofs.Channel.CommitmentConsumerTargets
+import LnLean.Proofs.Channel.ProtocolEventFoldTargets
+import LnLean.Proofs.Routing.GossipRawRefinementTargets
+import LnLean.Proofs.Bitcoin.FundingAuthTargets
+import LnLean.Proofs.Crypto.KeyModelTargets
 
 set_option autoImplicit false
 
@@ -285,6 +291,40 @@ set_option autoImplicit false
 #print axioms LnLean.Proofs.Routing.GossipCanonicalTargets.reachableCanonical_directional_key_endpoint
 #print axioms LnLean.Proofs.Routing.GossipCanonicalTargets.reachableCanonical_attribution_unique
 
+/-! ## 20. Wave 7 sequence, preimage, consumer, fold, gossip, key, and funding targets -/
+
+#print axioms LnLean.Proofs.Bitcoin.SequenceContextTargets.checkSequenceDef_delay_iff
+#print axioms LnLean.Proofs.Bitcoin.SequenceContextTargets.toLocal_delayed_sequence_context_refinement
+#print axioms LnLean.Proofs.Bitcoin.SequenceContextTargets.toLocal_delayed_realChecker_refinement
+#print axioms LnLean.Proofs.Bitcoin.SequenceContextTargets.toLocal_delayed_sequence_interpreters_agree
+#print axioms LnLean.Proofs.Bitcoin.SequenceContextTargets.verifyWitnessProgram_toLocal_delayed_bad_sig
+#print axioms LnLean.Proofs.Channel.SighashTargets.Bip143Preimage.preimageBytes_eq_encode_bytes
+#print axioms LnLean.Proofs.Channel.SighashTargets.Bip143Preimage.preimageBytes_eq_bip143MsgL_ofTx
+#print axioms LnLean.Proofs.Channel.SighashTargets.commitmentBip143Preimage_eq_bip143MsgL
+#print axioms LnLean.Proofs.Channel.SighashTargets.vectorWirePreimage_vendor
+#print axioms LnLean.Proofs.Channel.CommitmentConsumer.netConsumerOutputs_perm_migratedConsumerOutputs
+#print axioms LnLean.Proofs.Channel.CommitmentConsumer.migratedConsumerOutputs_eq_consumerOutputs_of_migrated
+#print axioms LnLean.Proofs.Channel.CommitmentConsumer.coversMigratedOutputs_iff_legacy_of_migrated
+#print axioms LnLean.Proofs.Channel.CommitmentConsumer.legacyCoverage_not_preserved_by_net_migration
+#print axioms LnLean.Proofs.Channel.ProtocolEventFoldTargets.guardedStep_iff_step_and_guards
+#print axioms LnLean.Proofs.Channel.ProtocolEventFoldTargets.danceStep_iff_guardedStep
+#print axioms LnLean.Proofs.Channel.ProtocolEventFoldTargets.guardedUpdateReachable_preserves_ordered
+#print axioms LnLean.Proofs.Channel.ProtocolEventFoldTargets.guardedUpdateReachable_current_not_revoked
+#print axioms LnLean.Proofs.Channel.ProtocolEventFoldTargets.literal_round_fold_refuted
+#print axioms LnLean.Proofs.Channel.ProtocolEventFoldTargets.literal_revoke_fold_refuted
+#print axioms LnLean.Proofs.Channel.ProtocolEventFoldTargets.fold_cannot_both_preserve_balance_and_carry_add
+#print axioms LnLean.Proofs.Routing.GossipRawRefinementTargets.applyGossipCanonicalStore_gossip_toNetwork
+#print axioms LnLean.Proofs.Routing.GossipRawRefinementTargets.reachableCanonicalStore_invariant
+#print axioms LnLean.Proofs.Routing.GossipRawRefinementTargets.canonical_admission_strictly_weaker_than_raw_clock
+#print axioms LnLean.Proofs.Routing.GossipRawRefinementTargets.no_canonical_preserving_raw_announcement_extension
+#print axioms LnLean.Proofs.Bitcoin.FundingAuthTargets.openAccept_hash_linked
+#print axioms LnLean.Proofs.Bitcoin.FundingAuthTargets.openAccept_output_determines_key_set
+#print axioms LnLean.Proofs.Bitcoin.FundingAuthTargets.same_message_distinct_senders
+#print axioms LnLean.Proofs.Crypto.KeyModelTargets.funding_signature_attribution
+#print axioms LnLean.Proofs.Crypto.KeyModelTargets.key_generation_not_key_attribution
+#print axioms LnLean.Proofs.Crypto.KeyModelTargets.attribution_contract_nonvacuous
+#print axioms LnLean.Proofs.Crypto.KeyModelTargets.fundingSigningLaw_sign_injective
+
 /-! ## 15. Registry
 
   The registry is a plain list of fully-qualified names.  Keeping it in the
@@ -456,7 +496,38 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Proofs.Routing.GossipCanonicalTargets.reachableCanonical_nodeKeyConsistent,
     `LnLean.Proofs.Routing.GossipCanonicalTargets.reachableCanonical_directional_key_endpoint,
     `LnLean.Proofs.Routing.GossipCanonicalTargets.reachableCanonical_attribution_unique,
+    `LnLean.Proofs.Bitcoin.SequenceContextTargets.checkSequenceDef_delay_iff,
+    `LnLean.Proofs.Bitcoin.SequenceContextTargets.toLocal_delayed_sequence_context_refinement,
+    `LnLean.Proofs.Bitcoin.SequenceContextTargets.toLocal_delayed_realChecker_refinement,
+    `LnLean.Proofs.Bitcoin.SequenceContextTargets.toLocal_delayed_sequence_interpreters_agree,
+    `LnLean.Proofs.Bitcoin.SequenceContextTargets.verifyWitnessProgram_toLocal_delayed_bad_sig,
+    `LnLean.Proofs.Channel.SighashTargets.Bip143Preimage.preimageBytes_eq_encode_bytes,
+    `LnLean.Proofs.Channel.SighashTargets.Bip143Preimage.preimageBytes_eq_bip143MsgL_ofTx,
+    `LnLean.Proofs.Channel.SighashTargets.commitmentBip143Preimage_eq_bip143MsgL,
+    `LnLean.Proofs.Channel.SighashTargets.vectorWirePreimage_vendor,
+    `LnLean.Proofs.Channel.CommitmentConsumer.netConsumerOutputs_perm_migratedConsumerOutputs,
+    `LnLean.Proofs.Channel.CommitmentConsumer.migratedConsumerOutputs_eq_consumerOutputs_of_migrated,
+    `LnLean.Proofs.Channel.CommitmentConsumer.coversMigratedOutputs_iff_legacy_of_migrated,
+    `LnLean.Proofs.Channel.CommitmentConsumer.legacyCoverage_not_preserved_by_net_migration,
+    `LnLean.Proofs.Channel.ProtocolEventFoldTargets.guardedStep_iff_step_and_guards,
+    `LnLean.Proofs.Channel.ProtocolEventFoldTargets.danceStep_iff_guardedStep,
+    `LnLean.Proofs.Channel.ProtocolEventFoldTargets.guardedUpdateReachable_preserves_ordered,
+    `LnLean.Proofs.Channel.ProtocolEventFoldTargets.guardedUpdateReachable_current_not_revoked,
+    `LnLean.Proofs.Channel.ProtocolEventFoldTargets.literal_round_fold_refuted,
+    `LnLean.Proofs.Channel.ProtocolEventFoldTargets.literal_revoke_fold_refuted,
+    `LnLean.Proofs.Channel.ProtocolEventFoldTargets.fold_cannot_both_preserve_balance_and_carry_add,
+    `LnLean.Proofs.Routing.GossipRawRefinementTargets.applyGossipCanonicalStore_gossip_toNetwork,
+    `LnLean.Proofs.Routing.GossipRawRefinementTargets.reachableCanonicalStore_invariant,
+    `LnLean.Proofs.Routing.GossipRawRefinementTargets.canonical_admission_strictly_weaker_than_raw_clock,
+    `LnLean.Proofs.Routing.GossipRawRefinementTargets.no_canonical_preserving_raw_announcement_extension,
+    `LnLean.Proofs.Bitcoin.FundingAuthTargets.openAccept_hash_linked,
+    `LnLean.Proofs.Bitcoin.FundingAuthTargets.openAccept_output_determines_key_set,
+    `LnLean.Proofs.Bitcoin.FundingAuthTargets.same_message_distinct_senders,
+    `LnLean.Proofs.Crypto.KeyModelTargets.funding_signature_attribution,
+    `LnLean.Proofs.Crypto.KeyModelTargets.key_generation_not_key_attribution,
+    `LnLean.Proofs.Crypto.KeyModelTargets.attribution_contract_nonvacuous,
+    `LnLean.Proofs.Crypto.KeyModelTargets.fundingSigningLaw_sign_injective,
     ]
 
 set_option maxRecDepth 6000 in
-theorem auditedTheorems_length : auditedTheorems.length = 163 := rfl
+theorem auditedTheorems_length : auditedTheorems.length = 194 := rfl

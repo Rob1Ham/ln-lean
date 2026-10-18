@@ -12,9 +12,12 @@ encryption, or byte-for-byte equivalence with a running rust-lightning node.
 | Path | Role |
 |---|---|
 | `tests/conformance/vectors.json` | authoritative BigSize, TLV, and framing vector set |
-| `tests/conformance/rust-lightning/fixtures.json` | pinned rust-lightning differential fixtures and generation metadata |
-| `tests/conformance/rust-lightning/generate.py` | deterministic pinned-source fixture re-derivation/verification and optional live cargo run |
-| `tests/conformance/rust-lightning/README.md` | fixture provenance and offline runner notes |
+| `tests/conformance/rust-lightning/fixtures.json` | pinned rust-lightning differential fixtures, live-run metadata, and generation provenance |
+| `tests/conformance/rust-lightning/generate.py` | deterministic pinned-source fixture re-derivation/verification and the live cargo/probe harness |
+| `tests/conformance/rust-lightning/live_probe.rs` | public-API Rust probe copied into the disposable checkout by `--live` |
+| `tests/conformance/rust-lightning/pinned/Cargo.lock` | pinned dependency graph used by `cargo --offline --locked` |
+| `tests/conformance/rust-lightning/live-transcript.json` | recorded live-run comparison (SHA-256 pinned from `fixtures.json`) |
+| `tests/conformance/rust-lightning/README.md` | fixture/live-run provenance and harness notes |
 | `scripts/check-conformance.py` | independent validator, promoted-model/provenance checks, Lean cross-check, and mutation controls |
 | `LnLean/Wire/Message.lean` | payload-only frame **and** the promoted `LnLean.Wire.Transport` BOLT 8 model |
 | `LnLean/Proofs/ConformanceTargets.lean` | `decide` theorems for every BigSize/TLV vector |
@@ -44,11 +47,26 @@ against the pinned source (also offline):
 python3 tests/conformance/rust-lightning/generate.py --check
 ```
 
-`--write` rewrites the derived fixture fields; `--live` runs the two pinned
-`cargo test` filters with `--offline` in a disposable copy and exits 4 on
-failure.  A live attempt here failed on the incomplete offline cache
-(`no matching package named backtrace`), so no live result is claimed; the
-committed fixtures remain source-verified transcriptions.
+`--write` rewrites the derived fixture fields; running it on the committed file
+is a no-op.  `--live` copies the pinned checkout to a disposable directory,
+installs `pinned/Cargo.lock` and `live_probe.rs`, runs the two pinned unit tests
+and the public-API probe with `cargo test/run --offline --locked`, compares
+every BigSize/TLV fixture field with the live result, checks the wire fixtures
+against the live `LN_MAX_MSG_LEN`, and writes `live-transcript.json`.  It never
+claims success on failure.
+
+The cargo cache is a machine-level artifact.  On a machine without the pinned
+crates, `--fetch` performs one online `cargo fetch --locked` to complete the
+cache, then the same `--offline --locked` run follows; `--record` writes the
+successful transcript hash into `fixtures.json`:
+
+```sh
+python3 tests/conformance/rust-lightning/generate.py --live --fetch --record
+```
+
+The committed transcript was produced with cargo/rustc `1.99.0`.  The actual
+test/run commands are offline; only the optional `--fetch` bootstrap uses the
+network.  Without a complete cache, `--live` exits 4 and writes no transcript.
 
 The matching Lean build is module-only:
 
@@ -109,14 +127,17 @@ that states the model's expectation.  BigSize fixtures preserve rust-lightning's
 The TLV fixture set includes one declared `not-modelled:namespace-policy` gap:
 rust-lightning rejects an unknown even type that the model accepts.  Wire
 fixtures pin `LN_MAX_MSG_LEN = 65535` and the length-header convention.  The
-fixtures are committed JSON and run offline; they are not a live Rust run.
+fixtures are committed JSON and are replayed offline by the checker.
 
-The `generation` object records the deterministic path:
+The `generation` object records the live path:
 `tests/conformance/rust-lightning/generate.py` re-extracts the pinned unit-test
-literals and compares every derived field, and `scripts/check-conformance.py`
-verifies the recorded source hashes/HEAD when `refs/rust-lightning` is present.
-The metadata says `live_cargo_test: false`; a future lane may only flip it after
-`generate.py --live` actually succeeds and records a transcript hash.
+literals, `--live` runs the pinned tests and the `live_probe.rs` public-API
+probe under `cargo --offline --locked`, and `live-transcript.json` records the
+per-group comparison (26 BigSize, 3 TLV, 4 wire) plus the pinned source, probe,
+and lockfile hashes.  `scripts/check-conformance.py` verifies the transcript
+hash and its provenance whenever `live_cargo_test` is true.  The live run does
+not change the offline checker: every fixture row is still re-derived from the
+pinned source and replayed without a Rust toolchain.
 
 ## Sources
 

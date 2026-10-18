@@ -1,8 +1,8 @@
 {
   "schema": "lnlean.conformance.v1",
-  "lane": "S6-CONF-LIVE",
-  "issue": "CONF-02, CONF-03",
-  "scope": "Wire-encoding and message-framing vector conformance for BOLT 1 BigSize/TLV and the BOLT 8 transport frame, plus pinned rust-lightning differential fixtures. The BOLT 8 transport model is promoted to LnLean.Wire.Transport in LnLean/Wire/Message.lean; the payload-only Wire.unframe is unchanged. This is NOT a full implementation test: it checks encoded bytes and the modelled accept/reject decisions for a finite vector set. IO, allocation limits, message-specific TLV value decoding, namespace/known-type policy, Noise encryption, and byte-for-byte equivalence with a running rust-lightning node are out of scope.",
+  "lane": "S7-CONF-LIVE",
+  "issue": "CONF-02, CONF-01",
+  "scope": "Wire-encoding and message-framing vector conformance for BOLT 1 BigSize/TLV and the BOLT 8 transport frame, plus pinned rust-lightning differential fixtures and a recorded live rust-lightning run. The BOLT 8 transport model is promoted to LnLean.Wire.Transport in LnLean/Wire/Message.lean; the payload-only Wire.unframe is unchanged. This is NOT a full implementation test: it checks encoded bytes and the modelled accept/reject decisions for a finite vector set. IO, allocation limits, message-specific TLV value decoding, namespace/known-type policy, Noise encryption, and byte-for-byte equivalence with a running rust-lightning node are out of scope.",
   "sources": {
     "bolts": {
       "path": "refs/bolts/01-messaging.md",

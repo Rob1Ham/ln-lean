@@ -446,6 +446,35 @@ theorem bL_encode_ofTx (tx : Tx) (nIn : Nat) (scriptCode : ByteArray)
     bL_hashSequenceOf, bL_hashOutputsOf, length_bL,
     Bitcoin.SigHash.serAmountL]
 
+/-- **Strongest exact refinement for an arbitrary model preimage.**  If a
+`Preimage` records the same version, BIP 143 sub-hashes, outpoint, sequence,
+locktime and amount as a transaction — the sub-hashes compared at the vendored
+list level, where they are computed — then `encode` is byte-equal to the
+vendored `bip143MsgL`.  These field-agreement hypotheses are the complete
+missing context for literal equality; in particular `ofTx` discharges them by
+construction (`bL_encode_ofTx`). -/
+theorem bL_encode_eq_bip143MsgL (p : Preimage) (tx : Tx) (nIn : Nat)
+    (amount : Amount)
+    (hversion : p.version = tx.version.toUInt32)
+    (hprev : Bitcoin.Serialization.bL p.hashPrevouts =
+      Bitcoin.SigHash.hashPrevoutsL tx p.hashType)
+    (hseq : Bitcoin.Serialization.bL p.hashSequence =
+      Bitcoin.SigHash.hashSequenceL tx p.hashType)
+    (houtpoint : p.outpoint = (tx.vin.getD nIn dummyTxIn).prevout)
+    (hseq2 : p.sequence = (tx.vin.getD nIn dummyTxIn).sequence)
+    (hout : Bitcoin.Serialization.bL p.hashOutputs =
+      Bitcoin.SigHash.hashOutputsL tx nIn p.hashType)
+    (hlock : p.lockTime = tx.locktime)
+    (hamount : p.amount = amount) :
+    Bitcoin.Serialization.bL (encode p) =
+      Bitcoin.SigHash.bip143MsgL tx nIn
+        (Bitcoin.Serialization.bL p.scriptCode) p.hashType amount := by
+  simp only [encode, Bitcoin.SigHash.bip143MsgL]
+  rw [hversion, houtpoint, hseq2, hlock, hamount]
+  simp [dummyTxIn, Bitcoin.Serialization.bL_append, bL_serU32LE, bL_serU64LE,
+    bL_compactSize, bL_serOutpoint, length_bL, Bitcoin.SigHash.serAmountL,
+    hprev, hseq, hout]
+
 theorem sighashWitnessV0_eq_vendorImpl (tx : Tx) (nIn : Nat)
     (scriptCode : ByteArray) (ht : UInt32) (amount : Amount) :
     sighashWitnessV0 tx nIn scriptCode ht amount =

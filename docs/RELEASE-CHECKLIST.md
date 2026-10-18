@@ -7,11 +7,11 @@ tag name, a merge strategy, or a tag signing method.
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Lane base:** `201a0a0` (wave 6 launch; original checklist lane was
+**Lane base:** `3180581` (wave 7 launch; original checklist lane was
 `47189fe`)
-**Snapshot used for the original lane checks:** `f2123ef`; waves 4–6 later
-added twenty-one Lean modules and new gate commands. The current tree is
-**197 Lean files / 195 root imports / 218 build jobs / 73 catalog targets**;
+**Snapshot used for the original lane checks:** `f2123ef`; waves 4–7 later
+added twenty-eight Lean modules and new gate commands. The current tree is
+**204 Lean files / 202 root imports / 233 build jobs / 79 catalog targets**;
 re-run every gate row before tagging.
 **Target release type:** a **model/proof-tree** release, not an implementation
 release and not a complete verification of Lightning.
@@ -29,20 +29,20 @@ Evidence labels used below:
 
 | Item | State | Evidence |
 |---|---|---|
-| Branch tip | `0a3a5fb` proof-wave 6 integration (status commits may advance) | `git rev-parse HEAD` |
-| `origin/main` | `b891a59`; **61 commits behind** `HEAD`; `main` is an ancestor of `HEAD` | `git rev-list --count origin/main..HEAD` = 61; `git merge-base --is-ancestor origin/main HEAD` |
+| Branch tip | proof-wave 7 integration (status commits may advance) | `git rev-parse HEAD` |
+| `origin/main` | `b891a59`; **71 commits behind** `HEAD`; `main` is an ancestor of `HEAD` | `git rev-list --count origin/main..HEAD` = 71; `git merge-base --is-ancestor origin/main HEAD` |
 | Release tags | none | `git tag -l` empty; GitHub tags API empty |
 | GitHub releases | none | GitHub releases API empty |
 | `LICENSE` | **none** at repository root | `find` / `git ls-files` |
 | Project version | **not declared** in `lakefile.lean` | `lake-manifest.json` `"version": "1.3.0"` is the Lake manifest schema version, not this project's version |
 | Vendor snapshot | 119 files, checksums OK locally; **gitignored and not tracked** | `./scripts/verify-vendor.sh`; `git check-ignore vendor/btc-lean-core/lakefile.lean` |
 | Vendor provenance | `vendor/btc-lean-core` at `f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb`, **not present in public `btc-lean` history** | `refs/PINNED.md` |
-| Catalog | 48 rows, 48 `proved`, 0 `statementOnly`, 0 unresolved, 0 proved failures, 73 targets | `python3 scripts/check-catalog.py --audit` — **Verified** |
-| Source policy check | `files=197 obligations=82 sorry_in_proofs=0` | `./scripts/check.sh` — **Verified** |
-| File/import check | 197 Lean files, 195 root imports, D=33 E=15 F=15 | `python3 scripts/check-final.py` — **Verified** |
+| Catalog | 48 rows, 48 `proved`, 0 `statementOnly`, 0 unresolved, 0 proved failures, 79 targets | `python3 scripts/check-catalog.py --audit` — **Verified** |
+| Source policy check | `files=204 obligations=82 sorry_in_proofs=0` | `./scripts/check.sh` — **Verified** |
+| File/import check | 204 Lean files, 202 root imports, D=33 E=15 F=15 | `python3 scripts/check-final.py` — **Verified** |
 | Vendor integrity | `OK (119 files)` | `./scripts/verify-vendor.sh` — **Verified** |
 | Anchors | 306 anchors, 0 bad, 2 unanchored rows | `python3 scripts/verify-anchors.py` — **Verified** |
-| Full build | **not run in this release lane**. Historical claim: 218 jobs, RC 0 at the wave-6 gate. | See build gate below |
+| Full build | **not run in this release lane**. Historical claim: 233 jobs, RC 0 at the wave-7 gate. | See build gate below |
 | Public CI | 3 runs, all `success`; latest run #3 at `f2123ef`. The build job's `lake build` and `verify-vendor.sh` steps were **skipped**. | GitHub Actions API, run `39138200828` |
 
 The working tree at the snapshot was clean except for the pre-existing untracked
@@ -68,9 +68,9 @@ unconditional. The scope caveats in `docs/THEOREM-INDEX.md`,
 
 - [ ] Require: 48 rows, 48 `proved`, 0 `statementOnly`, 0 unresolved,
       0 proved failures, 0 duplicate ids, 0 promotion candidates.
-      **Verified at `f2123ef`:** `rows=48 proved=48 statementOnly=0 targets=61
-      unresolved=0 proved_failures=0 duplicate_ids=0 candidates=0
-      declarations=5942`. If integration deliberately changes the catalog,
+      **Verified at the wave-7 gate:** `rows=48 proved=48 statementOnly=0
+      targets=79 unresolved=0 proved_failures=0 duplicate_ids=0 candidates=0
+      declarations=7707`. If integration deliberately changes the catalog,
       record the new expected counts and why; do not silently accept a
       different number.
 - [ ] Reconcile every catalog target with `docs/THEOREM-INDEX.md` and
@@ -99,7 +99,7 @@ not a substitute. **This lane did not run `lake build`.**
   ```
 
 - [ ] Require RC 0 and record the exact job count from the output. The docs
-      claim `Build completed successfully (218 jobs)`; treat that as
+      claim `Build completed successfully (233 jobs)`; treat that as
       **historical** until the same command passes at the tag commit.
 - [ ] Axiom audit:
 
@@ -108,7 +108,7 @@ not a substitute. **This lane did not run `lake build`.**
   ```
 
   Require RC 0 and only `propext`, `Quot.sound`, `Classical.choice`. Historical
-  count: 101 audited theorems.
+  count: 194 audited theorems.
 - [ ] Exact `sorry` scan (must print nothing):
 
   ```sh
@@ -316,7 +316,7 @@ Therefore:
 
 - [ ] Update `README.md` counts and release status **after** integration, using
       the actual numbers at the release commit, not the wave-3 numbers
-      (currently 197 Lean files, 195 root imports, 48 catalog rows, 73 targets).
+      (currently 204 Lean files, 202 root imports, 48 catalog rows, 79 targets).
 - [ ] Update `docs/FINAL-STATUS.md` and `docs/WAVE-STATUS.md` with the release
       commit/tag and current gate evidence. Remove stale "Gate HEAD" references
       if they no longer identify the tagged commit.
@@ -471,6 +471,6 @@ would be false.
 | PR/merge strategy (`OPS-03`) | _pending_ | | | |
 | Tag name / version | _pending_ | | | |
 | Tag signing method | _pending_ | | | |
-| Full build at release commit | _not run in this lane_ | | | 218-job wave-6 historical claim only |
+| Full build at release commit | _not run in this lane_ | | | 233-job wave-7 historical claim only |
 | Public CI build actually executed | _pending `OPS-01`_ | | | Run #3 skipped build steps |
 | Release notes scope review | _pending_ | | | Must repeat open-issue caveats |

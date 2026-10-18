@@ -62,6 +62,13 @@ DEFAULT_LEAN_DIFF = ROOT / "LnLean" / "Proofs" / "ConformanceDiffTargets.lean"
 DEFAULT_MESSAGE = ROOT / "LnLean" / "Wire" / "Message.lean"
 DEFAULT_DIFF = ROOT / "tests" / "conformance" / "rust-lightning" / "fixtures.json"
 DEFAULT_SOURCE = ROOT / "refs" / "rust-lightning"
+LIVE_PROBE = ROOT / "tests" / "conformance" / "rust-lightning" / "live_probe.rs"
+LIVE_LOCK = ROOT / "tests" / "conformance" / "rust-lightning" / "pinned" / "Cargo.lock"
+LIVE_TRANSCRIPT_SCHEMA = "lnlean.rust-lightning.live-transcript.v1"
+LIVE_TEST_NAMES = [
+    "util::ser::tests::bigsize_encoding_decoding",
+    "util::ser_macros::tests::retired_tlvs_skipped_on_read",
+]
 
 UINT64_MAX = 2**64 - 1
 
@@ -716,6 +723,73 @@ def check_promoted_transport(decls: dict[str, str]) -> tuple[int, int]:
     return len(PROMOTED_TRANSPORT_THEOREMS), len(PROMOTED_TRANSPORT_DEFS)
 
 
+def fixture_rows_digest(doc: dict[str, Any]) -> str:
+    """SHA-256 of the fixture rows, independent of generation metadata."""
+    payload = json.dumps(doc["fixtures"], sort_keys=True,
+                         separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def check_live_transcript(generation: dict[str, Any],
+                          doc: dict[str, Any]) -> None:
+    """Verify the committed live-run evidence, not just its claimed hash."""
+    digest = generation.get("live_transcript_sha256")
+    require(isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest),
+            "a live cargo run must record a 64-hex live_transcript_sha256")
+    rel = generation.get("live_transcript")
+    require(isinstance(rel, str) and rel,
+            "a live cargo run must name its live_transcript")
+    path = Path(rel)
+    if not path.is_absolute():
+        path = ROOT / path
+    require(path.is_file(), f"live transcript not found: {path}")
+    actual = hashlib.sha256(path.read_bytes()).hexdigest()
+    require(actual == digest,
+            f"live transcript sha256 {actual} != recorded {digest}")
+    try:
+        transcript = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise CheckError(f"live transcript is not valid JSON: {exc}") from None
+    require(transcript.get("schema") == LIVE_TRANSCRIPT_SCHEMA,
+            f"unexpected live transcript schema {transcript.get('schema')!r}")
+    require(isinstance(doc.get("fixtures"), dict),
+            "differential fixtures must be an object")
+    require(transcript.get("pinned_commit") == doc.get("pinned_commit"),
+            "live transcript pinned_commit disagrees with fixtures.json")
+    require(transcript.get("fixture_rows_sha256") == fixture_rows_digest(doc),
+            "live transcript was produced for different fixture rows")
+
+    require(LIVE_PROBE.is_file(), f"live probe not found: {LIVE_PROBE}")
+    require(transcript.get("probe_sha256") ==
+            hashlib.sha256(LIVE_PROBE.read_bytes()).hexdigest(),
+            "live transcript does not hash the committed live_probe.rs")
+    require(LIVE_LOCK.is_file(), f"pinned Cargo.lock not found: {LIVE_LOCK}")
+    require(transcript.get("cargo_lock_sha256") ==
+            hashlib.sha256(LIVE_LOCK.read_bytes()).hexdigest(),
+            "live transcript does not hash the committed pinned/Cargo.lock")
+
+    fixtures = doc["fixtures"]
+    expected_counts = {
+        "bigsize": len(fixtures["bigsize"]),
+        "tlv": len(fixtures["tlv"]),
+        "wire": len(fixtures["wire"]),
+    }
+    require(transcript.get("comparisons") == expected_counts,
+            f"live transcript comparisons {transcript.get('comparisons')} != "
+            f"{expected_counts}")
+    tests = transcript.get("tests")
+    require(isinstance(tests, list), "live transcript tests must be a list")
+    by_name = {entry.get("name"): entry for entry in tests
+               if isinstance(entry, dict)}
+    for name in LIVE_TEST_NAMES:
+        entry = by_name.get(name)
+        require(entry is not None,
+                f"live transcript is missing pinned test {name}")
+        require(entry.get("result") == "ok" and entry.get("passed") == 1
+                and entry.get("failed") == 0,
+                f"live transcript does not record a clean pass for {name}")
+
+
 def check_generation(doc: dict[str, Any]) -> bool:
     """Validate the deterministic fixture-generation metadata."""
     generation = doc.get("generation")
@@ -730,8 +804,12 @@ def check_generation(doc: dict[str, Any]) -> bool:
     live = generation.get("live_cargo_test")
     require(isinstance(live, bool), "generation.live_cargo_test must be a boolean")
     if live:
-        require(bool(generation.get("live_transcript_sha256")),
-                "a live cargo run must record live_transcript_sha256")
+        require(mode == "live-cargo-test",
+                "live_cargo_test=true requires mode=live-cargo-test")
+        check_live_transcript(generation, doc)
+    else:
+        require(mode == "transcribed-from-pinned-source",
+                "live_cargo_test=false requires the transcription mode")
     return live
 
 
@@ -1026,7 +1104,9 @@ def check_mutations(doc: dict[str, Any], diff_doc: dict[str, Any] | None,
 
         mutated = copy.deepcopy(diff_doc)
         mutated["generation"]["live_cargo_test"] = True
-        control("fixture generation claims a live run without a transcript",
+        mutated["generation"]["mode"] = "live-cargo-test"
+        mutated["generation"]["live_transcript_sha256"] = "0" * 64
+        control("fixture generation claims a live run with a forged transcript",
                 lambda: check_generation(mutated))
 
     if theorems is not None:
@@ -1178,6 +1258,18 @@ def run(vectors: Path, lean_paths: list[Path] | None, diff_path: Path | None,
         print(f"fixture generation: "
               f"{'live-cargo-test' if live_fixtures else 'transcribed-from-pinned-source'} "
               f"(live cargo test: {'yes' if live_fixtures else 'no'})")
+        if live_fixtures:
+            generation = diff_doc["generation"]
+            counts = {
+                "bigsize": len(diff_doc["fixtures"]["bigsize"]),
+                "tlv": len(diff_doc["fixtures"]["tlv"]),
+                "wire": len(diff_doc["fixtures"]["wire"]),
+            }
+            print(f"live evidence: {counts['bigsize']} BigSize + "
+                  f"{counts['tlv']} TLV compared against rust-lightning, "
+                  f"{counts['wire']} wire via live LN_MAX_MSG_LEN; "
+                  f"transcript sha256 "
+                  f"{generation.get('live_transcript_sha256', '')[:12]}")
         if provenance_count is not None:
             commit_note = " (HEAD verified)" if commit_verified else ""
             print(f"provenance: {provenance_count} pinned rust-lightning source "

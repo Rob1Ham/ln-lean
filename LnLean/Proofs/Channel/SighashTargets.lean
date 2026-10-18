@@ -84,6 +84,7 @@ type: the signing law is keyed by the public key, the same idealization as
 -/
 
 import Bitcoin.Serialization.Interface
+import LnLean.Bitcoin.Sighash
 import LnLean.Protocol.Messages
 import LnLean.Channel.Commitment
 import LnLean.Channel.Fee
@@ -1446,5 +1447,338 @@ theorem structuralView_not_determine_scripts :
   simp [vectorWire, vectorWireShortScript, vectorOutput1, vectorOutput2,
     compactSizeWidth, byteList] at h₁ h₂
   omega
+
+/-! ## 13. Preimage byte-equality with the vendored BIP 143 encoder -/
+
+open Bitcoin.Serialization
+
+set_option maxRecDepth 10000
+
+/-- The `LnLean.Bitcoin.Sighash.Preimage` determined by an exact-wire
+`Bip143Preimage`.  The outpoint txid is kept in consensus-internal byte order;
+`amountSat` is lifted to the signed `Amount` of the sighash model. -/
+def Bip143Preimage.toPreimage (p : Bip143Preimage) : LnLean.Bitcoin.Sighash.Preimage :=
+  { version := p.version
+    hashPrevouts := p.hashPrevouts
+    hashSequence := p.hashSequence
+    outpoint := ⟨p.outpointTxid, p.outpointIndex⟩
+    scriptCode := p.scriptCode
+    amount := (p.amountSat.toNat : Int)
+    sequence := p.sequence
+    hashOutputs := p.hashOutputs
+    lockTime := p.locktime
+    hashType := p.sighashType }
+
+/-! ### 13.1 Field serializers agree with the vendored BIP 143 serializers -/
+
+theorem bL_exactU32 (x : UInt32) :
+    bL (exactU32 x) = Bitcoin.SigHash.serU32L x := by
+  rw [exactU32, Bitcoin.Serialization.bL_serU32]
+  rfl
+
+theorem bL_exactU64 (x : UInt64) :
+    bL (exactU64 x) = Bitcoin.SigHash.serU64L x := by
+  rw [exactU64, Bitcoin.Serialization.bL_serU64]
+  rfl
+
+theorem bL_exactCS (n : Nat) :
+    bL (exactCS n) = Bitcoin.Serialization.encCSL n := by
+  rw [exactCS, Bitcoin.Serialization.bL_compactSizeEnc]
+
+theorem serU64L_ofNat_toNat (x : UInt64) :
+    Bitcoin.SigHash.serU64L (UInt64.ofInt (Int.ofNat x.toNat)) =
+      Bitcoin.SigHash.serU64L x := by
+  have hx : UInt64.ofInt (Int.ofNat x.toNat) = x := by
+    unfold UInt64.ofInt
+    have h1 : (0 : Int) ≤ (x.toNat : Int) := Int.natCast_nonneg _
+    have h2 : (x.toNat : Int) < (2 : Int) ^ 64 := by
+      exact_mod_cast x.toNat_lt
+    have h3 : Int.ofNat x.toNat % (2 : Int) ^ 64 = Int.ofNat x.toNat :=
+      Int.emod_eq_of_lt h1 h2
+    rw [h3]
+    have h4 : (Int.ofNat x.toNat).toNat = x.toNat := Int.toNat_natCast x.toNat
+    rw [h4]
+    exact UInt64.ofNat_toNat
+  rw [hx]
+
+/-! ### 13.2 The ten fields in consensus order -/
+
+/-- The exact-wire preimage in the byte order of the vendored
+`Bitcoin.SigHash.bip143MsgL`: version, `hashPrevouts`, `hashSequence`,
+outpoint txid (internal order), outpoint index (LE), CompactSize scriptCode
+length, scriptCode, amount (LE), sequence (LE), `hashOutputs`, locktime (LE),
+hash type (LE).  All hash fields are inserted verbatim, never reversed. -/
+theorem Bip143Preimage.preimageBytes_fields (p : Bip143Preimage) :
+    bL p.preimageBytes =
+      Bitcoin.SigHash.serU32L p.version ++ bL p.hashPrevouts ++
+      bL p.hashSequence ++ bL p.outpointTxid ++
+      Bitcoin.SigHash.serU32L p.outpointIndex ++
+      Bitcoin.Serialization.encCSL p.scriptCode.size ++ bL p.scriptCode ++
+      Bitcoin.SigHash.serU64L p.amountSat ++
+      Bitcoin.SigHash.serU32L p.sequence ++ bL p.hashOutputs ++
+      Bitcoin.SigHash.serU32L p.locktime ++ Bitcoin.SigHash.serU32L p.sighashType := by
+  simp [Bip143Preimage.preimageBytes, bL_exactU32, bL_exactU64, bL_exactCS]
+
+/-- Literal byte equality of the exact-wire preimage with the model encoder
+`LnLean.Bitcoin.Sighash.encode`. -/
+theorem Bip143Preimage.preimageBytes_eq_encode (p : Bip143Preimage) :
+    bL p.preimageBytes = bL (LnLean.Bitcoin.Sighash.encode p.toPreimage) := by
+  rw [Bip143Preimage.preimageBytes_fields]
+  simp [Bip143Preimage.toPreimage, LnLean.Bitcoin.Sighash.encode,
+    LnLean.Bitcoin.Sighash.bL_serU32LE, LnLean.Bitcoin.Sighash.bL_serU64LE,
+    LnLean.Bitcoin.Sighash.bL_compactSize, LnLean.Bitcoin.Sighash.bL_serOutpoint,
+    Bitcoin.SigHash.serOutpointL]
+  exact (serU64L_ofNat_toNat p.amountSat).symm
+
+/-- `ByteArray`-level form of `preimageBytes_eq_encode`. -/
+theorem Bip143Preimage.preimageBytes_eq_encode_bytes (p : Bip143Preimage) :
+    p.preimageBytes = LnLean.Bitcoin.Sighash.encode p.toPreimage :=
+  bL_inj (Bip143Preimage.preimageBytes_eq_encode p)
+
+/-! ### 13.3 Deriving the preimage from a transaction -/
+
+/-- The exact-wire preimage computed from a transaction, mirroring
+`LnLean.Bitcoin.Sighash.ofTx` but keeping the amount unsigned. -/
+def Bip143Preimage.ofTx (tx : Bitcoin.Data.Tx) (nIn : Nat)
+    (scriptCode : ByteArray) (ht : UInt32) (amountSat : UInt64) : Bip143Preimage :=
+  { version := tx.version.toUInt32
+    hashPrevouts := LnLean.Bitcoin.Sighash.hashPrevoutsOf tx ht
+    hashSequence := LnLean.Bitcoin.Sighash.hashSequenceOf tx ht
+    outpointTxid := (tx.vin.getD nIn LnLean.Bitcoin.Sighash.dummyTxIn).prevout.hash
+    outpointIndex := (tx.vin.getD nIn LnLean.Bitcoin.Sighash.dummyTxIn).prevout.n
+    scriptCode := scriptCode
+    amountSat := amountSat
+    sequence := (tx.vin.getD nIn LnLean.Bitcoin.Sighash.dummyTxIn).sequence
+    hashOutputs := LnLean.Bitcoin.Sighash.hashOutputsOf tx nIn ht
+    locktime := tx.locktime
+    sighashType := ht }
+
+theorem Bip143Preimage.toPreimage_ofTx (tx : Bitcoin.Data.Tx) (nIn : Nat)
+    (scriptCode : ByteArray) (ht : UInt32) (amountSat : UInt64) :
+    (Bip143Preimage.ofTx tx nIn scriptCode ht amountSat).toPreimage =
+      LnLean.Bitcoin.Sighash.ofTx tx nIn scriptCode ht (amountSat.toNat : Int) := by
+  simp [Bip143Preimage.ofTx, Bip143Preimage.toPreimage,
+    LnLean.Bitcoin.Sighash.ofTx]
+
+/-- The `hashPrevouts` field of a transaction-derived preimage is exactly the
+vendored 32-byte sub-hash, in internal order (never reversed). -/
+theorem Bip143Preimage.ofTx_hashPrevouts (tx : Bitcoin.Data.Tx) (nIn : Nat)
+    (scriptCode : ByteArray) (ht : UInt32) (amountSat : UInt64) :
+    bL (Bip143Preimage.ofTx tx nIn scriptCode ht amountSat).hashPrevouts =
+      Bitcoin.SigHash.hashPrevoutsL tx ht := by
+  simp [Bip143Preimage.ofTx, LnLean.Bitcoin.Sighash.bL_hashPrevoutsOf]
+
+/-- The `hashSequence` field is exactly the vendored sub-hash. -/
+theorem Bip143Preimage.ofTx_hashSequence (tx : Bitcoin.Data.Tx) (nIn : Nat)
+    (scriptCode : ByteArray) (ht : UInt32) (amountSat : UInt64) :
+    bL (Bip143Preimage.ofTx tx nIn scriptCode ht amountSat).hashSequence =
+      Bitcoin.SigHash.hashSequenceL tx ht := by
+  simp [Bip143Preimage.ofTx, LnLean.Bitcoin.Sighash.bL_hashSequenceOf]
+
+/-- The `hashOutputs` field is exactly the vendored sub-hash. -/
+theorem Bip143Preimage.ofTx_hashOutputs (tx : Bitcoin.Data.Tx) (nIn : Nat)
+    (scriptCode : ByteArray) (ht : UInt32) (amountSat : UInt64) :
+    bL (Bip143Preimage.ofTx tx nIn scriptCode ht amountSat).hashOutputs =
+      Bitcoin.SigHash.hashOutputsL tx nIn ht := by
+  simp [Bip143Preimage.ofTx, LnLean.Bitcoin.Sighash.bL_hashOutputsOf]
+
+/-- **Byte equality with the vendored encoder.**  For a preimage derived from a
+transaction, `Bip143Preimage.preimageBytes` is exactly the list produced by the
+vendored `Bitcoin.SigHash.bip143MsgL` (the BIP 143 `SignatureHash` preimage). -/
+theorem Bip143Preimage.preimageBytes_eq_bip143MsgL_ofTx
+    (tx : Bitcoin.Data.Tx) (nIn : Nat) (scriptCode : ByteArray) (ht : UInt32)
+    (amountSat : UInt64) :
+    bL (Bip143Preimage.ofTx tx nIn scriptCode ht amountSat).preimageBytes =
+      Bitcoin.SigHash.bip143MsgL tx nIn (bL scriptCode) ht (amountSat.toNat : Int) := by
+  rw [Bip143Preimage.preimageBytes_eq_encode, Bip143Preimage.toPreimage_ofTx]
+  exact LnLean.Bitcoin.Sighash.bL_encode_ofTx tx nIn scriptCode ht (amountSat.toNat : Int)
+
+/-- `ByteArray` form against the model encoder, for a transaction-derived
+preimage. -/
+theorem Bip143Preimage.preimageBytes_eq_encode_ofTx
+    (tx : Bitcoin.Data.Tx) (nIn : Nat) (scriptCode : ByteArray) (ht : UInt32)
+    (amountSat : UInt64) :
+    (Bip143Preimage.ofTx tx nIn scriptCode ht amountSat).preimageBytes =
+      LnLean.Bitcoin.Sighash.encode
+        (LnLean.Bitcoin.Sighash.ofTx tx nIn scriptCode ht (amountSat.toNat : Int)) := by
+  rw [Bip143Preimage.preimageBytes_eq_encode_bytes, Bip143Preimage.toPreimage_ofTx]
+
+/-- A BOLT 3 commitment-wire preimage: `nIn = 0` because `CommitmentWire.toTx`
+has exactly one input. -/
+def commitmentBip143Preimage (w : CommitmentWire) (scriptCode : ByteArray)
+    (ht : UInt32) (amountSat : UInt64) : Bip143Preimage :=
+  Bip143Preimage.ofTx w.toTx 0 scriptCode ht amountSat
+
+/-- The wire outpoint, sequence, locktime and version are the ones that appear
+in the BIP 143 preimage.  This is the script/outpoint byte-order tie to BOLT 3:
+the funding txid is the wire `fundingTxid` in internal order, the index is the
+wire `fundingOutputIndex` little-endian, and no reversal is inserted. -/
+theorem commitmentBip143Preimage_wire_fields (w : CommitmentWire)
+    (scriptCode : ByteArray) (ht : UInt32) (amountSat : UInt64) :
+    (commitmentBip143Preimage w scriptCode ht amountSat).version = w.version ∧
+    (commitmentBip143Preimage w scriptCode ht amountSat).outpointTxid = w.fundingTxid ∧
+    (commitmentBip143Preimage w scriptCode ht amountSat).outpointIndex =
+      w.fundingOutputIndex ∧
+    (commitmentBip143Preimage w scriptCode ht amountSat).sequence = w.sequence ∧
+    (commitmentBip143Preimage w scriptCode ht amountSat).locktime = w.locktime := by
+  simp [commitmentBip143Preimage, Bip143Preimage.ofTx, CommitmentWire.toTx]
+
+/-- The commitment-wire preimage is byte-equal to the vendored BIP 143
+preimage of the exact wire transaction. -/
+theorem commitmentBip143Preimage_eq_bip143MsgL (w : CommitmentWire)
+    (scriptCode : ByteArray) (ht : UInt32) (amountSat : UInt64) :
+    bL (commitmentBip143Preimage w scriptCode ht amountSat).preimageBytes =
+      Bitcoin.SigHash.bip143MsgL w.toTx 0 (bL scriptCode) ht
+        (amountSat.toNat : Int) :=
+  Bip143Preimage.preimageBytes_eq_bip143MsgL_ofTx w.toTx 0 scriptCode ht amountSat
+
+/-! ### 13.4 Digest equality -/
+
+theorem dshaL_bL_eq_dsha (b : ByteArray) :
+    Bitcoin.SigHash.dshaL (bL b) = LnLean.Bitcoin.Sighash.dsha b :=
+  bL_inj (LnLean.Bitcoin.Sighash.bL_dsha b)
+
+/-- The model digest of the bridged preimage is the vendored double-SHA-256 of
+exactly the `preimageBytes` (hence of the same consensus byte order). -/
+theorem Bip143Preimage.toPreimage_digest_eq_dshaL (p : Bip143Preimage) :
+    LnLean.Bitcoin.Sighash.digest p.toPreimage =
+      Bitcoin.SigHash.dshaL (bL p.preimageBytes) := by
+  rw [LnLean.Bitcoin.Sighash.digest, Bip143Preimage.preimageBytes_eq_encode_bytes,
+    dshaL_bL_eq_dsha]
+
+/-- For an in-range transaction input, the digest of the bridged preimage is
+exactly the vendored BIP 143 sighash. -/
+theorem Bip143Preimage.digest_eq_sighashWitnessV0_ofTx
+    (tx : Bitcoin.Data.Tx) (nIn : Nat) (scriptCode : ByteArray) (ht : UInt32)
+    (amountSat : UInt64) (h : nIn < tx.vin.length) :
+    LnLean.Bitcoin.Sighash.digest
+        (Bip143Preimage.ofTx tx nIn scriptCode ht amountSat).toPreimage =
+      Bitcoin.SigHash.signatureHashBip143Impl tx nIn (bL scriptCode) ht
+        (amountSat.toNat : Int) := by
+  rw [Bip143Preimage.toPreimage_ofTx]
+  have hle : ¬ tx.vin.length ≤ nIn := Nat.not_le.mpr h
+  rw [← LnLean.Bitcoin.Sighash.sighashWitnessV0_eq_vendorImpl tx nIn scriptCode ht
+    (amountSat.toNat : Int)]
+  simp [LnLean.Bitcoin.Sighash.sighashWitnessV0, hle]
+
+/-- The abstract `PrimitiveModel` digest agrees with the vendored hash exactly
+when the model's `sha256` field is the vendored seam hash.  The hypothesis is
+explicit: the model does not identify an arbitrary `M.sha256` with SHA-256. -/
+theorem exactSighashDigest_eq_vendor_of_model (M : LnLean.Crypto.PrimitiveModel)
+    (hM : ∀ b, M.sha256 b = Bitcoin.Crypto.Seam.sha256 b)
+    (p : Bip143Preimage) :
+    exactSighashDigest M p = Bitcoin.SigHash.dshaL (bL p.preimageBytes) := by
+  have hb : Bitcoin.Serialization.bytesOfList (bL p.preimageBytes) = p.preimageBytes :=
+    Bitcoin.Serialization.bytesOfList_bL p.preimageBytes
+  simp [exactSighashDigest, Bitcoin.SigHash.dshaL, hM, hb,
+    Bitcoin.Crypto.Seam.sha256d, Bitcoin.Crypto.Seam.sha256,
+    Bitcoin.Crypto.Seam.Hash.sha256d]
+
+/-- Under the same explicit seam hypothesis, the `PrimitiveModel` digest is
+the model digest of the bridged preimage. -/
+theorem exactSighashDigest_eq_digest_of_model (M : LnLean.Crypto.PrimitiveModel)
+    (hM : ∀ b, M.sha256 b = Bitcoin.Crypto.Seam.sha256 b)
+    (p : Bip143Preimage) :
+    exactSighashDigest M p = LnLean.Bitcoin.Sighash.digest p.toPreimage := by
+  rw [exactSighashDigest_eq_vendor_of_model M hM p,
+    ← Bip143Preimage.toPreimage_digest_eq_dshaL p]
+
+/-! ### 13.5 Byte-level vectors against the vendored encoder -/
+
+/-- A commitment-wire preimage using `SIGHASH_NONE|ANYONECANPAY` (`0x82`), so
+the three sub-hashes are the BIP 143 zero vector and the vendored encoder is
+decidable byte-for-byte (no hashing needed to check the layout). -/
+def vectorWirePreimage : Bip143Preimage :=
+  commitmentBip143Preimage vectorWire vectorMeta.fundingScript 0x82 3000
+
+theorem vectorWirePreimage_bytes :
+    bL vectorWirePreimage.preimageBytes =
+      [0x02, 0x00, 0x00, 0x00] ++ List.replicate 32 0x00 ++
+      List.replicate 32 0x00 ++ List.replicate 32 0x11 ++
+      [0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x14] ++
+      List.replicate 20 0x44 ++
+      [0xb8, 0x0b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+       0x00, 0x00, 0x00, 0x80] ++
+      List.replicate 32 0x00 ++
+      [0x00, 0x00, 0x00, 0x20, 0x82, 0x00, 0x00, 0x00] := by
+  decide
+
+theorem vectorWirePreimage_size :
+    (bL vectorWirePreimage.preimageBytes).length = 179 := by
+  decide
+
+/-- The same 179 bytes from the vendored `bip143MsgL`.  This is the direct
+byte-level check of `preimageBytes` against the vendored encoder on the
+commitment-wire outpoint, scriptCode, amount, sequence and locktime. -/
+theorem vectorWirePreimage_vendor_bytes :
+    Bitcoin.SigHash.bip143MsgL vectorWire.toTx 0 (bL vectorMeta.fundingScript)
+        0x82 3000 =
+      [0x02, 0x00, 0x00, 0x00] ++ List.replicate 32 0x00 ++
+      List.replicate 32 0x00 ++ List.replicate 32 0x11 ++
+      [0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x14] ++
+      List.replicate 20 0x44 ++
+      [0xb8, 0x0b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+       0x00, 0x00, 0x00, 0x80] ++
+      List.replicate 32 0x00 ++
+      [0x00, 0x00, 0x00, 0x20, 0x82, 0x00, 0x00, 0x00] := by
+  decide
+
+/-- The two encoders agree on the vector (general theorem instantiation). -/
+theorem vectorWirePreimage_vendor :
+    bL vectorWirePreimage.preimageBytes =
+      Bitcoin.SigHash.bip143MsgL vectorWire.toTx 0 (bL vectorMeta.fundingScript)
+        0x82 3000 :=
+  commitmentBip143Preimage_eq_bip143MsgL vectorWire vectorMeta.fundingScript 0x82 3000
+
+/-- Byte slice of the vector showing the outpoint: 32-byte funding txid
+(internal order, not reversed) followed by the 4-byte little-endian index. -/
+theorem vectorWirePreimage_outpoint_bytes :
+    ((bL vectorWirePreimage.preimageBytes).drop 68).take 36 =
+      List.replicate 32 0x11 ++ [0x00, 0x00, 0x00, 0x00] := by
+  decide
+
+/-- Byte slice of the vector showing the scriptCode CompactSize prefix and the
+first two program bytes.  `0x16 = 22` is the one-byte CompactSize for the
+22-byte P2WSH funding scriptCode `0x00 0x14 ‖ 20×0x44`. -/
+theorem vectorWirePreimage_scriptCode_bytes :
+    ((bL vectorWirePreimage.preimageBytes).drop 104).take 3 =
+      [0x16, 0x00, 0x14] := by
+  decide
+
+/-- A 253-byte scriptCode exercises the three-byte CompactSize path
+(`0xfd 0xfd 0x00`). -/
+def vectorLongScript : ByteArray := byteList (List.replicate 253 0x77)
+
+def vectorLongPreimage : Bip143Preimage :=
+  commitmentBip143Preimage vectorWire vectorLongScript 0x82 3000
+
+theorem vectorLongPreimage_size :
+    (bL vectorLongPreimage.preimageBytes).length = 412 := by
+  decide
+
+theorem vectorLongPreimage_scriptCode_prefix :
+    ((bL vectorLongPreimage.preimageBytes).drop 104).take 3 =
+      [0xfd, 0xfd, 0x00] := by
+  decide
+
+theorem vectorLongPreimage_vendor_prefix :
+    ((Bitcoin.SigHash.bip143MsgL vectorWire.toTx 0 (bL vectorLongScript) 0x82
+      3000).drop 104).take 3 = [0xfd, 0xfd, 0x00] := by
+  decide
+
+/-- The existing 158-byte vector is also produced by the model encoder
+`LnLean.Bitcoin.Sighash.encode` (same consensus order). -/
+theorem vectorPreimage_encode_bytes :
+    bL (LnLean.Bitcoin.Sighash.encode vectorPreimage.toPreimage) =
+      [0x02, 0x00, 0x00, 0x00] ++ List.replicate 32 0xaa ++
+      List.replicate 32 0xbb ++ List.replicate 32 0xcc ++
+      [0x00, 0x00, 0x00, 0x00, 0x01, 0x51,
+       0xe8, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+       0xff, 0xff, 0xff, 0xff] ++
+      List.replicate 32 0xdd ++
+      [0x00, 0x00, 0x00, 0x20, 0x01, 0x00, 0x00, 0x00] := by
+  rw [← Bip143Preimage.preimageBytes_eq_encode]
+  exact vectorPreimage_bytes
+
 
 end LnLean.Proofs.Channel.SighashTargets

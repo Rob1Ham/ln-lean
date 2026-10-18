@@ -39,7 +39,10 @@ What is NOT modelled.
   deliberately balance- and HTLC-preserving (see the section comment).  The
   commitment round that commits a pending update is the separate ordered
   `DanceStep` layer at the end of the file; the pending-update queue that the
-  round drains is still abstract.
+  round drains is still abstract.  The *folded* guarded layer
+  `GuardedStep`/`GuardedUpdateStep` at the end of the file makes the union
+  available as one relation, but it is a subrelation of `Step`/`UpdateStep`
+  and does not add a constructor to either.
 * Message retransmission, `channel_reestablish`, and the hold/release of
   `commitment_signed` while `AwaitingRemoteRevoke`: the model records which
   event is legal but not the queue of deferred updates.
@@ -560,5 +563,84 @@ inductive DanceReachable : Channel → Channel → Prop where
   | refl (c : Channel) : DanceReachable c c
   | step {a b c : Channel} {e : DanceEvent} :
       DanceReachable a b → DanceStep b e c → DanceReachable a c
+
+/-! ## Folded guarded layer (`MODEL-02`, `MODEL-03`)
+
+The two layers above are deliberately disjoint from the lifecycle relation.
+This section provides their *fold* over the existing message vocabulary,
+without changing `ProtocolEvent`, `Step`, `UpdateStep`, or `DanceStep`.
+
+`GuardedStep` is `Step` with the two commitment-round constructors replaced by
+the ordered forms of `DanceStep`; every other lifecycle constructor is copied
+unchanged through `GuardedStep.ofStep`.  `GuardedUpdateStep` is the single
+folded relation: its `lifecycle` constructor embeds `GuardedStep`, and its
+three HTLC constructors are those of `UpdateStep`.
+
+Both folds are subrelations of the existing relations
+(`GuardedStep.toStep`, `GuardedUpdateStep.toUpdateStep`), so no counterexample
+and no preservation theorem is lost.  The reachable-state payoff is that the
+round window `DanceOrdered` is now an invariant of the folded relation, while
+the unguarded `Step` still admits the wave-6 counterexamples.  The proofs are
+in `LnLean.Proofs.Channel.ProtocolEventFoldTargets`. -/
+
+/-- `GuardedStep c e c'`: the lifecycle relation with the two
+`commitment_signed`/`revoke_and_ack` constructors replaced by their BOLT 2
+ordered round forms.  Every other message keeps its unguarded `Step`
+constructor verbatim (`GuardedStep.ofStep`), so the relation is exactly
+`Step` minus the two unguarded round transitions plus the guarded ones. -/
+inductive GuardedStep : Channel → ProtocolEvent → Channel → Prop where
+  /-- Every lifecycle step whose message is not one of the two round messages. -/
+  | ofStep {c c' : Channel} {e : ProtocolEvent} (h : Step c e c')
+      (hcs : e ≠ ProtocolEvent.commitmentSigned)
+      (hra : e ≠ ProtocolEvent.revokeAndAck) : GuardedStep c e c'
+  /-- `commitment_signed` may start a round only when none is in flight. -/
+  | commitmentSigned (c : Channel) (hphase : c.phase = ChannelPhase.normal)
+      (hidle : c.remoteCommitmentNumber = c.localCommitmentNumber) :
+      GuardedStep c ProtocolEvent.commitmentSigned (signRemoteCommitment c)
+  /-- `revoke_and_ack` may close a round only when exactly one signature is
+  outstanding. -/
+  | revokeAndAck (c : Channel) (hphase : c.phase = ChannelPhase.normal)
+      (hpending : c.remoteCommitmentNumber = c.localCommitmentNumber + 1) :
+      GuardedStep c ProtocolEvent.revokeAndAck (revokeLocalCommitment c)
+
+/-- Reflexive-transitive closure of the folded lifecycle relation. -/
+inductive GuardedReachable : Channel → Channel → Prop where
+  | refl (c : Channel) : GuardedReachable c c
+  | step {a b c : Channel} {e : ProtocolEvent} :
+      GuardedReachable a b → GuardedStep b e c → GuardedReachable a c
+
+/-- `GuardedUpdateStep hashFn c e c'`: the single folded relation over
+`UpdateEvent`.  The `lifecycle` constructor embeds the guarded lifecycle
+relation; the three HTLC constructors are exactly `UpdateStep`'s. -/
+inductive GuardedUpdateStep (hashFn : ByteArray → ByteArray) :
+    Channel → UpdateEvent → Channel → Prop where
+  /-- Every guarded lifecycle step is a folded step. -/
+  | lifecycle {c c' : Channel} {e : ProtocolEvent} (h : GuardedStep c e c') :
+      GuardedUpdateStep hashFn c (.lifecycle e) c'
+  /-- BOLT 2 `update_add_htlc`, with the `AffordableAdd` guard. -/
+  | update_add_htlc (c : Channel) (hphase : c.phase = ChannelPhase.normal)
+      (dir : Direction) (amount : Msat) (ph : PaymentHash) (cltv : Height)
+      (haff : AffordableAdd c dir amount cltv) :
+      GuardedUpdateStep hashFn c (.addHtlc dir amount ph cltv)
+        (updateAddHtlc c dir amount ph cltv)
+  /-- BOLT 2 `update_fulfill_htlc`. -/
+  | update_fulfill_htlc (c : Channel) (hphase : c.phase = ChannelPhase.normal)
+      (i : Nat) (h : HTLC) (p : Preimage)
+      (hi : c.htlcs[i]? = some h) (hpending : h.isPending)
+      (hpre : p.Valid ∧ hashFn p.bytes = h.paymentHash.bytes) :
+      GuardedUpdateStep hashFn c (.fulfillHtlc i p) (fulfillHtlcAt c i)
+  /-- BOLT 2 `update_fail_htlc`. -/
+  | update_fail_htlc (c : Channel) (hphase : c.phase = ChannelPhase.normal)
+      (i : Nat) (h : HTLC) (hi : c.htlcs[i]? = some h)
+      (hpending : h.isPending) :
+      GuardedUpdateStep hashFn c (.failHtlc i) (failHtlcAt c i)
+
+/-- Reflexive-transitive closure of the folded update relation. -/
+inductive GuardedUpdateReachable (hashFn : ByteArray → ByteArray) :
+    Channel → Channel → Prop where
+  | refl (c : Channel) : GuardedUpdateReachable hashFn c c
+  | step {a b c : Channel} {e : UpdateEvent} :
+      GuardedUpdateReachable hashFn a b → GuardedUpdateStep hashFn b e c →
+        GuardedUpdateReachable hashFn a c
 
 end LnLean.Channel
