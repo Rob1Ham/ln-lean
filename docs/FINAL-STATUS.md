@@ -2,13 +2,12 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** pending proof-wave 2 integration commit (the code commit is
-recorded after the gate run; status commits may advance the tip).
+**Gate HEAD:** `2e743673052a41cdf9640a7e19a1207227066a6c` (`[PROOF] add
+proof-wave 2 exact targets, promote 8 catalog rows`).
 **Catalog state:** proof-wave 2 tree: 37 `proved` / 11 `statementOnly`.
-**Remote refs:** `origin/repair/integrated` currently contains proof-wave 1
-commit `d2769d2` and status tip `0caec3d`; proof-wave 2 will advance it
-non-force. `origin/repair/pubbump = 95fc49d` (separate compatibility branch);
-`origin/main = b891a59` (untouched).
+**Remote refs:** `origin/repair/integrated` contains proof-wave 2 commit
+`2e74367` (status commits may advance the tip). `origin/repair/pubbump =
+95fc49d` (separate compatibility branch); `origin/main = b891a59` (untouched).
 **Toolchain:** `leanprover/lean4:v4.35.0`
 **L1 build dependency:** read-only `vendor/btc-lean-core` snapshot
 `f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb`
