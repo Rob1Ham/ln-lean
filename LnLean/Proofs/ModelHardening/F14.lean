@@ -18,8 +18,9 @@ advertised total: collecting 60 msat and then another 60 msat against
 running total of 120.  The exact invariant and the exact admission guard are
 defined below.  `runningTotalBound_add` proves preservation under the guard,
 `runningTotalBound_add_iff` proves the guard is necessary and sufficient, and
-`overTotal_counterexample` mechanically refutes the unconditional form, which
-is kept with a `sorry` next to the `LN-WF-F14` marker.
+`overTotal_counterexample` mechanically refutes the unconditional form.  The
+refuted unconditional declaration has been removed; its obligation marker was
+`LN-WF-F14`.
 
 BOLT 4 §Basic Multi-Part Payments: all HTLCs in a set share `payment_hash`;
 `total_msat` is the advertised total; the recipient must not fulfil any HTLC
@@ -162,22 +163,18 @@ theorem not_runningTotalBound_cons_of_over {target : Msat}
   simp only [sumParts_cons]
   omega
 
-/-! ## The faithful unconditional statement
+/-! ## The refuted unconditional statement
 
 This is the obligation as stated, with no guard.  It is false; the refutation
 is `overTotal_counterexample`, and the guarded replacement is
 `runningTotalBound_add`. -/
 
-/-- `LN-PM-005` in its unconditional form: every additional part preserves the
-running-total bound.  False as stated; see `overTotal_counterexample`. -/
-theorem waveF_f14_running_total_bound (plan : MPPPlan)
-    (collected : List MPPPart) (p : MPPPart)
-    (hinv : RunningTotalBound plan.target collected) :
-    RunningTotalBound plan.target (p :: collected) := by
-  -- The per-part amount check is weaker than the remaining-budget guard:
-  -- collecting 60 then 60 against a total of 100 overruns the total.
-  -- OBLIGATION: LN-WF-F14
-  sorry
+-- REPAIRED: removed the false unconditional declaration
+-- `waveF_f14_running_total_bound` (obligation marker `LN-WF-F14`).  It is
+-- refuted by `overTotal_counterexample`; the strongest true replacement is
+-- `runningTotalBound_add`, which additionally requires
+-- `PartFits plan.target collected p`.  `runningTotalBound_add_iff` shows that
+-- this guard is necessary and sufficient.
 
 /-! ## Mechanized over-total counterexample -/
 
