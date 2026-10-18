@@ -30,7 +30,10 @@ types), BOLT 2 (funding/commitment signatures, payment hashes), BOLT 8
 **Not modelled.**  Concrete SHA-256 compression, secp256k1 group arithmetic,
 DER parsing, ChaCha20/Poly1305 internals, side channels, key generation,
 probabilistic security games, and computational reductions.  Randomness and
-oracle access are not modelled; the `Prop` fields are exact laws.
+oracle access are not modelled; the `Prop` fields are exact laws.  In
+particular the interface does **not** assume global injectivity of SHA-256 on
+arbitrary byte strings: that would contradict the structural field
+`sha256_size`, and collision resistance is assumed only on 32-byte preimages.
 -/
 
 import LnLean.Basic.Core
@@ -50,8 +53,11 @@ abbrev CollisionResistant (H : ByteArray → ByteArray) : Prop :=
   ∀ x y : ByteArray, x.size = 32 → y.size = 32 → H x = H y → x = y
 
 /-- Idealised preimage resistance: the hash is injective on arbitrary byte
-strings.  This is the strong algebraic proxy used for statements that quantify
-over all preimages, not only 32-byte payment preimages. -/
+strings.  This predicate is **not** a field of `PrimitiveModel`: a function
+with 32-byte output cannot be injective on all of `ByteArray` (see
+`LnLean.Proofs.Crypto.Sha256Props.preimageResistant_vacuous`).  It is retained
+only as an explicit hypothesis for conditional algebraic statements, not as a
+global assumption about the model's SHA-256. -/
 abbrev PreimageResistant (H : ByteArray → ByteArray) : Prop :=
   ∀ x y : ByteArray, H x = H y → x = y
 
@@ -99,7 +105,6 @@ structure PrimitiveModel where
   /-- HMAC-SHA256 always produces 32 bytes. -/
   hmac_size : ∀ k m : ByteArray, (hmacSha256 k m).size = 32
   sha256_collisionResistant : CollisionResistant sha256
-  sha256_preimageResistant : PreimageResistant sha256
   ecdsa_eufCma : EufCma ecdsaVerify
   schnorr_eufCma : EufCma schnorrVerify
   aead_indCca : AeadIndCca aeadSeal aeadOpen

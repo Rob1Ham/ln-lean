@@ -230,7 +230,6 @@ def rejectAllEcdsa (M : PrimitiveModel) : PrimitiveModel where
   hash160_size := M.hash160_size
   hmac_size := M.hmac_size
   sha256_collisionResistant := M.sha256_collisionResistant
-  sha256_preimageResistant := M.sha256_preimageResistant
   ecdsa_eufCma := by
     intro _pk _m₁ _m₂ _s h₁ _h₂
     exact absurd h₁ (by simp)

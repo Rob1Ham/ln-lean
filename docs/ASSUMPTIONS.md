@@ -12,7 +12,7 @@ supplied by the L1 model or by an extracted implementation.
 
 | Id | Primitive | Assumed property | Used by |
 |---|---|---|---|
-| C1 | SHA-256 | collision resistance; preimage resistance | commitments, payment hashes, onion |
+| C1 | SHA-256 | collision / second-preimage resistance on the 32-byte payment preimages used by Lightning, not global injectivity on arbitrary byte strings | commitments, payment hashes, onion |
 | C2 | HASH160 = RIPEMD160(SHA256(x)) | collision resistance | P2WPKH scripts |
 | C3 | secp256k1 ECDSA | existential unforgeability under chosen message | funding, mutual close |
 | C4 | BIP 340 Schnorr | existential unforgeability under chosen message | taproot channels (future) |
@@ -26,18 +26,43 @@ Formal shape (see `LnLean/Crypto/Model.lean`):
 ```lean
 structure PrimitiveModel where
   sha256 : ByteArray → ByteArray
+  hash160 : ByteArray → ByteArray
   ecdsaVerify : PubKey → ByteArray → EcdsaSig → Bool
   schnorrVerify : PubKey → ByteArray → SchnorrSig → Bool
   ecdh : ByteArray → PubKey → ByteArray
   hkdf : ByteArray → ByteArray → Nat → ByteArray
   aeadSeal : ByteArray → ByteArray → ByteArray → ByteArray
   aeadOpen : ByteArray → ByteArray → ByteArray → Option ByteArray
+  hmacSha256 : ByteArray → ByteArray → ByteArray
+  -- structural wire widths:
+  sha256_size : ∀ b, (sha256 b).size = 32
+  hash160_size : ∀ b, (hash160 b).size = 20
+  hmac_size : ∀ k m, (hmacSha256 k m).size = 32
   -- assumed properties are Props, not axioms:
-  sha256_collisionResistant : Prop
-  ecdsa_eufCma : Prop
-  schnorr_eufCma : Prop
-  aead_cca : Prop
+  sha256_collisionResistant : CollisionResistant sha256
+  ecdsa_eufCma : EufCma ecdsaVerify
+  schnorr_eufCma : EufCma schnorrVerify
+  aead_indCca : AeadIndCca aeadSeal aeadOpen
+  hmac_prf : HmacPrf hmacSha256
 ```
+
+C1 in Lean is exactly `sha256_collisionResistant : CollisionResistant sha256`,
+where
+
+```lean
+CollisionResistant H :=
+  ∀ x y, x.size = 32 → y.size = 32 → H x = H y → x = y.
+```
+
+This is collision/second-preimage resistance on the 32-byte payment-preimage
+domain, not injectivity on arbitrary byte strings.  The global predicate
+`PreimageResistant H := ∀ x y, H x = H y → x = y` is **not** a `PrimitiveModel`
+field: with `sha256_size` it would require an injection from all `ByteArray`
+into the finite set of 32-byte strings, which
+`LnLean.Proofs.Crypto.Sha256Props.preimageResistant_vacuous` refutes.  C1 is an
+explicit interface assumption, stronger than the usual computational hardness
+statement (it is exact algebraic injectivity on the 32-byte domain); no
+computational proof or reduction is claimed.
 
 A theorem may take `(M : PrimitiveModel)` and hypotheses such as
 `M.sha256_collisionResistant`. This keeps the proof conditional and makes

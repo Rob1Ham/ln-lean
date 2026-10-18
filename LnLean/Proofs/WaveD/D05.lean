@@ -18,11 +18,14 @@ different trust requirements, and this module separates them:
   (`waveD_d05_paymentHashOf_eq_sha256`,
   `waveD_d05_opensTo_iff_sha256_output`).
 * *Binding* (a payment hash determines at most one preimage) is **conditional
-  on C1**.  It is `CollisionResistant M.sha256`, the consistent 32-byte form of
-  C1; the stronger global `PreimageResistant` field is not used because
-  `LnLean.Proofs.Crypto.Sha256Props.no_injective_hash_into_32_bytes` shows it
-  is incompatible with `sha256_size`
+  on C1**, specifically on `CollisionResistant M.sha256` over valid 32-byte
+  payment preimages
   (`waveD_d05_paymentHashOf_commits`, `waveD_d05_opensTo_unique_of_collisionResistant`).
+  The former global `sha256_preimageResistant` field has been removed from
+  `PrimitiveModel`; it is not assumed here.  Global injectivity is impossible
+  for any 32-byte-output hash
+  (`LnLean.Proofs.Crypto.Sha256Props.preimageResistant_vacuous`), so the usable
+  assumption is the 32-byte-domain collision resistance field.
 
 **Negative result (model gap).**  The claim is *not* true of an arbitrary
 `PaymentHash` value.  `PaymentHash` is a bare `ByteArray` wrapper, and
@@ -150,8 +153,10 @@ theorem waveD_d05_opensTo_unique_of_collisionResistant (M : PrimitiveModel)
   preimage_unique M hc hp hq hpv hqv
 
 /-- **Payment-hash commitment under C1.**  Equal canonical payment hashes of
-valid preimages imply equal preimages.  Only collision resistance is used;
-the global (inconsistent) `sha256_preimageResistant` field is not. -/
+valid preimages imply equal preimages.  Only the retained 32-byte-domain
+`CollisionResistant` assumption is used; the removed global
+`sha256_preimageResistant` field is not assumed.  This is an explicit interface
+assumption, not a computational proof. -/
 theorem waveD_d05_paymentHashOf_commits (M : PrimitiveModel)
     (hc : CollisionResistant M.sha256) {p q : Preimage}
     (hpv : p.Valid) (hqv : q.Valid)

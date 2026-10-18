@@ -12,11 +12,13 @@ hash interface in `LnLean.Crypto.Model` / `LnLean.Crypto.Hash`:
    `M.sha256 pre.bytes = ph.bytes`; the `digest32` normalisation is the
    identity on the 32-byte image produced by `sha256_size`, so the forward
    direction is immediate from the definition;
-4. collision resistance and preimage resistance are `Prop`-valued *fields* of
-   `PrimitiveModel`, never axioms; every cryptographic conclusion is a
-   conditional theorem naming the field as a hypothesis;
-5. a payment hash commits to a preimage only under preimage resistance, in the
-   global form (arbitrary preimages) and in the hash-lock form;
+4. collision resistance on 32-byte preimages is a `Prop`-valued *field* of
+   `PrimitiveModel`, never an axiom; the global `PreimageResistant` predicate
+   is retained only as an explicit hypothesis for conditional algebraic
+   statements and is not a model field;
+5. a payment hash commits to a valid 32-byte preimage under the
+   `CollisionResistant` field; the global form (arbitrary preimages) is a
+   conditional algebraic statement only, not an assumption of the model;
 6. the BIP 340 tagged-hash encoding is domain separating *structurally*: the
    tag prefix `sha256(tag) || sha256(tag)` determines the tag once SHA-256 is
    injective.  The encoding-level statement (different hashed tags give
@@ -57,23 +59,26 @@ hash interface in `LnLean.Crypto.Model` / `LnLean.Crypto.Hash`:
 **Not modelled.**  The SHA-256 compression function, message schedule,
 padding, concrete digest values and test vectors; RIPEMD160 internals;
 length-extension behaviour; constant-time execution; computational security
-games and reductions.  In particular, `CollisionResistant` and
-`PreimageResistant` are exact algebraic over-approximations (injectivity), not
-complexity-theoretic definitions, and no theorem below asserts a concrete hash
-value or a hardness claim.
+games and reductions.  In particular, `CollisionResistant` is an exact
+algebraic over-approximation (injectivity on 32-byte inputs), not a
+complexity-theoretic definition, and no theorem below asserts a concrete hash
+value or a hardness claim.  `PreimageResistant` is a residual predicate used
+only to state conditional algebraic facts; it is not assumed by the model.
 
-**Known interface defect (recorded, not repaired here).**  `PreimageResistant`
-in `LnLean.Crypto.Model` is injectivity on *all* `ByteArray`, while
-`sha256_size` forces every image to be 32 bytes.  A function from the (vast)
-space of byte arrays into the finite set of 32-byte strings cannot be
-injective, so the global field is not simultaneously satisfiable with
-`sha256_size`.  This module makes that gap explicit as the proved theorem
-`LN-CR-007` (`no_injective_hash_into_32_bytes`) and uses the field only in
-explicitly conditional theorems.  The consistent hypothesis for Lightning's
-32-byte payment preimages is `CollisionResistant`, already used by
-`LnLean.Crypto.Hash.preimage_unique` and `paymentHash_commits`.  We do **not**
-derive `False` from the defect and we do not weaken any stated theorem to hide
-it; `LnLean/Crypto/Model.lean` is owned by another agent and is untouched.
+**Repair status (M01).**  `PrimitiveModel` no longer contains the global field
+`sha256_preimageResistant`.  Global injectivity on *all* `ByteArray` is
+incompatible with `sha256_size`, which forces every image to be 32 bytes; this
+module proves that incompatibility as `LN-CR-007`
+(`no_injective_hash_into_32_bytes`) and packages it as the negative theorem
+`preimageResistant_vacuous`.  With the field removed, that theorem is a
+statement about any 32-byte-output hash (and hence about `M.sha256`), not a
+contradiction inside `PrimitiveModel`.  The consistent assumption for
+Lightning's 32-byte payment preimages is the retained field
+`sha256_collisionResistant : CollisionResistant M.sha256`, already used by
+`LnLean.Crypto.Hash.preimage_unique` and `paymentHash_commits`.  The conditional
+theorems below that still name `PreimageResistant` as an explicit hypothesis are
+kept as algebraic facts, but they have no non-vacuous instance for a
+32-byte-output hash.
 -/
 
 import LnLean.Basic.Core
@@ -151,35 +156,35 @@ theorem sha256_eq_implies_opensTo (M : PrimitiveModel) {ph : PaymentHash}
     opensTo M ph pre :=
   (opensTo_iff_sha256_eq M ph pre).mpr h
 
-/-! ## 4. Cryptographic assumptions are structure fields, not axioms -/
+/-! ## 4. Collision resistance is a structure field; global preimage
+resistance is not -/
 
-/-- Collision resistance is obtained by projecting the `PrimitiveModel`
-field `sha256_collisionResistant`.  This is an assumption supplied by the
-interface, not an axiom of this module. -/
+/-- Collision resistance on 32-byte preimages is obtained by projecting the
+`PrimitiveModel` field `sha256_collisionResistant`.  This is an assumption
+supplied by the interface, not an axiom of this module. -/
 theorem collisionResistant_field (M : PrimitiveModel) :
     CollisionResistant M.sha256 :=
   M.sha256_collisionResistant
 
-/-- Preimage resistance is likewise a projected `Prop` field. -/
-theorem preimageResistant_field (M : PrimitiveModel) :
-    PreimageResistant M.sha256 :=
-  M.sha256_preimageResistant
-
 /-- Global injectivity is stronger than collision resistance on the 32-byte
 inputs: every theorem that only needs collision resistance can be derived from
-the (stronger) preimage-resistance hypothesis.  The converse does not hold. -/
+the (stronger) preimage-resistance hypothesis.  This is a conditional algebraic
+bridge only; `PrimitiveModel` does not supply the hypothesis, and it cannot
+hold for a 32-byte-output hash.  The converse does not hold. -/
 theorem collisionResistant_of_preimageResistant {H : ByteArray → ByteArray}
     (h : PreimageResistant H) : CollisionResistant H :=
   fun x y _ _ hxy => h x y hxy
 
 /-! ## 5. Payment-hash commitment is conditional -/
 
-/-- **Payment-hash commitment, global form.**  Under the interface's
-preimage-resistance assumption, two preimages (not necessarily 32 bytes) with
-the same payment hash are equal.  This is the formal content of "the payment
-hash commits to the preimage"; no computational hardness is proved.  See the
-module note: this hypothesis is stronger than the model can consistently
-supply together with `sha256_size` (theorem `LN-CR-007`). -/
+/-- **Payment-hash commitment, global form (conditional only).**  Under the
+explicit hypothesis `PreimageResistant M.sha256`, two preimages (not
+necessarily 32 bytes) with the same payment hash are equal.  This is a
+conditional algebraic fact; no computational hardness is proved.
+`PrimitiveModel` does not assume this hypothesis, and it cannot hold together
+with `sha256_size` for a 32-byte output (theorem `preimageResistant_vacuous`).
+The usable commitment assumption is `CollisionResistant` on valid 32-byte
+preimages. -/
 theorem paymentHash_commitment_of_preimageResistant (M : PrimitiveModel)
     (h : PreimageResistant M.sha256) {p q : Preimage}
     (hph : M.paymentHashOf p = M.paymentHashOf q) : p = q := by
@@ -465,10 +470,10 @@ private theorem natPigeonhole (d hi : Nat) (f : Nat → Nat)
 
 /-- **No global injective hash into 32 bytes.**  A function from `ByteArray`
 to the 32-byte strings cannot be injective: the domain has more elements than
-the `2^256` possible 32-byte outputs.  Consequently the `PreimageResistant`
-field of `PrimitiveModel` is not satisfiable together with `sha256_size`, and
-the consistent hypothesis for payment preimages is `CollisionResistant` on
-32-byte inputs.
+the `2^256` possible 32-byte outputs.  Consequently `PreimageResistant` is not
+satisfiable together with a 32-byte output-size law.  `PrimitiveModel` no
+longer assumes the global form; the consistent hypothesis for payment
+preimages is `CollisionResistant` on 32-byte inputs.
 
 The proof indexes `257 ^ 32 + 1` distinct preimages `unaryBytes i` and encodes
 each 32-byte image as a natural number below `257 ^ 32`; injectivity of `H`
@@ -498,7 +503,11 @@ theorem no_injective_hash_into_32_bytes (H : ByteArray → ByteArray)
   have hle := natPigeonhole _ _ f hrange hinj'
   omega
 
-/-- The interface defect as a statement about every `PrimitiveModel`. -/
+/-- **Negative theorem, not a contradiction of the structure.**  No
+`PrimitiveModel`'s SHA-256 is globally preimage-resistant: a 32-byte-output
+hash cannot be injective on arbitrary byte strings.  Since
+`sha256_preimageResistant` is no longer a field, this rules out only the
+global injectivity proxy, not inhabitation of `PrimitiveModel`. -/
 theorem preimageResistant_vacuous (M : PrimitiveModel) :
     ¬ PreimageResistant M.sha256 :=
   no_injective_hash_into_32_bytes M.sha256 M.sha256_size
