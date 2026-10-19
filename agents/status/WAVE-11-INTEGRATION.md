@@ -4,8 +4,8 @@
 **Code commit:** `6a48d41` (`[WAVE11]` integration)
 **Branch:** `repair/integrated`
 **Result:** eight lanes reviewed and integrated; source, build, conformance, and
-axiom gates green; checkpoint prepared for a non-force push to
-`origin/repair/integrated`.
+axiom gates green. Published non-force to `origin/repair/integrated` at
+`9940642`; hosted CI run `39288684058` is green.
 
 ## Modules
 

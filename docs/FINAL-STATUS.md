@@ -8,8 +8,9 @@ status commits may advance the tip. Base `9359475` (wave-9 integration);
 wave 10 launched from `9158592`; wave 11 launched from `4037264`.
 **Catalog state:** **51 `proved` / 0 `statementOnly` / 0 unresolved / 277
 targets**.
-**Remote refs:** push is non-force to `origin/repair/integrated`. `origin/main`
-is not touched by this work. The former `repair/pubbump` branch is merged and
+**Remote refs:** wave 11 is published non-force to `origin/repair/integrated` at
+`9940642`; hosted CI run `39288684058` completed both source gates and the
+pinned-vendor build gate successfully. `origin/main` is not touched by this work. The former `repair/pubbump` branch is merged and
 retired; its public-core bump is part of this branch.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 **L1 build dependency:** read-only `vendor/btc-lean-core` copy of public

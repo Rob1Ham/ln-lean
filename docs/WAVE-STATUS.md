@@ -6,8 +6,9 @@
 Base `9359475` (wave-9 integration); wave 10 launched from `9158592`; wave 11
 launched from `4037264`.
 **Catalog:** 51 proved / 0 statementOnly / 0 unresolved / 277 targets.
-**Wave 11:** integrated; eight lanes complete, reports under
-`agents/reports/swarm11/`; lane plan `agents/swarm/WAVE-11.md`.
+**Wave 11:** integrated and published non-force; eight lanes complete, reports
+under `agents/reports/swarm11/`; lane plan `agents/swarm/WAVE-11.md`.
+Hosted CI run `39288684058` at `9940642` is green.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 
 This file describes the repair branch. Older wave tables are retained as
