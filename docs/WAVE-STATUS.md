@@ -6,6 +6,7 @@
 Status commits may advance the branch tip. Proof-wave 7 code was `b48d041`;
 wave 8 launched from `50d78ed`.
 **Catalog:** 48 proved / 0 statementOnly / 0 unresolved / 100 targets.
+**Wave 9:** running from `10d18a1`; lane plan `agents/swarm/WAVE-9.md`.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 
 This file describes the repair branch. Older wave tables are retained as

@@ -1,11 +1,12 @@
 # Open Issues and Swarm Roadmap
 
-**Status:** living roadmap after proof-wave 8; wave 8 is integrated on
-`repair/integrated` and the wave-9 candidates are tracked below.
+**Status:** living roadmap after the proof-wave 9 launch; wave 9 is running
+from `10d18a1` on `repair/integrated`.
 **Branch:** `repair/integrated`.
-**Base commit:** `9bafdab` (wave 8 code); wave 8 launch is `50d78ed`;
-proof-wave 7 code is `b48d041`; wave 7 launch is `3180581`; proof-wave 6 code
-is `0a3a5fb` (proof-wave 5 code is `6389baa`; proof-wave 4 code at `26ced90`).
+**Base commit:** `10d18a1` (wave 9 launch); wave 8 final code is `68f283c`;
+wave 8 launch is `50d78ed`; proof-wave 7 code is `b48d041`; wave 7 launch is
+`3180581`; proof-wave 6 code is `0a3a5fb` (proof-wave 5 code is `6389baa`;
+proof-wave 4 code at `26ced90`).
 **Catalog gate:** 48/48 rows `proved`, 0 `statement-only`, 0 unresolved,
 100 targets.
 **Full build:** 250 jobs, RC 0.
@@ -197,16 +198,20 @@ wire-only coverage, `RT-02` to node-announcement canonicalisation, and
 `CONF-01` to the deferred live message row. No unconditional consensus or
 computational-security claim is added.
 
-## Wave 9 candidates
+## Wave 9 lanes (running)
 
-| Candidate | Issue(s) | Scope |
-|---|---|---|
-| `S9-L1-EC-UNCONDITIONAL` | `L1-01`, `L1-07` | Decide whether a concrete EC verifier implementation/EUF-CMA instance can replace `VendorEcdsaBridge` without weakening the model; keep the amount/context boundary |
-| `S9-L1-OPENCHANNEL-ROUTING` | `L1-03` | Connect the type-32 wire record to transport attribution/`HandshakeState` routing and the peer frame path |
-| `S9-PR-ATTRIBUTION` | `PR-01` | Model a registration/proof-of-possession game or prove the strongest available attribution contract; do not treat storage as possession |
-| `S9-PR-ARBITRARY-PREIMAGE` | `PR-02` | Characterize wire-only coverage and the eight arbitrary-preimage field hypotheses; keep the conditional view-binding boundary |
-| `S9-RT-NODE-CANON` | `RT-02` | Canonicalise node announcements and close the remaining store-epoch design gap |
-| `S9-CONF-LIVE-MSG` | `CONF-01` | Add a live BOLT 2 message row to the pinned differential harness |
+Wave 9 launched from `10d18a1`. Six lanes have exclusive new modules and report
+paths; the parent integrates root imports, catalog targets, audit entries, and
+docs after the lane reports land.
+
+| Lane | Issue(s) | Owned files | Scope |
+|---|---|---|---|
+| `S9-L1-EC-UNCONDITIONAL` | `L1-01`, `L1-07` | new `LnLean/Proofs/Bitcoin/EcdsaConcreteTargets.lean`, report | Decide whether a concrete `verifyImpl` instance can satisfy `VendorEcdsaBridge`, or prove the sharpest obstruction/separation; keep `EufCma`/`KeyBinding` explicit |
+| `S9-L1-OPENCHANNEL-ROUTING` | `L1-03` | new `LnLean/Proofs/Protocol/OpenChannelRoutingTargets.lean`, report | Transport attribution/provenance and handshake routing for `OpenChannelWire`; wire → `Handshake.OpenChannel` → funding plus a non-attribution boundary |
+| `S9-PR-ATTRIBUTION` | `PR-01` | new `LnLean/Proofs/Crypto/AttributionGameTargets.lean`, report | Registration/proof-of-possession game over `StoredAccept`; storage is not possession; conditional `KeyBinding` attribution |
+| `S9-PR-ARBITRARY-PREIMAGE` | `PR-02` | new `LnLean/Proofs/Channel/PreimageCoverageTargets.lean`, report | Wire-only coverage and the eight arbitrary-preimage field hypotheses; conditional coverage plus dropped-hypothesis counterexample |
+| `S9-RT-NODE-CANON` | `RT-02` | new `LnLean/Proofs/Routing/NodeCanonicalTargets.lean`, report | Node-announcement canonicalisation against the canonical store; invariants, replacement/rotation, and boundary witnesses |
+| `S9-CONF-LIVE-MSG` | `CONF-01` | `tests/conformance/**`, `scripts/check-conformance.py`, `LnLean/Proofs/ConformanceDiffTargets.lean`, report | Live BOLT 2 message row if the pinned harness supports it; otherwise the exact blocker with the finite row retained |
 
 Human-only release decisions (`OPS-02`, `OPS-03`), the probability/complexity
 foundation (`CR-01`/`SEC-01`), and any `main` merge remain outside agent lanes.
