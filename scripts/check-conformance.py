@@ -76,6 +76,7 @@ LIVE_TEST_NAMES = [
     "util::ser::tests::bigsize_encoding_decoding",
     "util::ser_macros::tests::retired_tlvs_skipped_on_read",
     "ln::msgs::tests::encoding_channel_ready",
+    "ln::msgs::tests::encoding_open_channel",
 ]
 
 UINT64_MAX = 2**64 - 1
@@ -466,10 +467,27 @@ MESSAGE_TYPES = {
     "commitment_signed": 132,
 }
 
-# The live differential message row currently covers the BOLT 2 channel_ready
-# message, whose public rust-lightning struct/encoding is exercised by the
-# pinned `encoding_channel_ready` unit test and the offline probe.
-DIFF_MESSAGE_TYPES = {"channel_ready": 36}
+# The live differential message rows cover BOLT 2 `channel_ready` and
+# `open_channel`, whose public rust-lightning structs/encodings are exercised
+# by the pinned `encoding_channel_ready` / `encoding_open_channel` unit tests
+# and the offline probe.
+DIFF_MESSAGE_TYPES = {"channel_ready": 36, "open_channel": 32}
+
+DIFF_MESSAGE_CONSTRUCTION_KEYS = {
+    "channel_ready": [
+        "channel_id", "next_per_commitment_point", "short_channel_id_alias",
+    ],
+    "open_channel": [
+        "chain_hash", "temporary_channel_id", "funding_satoshis", "push_msat",
+        "dust_limit_satoshis", "max_htlc_value_in_flight_msat",
+        "channel_reserve_satoshis", "htlc_minimum_msat", "feerate_per_kw",
+        "to_self_delay", "max_accepted_htlcs", "channel_flags",
+        "funding_pubkey", "revocation_basepoint", "payment_basepoint",
+        "delayed_payment_basepoint", "htlc_basepoint",
+        "first_per_commitment_point", "shutdown_scriptpubkey",
+        "channel_type",
+    ],
+}
 
 MESSAGE_REQUIRED_FIELDS = {
     "open_channel": [
@@ -813,16 +831,25 @@ def check_diff_message(entry: dict[str, Any], seen_ids: set[str]) -> str:
     construction = entry["construction"]
     require(isinstance(construction, dict),
             f"{where}: construction must be an object")
-    for key in ("channel_id", "next_per_commitment_point",
-                "short_channel_id_alias"):
-        require(key in construction, f"{where}: construction missing {key!r}")
-    require(construction["short_channel_id_alias"] is None,
-            f"{where}: only the no-alias channel_ready row is supported")
+    expected_construction = DIFF_MESSAGE_CONSTRUCTION_KEYS[name]
+    require(sorted(construction) == sorted(expected_construction),
+            f"{where}: construction keys {sorted(construction)} != "
+            f"expected {sorted(expected_construction)}")
+    if name == "open_channel":
+        require(construction["shutdown_scriptpubkey"] is None,
+                f"{where}: only the no-TLV open_channel row is supported")
+        require(construction["channel_type"] is None,
+                f"{where}: only the no-TLV open_channel row is supported")
 
     fields = entry["fields"]
     require(isinstance(fields, list) and fields,
             f"{where}: fields must be a non-empty list")
-    expected_names = ["channel_id", "next_per_commitment_point"]
+    if name == "channel_ready":
+        require(construction["short_channel_id_alias"] is None,
+                f"{where}: only the no-alias channel_ready row is supported")
+        expected_names = ["channel_id", "next_per_commitment_point"]
+    else:
+        expected_names = list(MESSAGE_REQUIRED_FIELDS[name])
     actual_names = [field.get("name") for field in fields]
     require(actual_names == expected_names,
             f"{where}: field names {actual_names} != expected {expected_names}")
@@ -832,10 +859,22 @@ def check_diff_message(entry: dict[str, Any], seen_ids: set[str]) -> str:
     for field in fields:
         offset = check_message_field(field, where, offset)
         payload += parse_hex(field["hex"], where)
-    require(construction["channel_id"] == fields[0]["hex"],
-            f"{where}: construction channel_id disagrees with the field")
-    require(construction["next_per_commitment_point"] == fields[1]["hex"],
-            f"{where}: construction point disagrees with the field")
+    for field in fields:
+        field_name = field["name"]
+        if field_name not in construction:
+            raise CheckError(
+                f"{where}: construction is missing field {field_name!r}")
+        if field["kind"] in MESSAGE_FIELD_WIDTHS:
+            require(construction[field_name] == field["value"],
+                    f"{where}: construction {field_name} "
+                    f"{construction[field_name]!r} != field value "
+                    f"{field['value']!r}")
+        else:
+            require(construction[field_name] == field["hex"],
+                    f"{where}: construction {field_name} disagrees with the "
+                    f"field bytes")
+    require(offset == len(payload),
+            f"{where}: field offsets do not cover the payload")
     stated = parse_hex(entry["payload"], where)
     require(payload == stated,
             f"{where}: concatenated fields {payload.hex()} != payload "
@@ -1504,6 +1543,24 @@ def check_mutations(doc: dict[str, Any], diff_doc: dict[str, Any] | None,
                 lambda: check_diff_message(message, set()))
 
         mutated = copy.deepcopy(diff_doc)
+        open_channel = next(
+            e for e in mutated["fixtures"]["messages"]
+            if e["name"] == "open_channel")
+        open_channel["construction"]["funding_satoshis"] += 1
+        control("differential open_channel construction value changed",
+                lambda: check_diff_message(open_channel, set()))
+
+        mutated = copy.deepcopy(diff_doc)
+        open_channel = next(
+            e for e in mutated["fixtures"]["messages"]
+            if e["name"] == "open_channel")
+        payload = bytearray.fromhex(open_channel["payload"])
+        payload[-1] ^= 0x01
+        open_channel["payload"] = payload.hex()
+        control("differential open_channel payload byte changed",
+                lambda: check_diff_message(open_channel, set()))
+
+        mutated = copy.deepcopy(diff_doc)
         mutated["generation"]["live_cargo_test"] = True
         mutated["generation"]["mode"] = "live-cargo-test"
         mutated["generation"]["live_transcript_sha256"] = "0" * 64
@@ -1691,8 +1748,9 @@ def run(vectors: Path, lean_paths: list[Path] | None, diff_path: Path | None,
             print(f"live evidence: {counts['bigsize']} BigSize + "
                   f"{counts['tlv']} TLV compared against rust-lightning, "
                   f"{counts['wire']} wire via live LN_MAX_MSG_LEN, "
-                  f"{counts['messages']} BOLT 2 channel_ready payload encoded "
-                  f"live; transcript sha256 "
+                  f"{counts['messages']} BOLT 2 message payload(s) "
+                  f"(channel_ready, open_channel) encoded live; transcript "
+                  f"sha256 "
                   f"{generation.get('live_transcript_sha256', '')[:12]}")
         if provenance_count is not None:
             commit_note = " (HEAD verified)" if commit_verified else ""

@@ -68,6 +68,7 @@ LIVE_TESTS = [
     "util::ser::tests::bigsize_encoding_decoding",
     "util::ser_macros::tests::retired_tlvs_skipped_on_read",
     "ln::msgs::tests::encoding_channel_ready",
+    "ln::msgs::tests::encoding_open_channel",
 ]
 LIVE_NOTE = (
     "The committed rows were extracted from the pinned source/unit-test "
@@ -75,9 +76,9 @@ LIVE_NOTE = (
     "`generate.py --live --fetch` ran the pinned unit tests and the public-API "
     "probe under `cargo --offline --locked` with the committed "
     "`pinned/Cargo.lock`; `live-transcript.json` records the comparison. "
-    "The BOLT 2 channel_ready payload is encoded live through the pinned "
-    "`Writeable` impl; the wire header arithmetic remains a pinned-source "
-    "check and only `LN_MAX_MSG_LEN` is probed live."
+    "The BOLT 2 channel_ready and open_channel payloads are encoded live "
+    "through the pinned `Writeable` impl; the wire header arithmetic remains a "
+    "pinned-source check and only `LN_MAX_MSG_LEN` is probed live."
 )
 OFFLINE_NOTE = (
     "The committed rows were extracted from the pinned source/unit-test "
@@ -117,15 +118,16 @@ PROVENANCE = [
     {
         "path": "lightning/src/ln/msgs.rs",
         "sha256": "75bc3698ab6e5595dcb02de23dceb52e37a25cd31621947387054fab2461a4f8",
-        "lines": "431-443, 3239-3243, 5672-5682",
-        "use": "BOLT 2 channel_ready (type 36) field order/Writeable encoding and "
-               "the encoding_channel_ready unit-test target value",
+        "lines": "431-443, 3239-3243, 5098-5188, 5672-5682",
+        "use": "BOLT 2 channel_ready (type 36) and open_channel (type 32) field "
+               "order/Writeable encodings and the encoding_channel_ready / "
+               "encoding_open_channel unit-test target values",
     },
 ]
 
 HEX_RE = re.compile(r'"([0-9a-f]*)"')
 INT_RE = re.compile(r"\b(\d+)\b")
-FUNCTION_RE = r"fn\s+%s\s*\(\)\s*\{"
+FUNCTION_RE = r"fn\s+%s\s*\([^)]*\)\s*\{"
 LET_ARRAY_RE = r"let\s+%s\s*=\s*\[(.*?)\];"
 
 
@@ -249,7 +251,7 @@ def extract_wire(source: Path) -> int:
     return 0xFFFF
 
 
-def extract_messages(source: Path) -> dict[str, str]:
+def extract_messages(source: Path) -> dict[str, Any]:
     """Re-extract the pinned BOLT 2 channel_ready encoding target.
 
     The pinned `ln::msgs::tests::encoding_channel_ready` test constructs a
@@ -273,10 +275,132 @@ def extract_messages(source: Path) -> dict[str, str]:
     point = payload[64:]
     require(point[:2] in ("02", "03"),
             "channel_ready commitment point is not a compressed point")
+    channel_id = payload[:64]
     return {
-        "channel_id": payload[:64],
-        "next_per_commitment_point": point,
         "payload": payload,
+        "construction": {
+            "channel_id": channel_id,
+            "next_per_commitment_point": point,
+            "short_channel_id_alias": None,
+        },
+        "fields": [
+            {
+                "name": "channel_id",
+                "kind": "bytes",
+                "offset": 0,
+                "length": 32,
+                "hex": channel_id,
+            },
+            {
+                "name": "next_per_commitment_point",
+                "kind": "point",
+                "offset": 32,
+                "length": 33,
+                "hex": point,
+            },
+        ],
+    }
+
+
+# BOLT 2 `open_channel` fixed-width prefix, after `chain_hash` and
+# `temporary_channel_id`.  Field order matches `impl Writeable for OpenChannel`
+# in the pinned `lightning/src/ln/msgs.rs`.
+OPEN_CHANNEL_FIELD_LAYOUT = [
+    ("chain_hash", "bytes", 32),
+    ("temporary_channel_id", "bytes", 32),
+    ("funding_satoshis", "u64", 8),
+    ("push_msat", "u64", 8),
+    ("dust_limit_satoshis", "u64", 8),
+    ("max_htlc_value_in_flight_msat", "u64", 8),
+    ("channel_reserve_satoshis", "u64", 8),
+    ("htlc_minimum_msat", "u64", 8),
+    ("feerate_per_kw", "u32", 4),
+    ("to_self_delay", "u16", 2),
+    ("max_accepted_htlcs", "u16", 2),
+    ("funding_pubkey", "point", 33),
+    ("revocation_basepoint", "point", 33),
+    ("payment_basepoint", "point", 33),
+    ("delayed_payment_basepoint", "point", 33),
+    ("htlc_basepoint", "point", 33),
+    ("first_per_commitment_point", "point", 33),
+    ("channel_flags", "u8", 1),
+]
+
+OPEN_CHANNEL_CONSTRUCTION_KEYS = [
+    "temporary_channel_id", "funding_satoshis", "push_msat",
+    "dust_limit_satoshis", "max_htlc_value_in_flight_msat",
+    "channel_reserve_satoshis", "htlc_minimum_msat", "feerate_per_kw",
+    "to_self_delay", "max_accepted_htlcs", "channel_flags",
+    "funding_pubkey", "revocation_basepoint", "payment_basepoint",
+    "delayed_payment_basepoint", "htlc_basepoint",
+    "first_per_commitment_point",
+]
+
+
+def extract_open_channel(source: Path) -> dict[str, Any]:
+    """Re-extract the pinned BOLT 2 `open_channel` base encoding target.
+
+    The pinned `do_encoding_open_channel(random_bit, shutdown, incl_chan_type)`
+    helper is shared by the `encoding_open_channel` unit test.  The
+    `(false, false, false)` case is the no-TLV base message: the target is the
+    32-byte mainnet genesis chain hash, the 286-byte fixed body, and the
+    all-zero `channel_flags` byte, for a 319-byte payload.
+    """
+    text = (source / "lightning/src/ln/msgs.rs").read_text(encoding="utf-8")
+    body = function_body(text, "do_encoding_open_channel")
+    require("if random_bit { 1 << 5 } else { 0 }" in body,
+            "open_channel test no longer has the random channel_flags bit")
+    require("short_channel_id_alias" not in body,
+            "open_channel target unexpectedly uses a channel_ready field")
+    literals = re.findall(r'from_hex\(\s*"([0-9a-f]+)"\s*,?\s*\)', body)
+    require(len(literals) == 6,
+            f"expected 6 open_channel hex literals, got {len(literals)}")
+    chain_hash, fixed_body, flag_true, flag_false, _shutdown, _chan_type = literals
+    require(len(chain_hash) == 64,
+            f"open_channel chain hash is {len(chain_hash)//2} bytes, expected 32")
+    require(flag_true == "20" and flag_false == "00",
+            "open_channel channel_flags literals changed")
+    payload = chain_hash + fixed_body + flag_false
+    require(len(payload) == 638,
+            f"open_channel payload is {len(payload)//2} bytes, expected 319")
+
+    fields: list[dict[str, Any]] = []
+    construction: dict[str, Any] = {}
+    offset = 0
+    for name, kind, width in OPEN_CHANNEL_FIELD_LAYOUT:
+        raw = payload[offset * 2:(offset + width) * 2]
+        require(len(raw) == width * 2,
+                f"open_channel field {name} runs past the target payload")
+        field: dict[str, Any] = {
+            "name": name,
+            "kind": kind,
+            "offset": offset,
+            "length": width,
+            "hex": raw,
+        }
+        if kind in ("u8", "u16", "u32", "u64"):
+            value = int(raw, 16)
+            require(str(value) in body,
+                    f"open_channel field {name} value {value} is not a pinned "
+                    f"test literal")
+            field["value"] = value
+            construction[name] = value
+        else:
+            if kind == "point":
+                require(raw[:2] in ("02", "03"),
+                        f"open_channel field {name} is not a compressed point")
+            construction[name] = raw
+        fields.append(field)
+        offset += width
+    require(offset == 319, f"open_channel layout covers {offset} bytes, expected 319")
+
+    construction["chain_hash"] = chain_hash
+    construction["shutdown_scriptpubkey"] = None
+    construction["channel_type"] = None
+    return {
+        "payload": payload,
+        "construction": construction,
+        "fields": fields,
     }
 
 
@@ -341,7 +465,10 @@ def derived(doc: dict[str, Any], source: Path,
     values, byte_rows, errors = extract_bigsize(source)
     accepted, unknown_even, truncated = extract_tlv(source)
     max_len = extract_wire(source)
-    message_source = extract_messages(source)
+    message_sources = {
+        "channel_ready": extract_messages(source),
+        "open_channel": extract_open_channel(source),
+    }
 
     fixtures = doc["fixtures"]
     bigsize = fixtures["bigsize"]
@@ -413,36 +540,17 @@ def derived(doc: dict[str, Any], source: Path,
     for row in messages:
         require(row.get("kind") == "message",
                 f"message fixture {row.get('id')} is not kind=message")
-        require(row.get("name") == "channel_ready",
-                f"message fixture {row.get('id')} is not channel_ready")
-        require(row.get("type") == 36,
-                f"message fixture {row.get('id')} is not type 36")
+        name = row.get("name")
+        require(name in message_sources,
+                f"message fixture {row.get('id')} names an unsupported "
+                f"message {name!r}")
+        message_source = message_sources[name]
         payload = bytes.fromhex(message_source["payload"])
         transport_length = 2 + len(payload)
         require(transport_length <= max_len,
                 f"message fixture {row['id']} exceeds the pinned maximum")
-        row["construction"] = {
-            "channel_id": message_source["channel_id"],
-            "next_per_commitment_point":
-                message_source["next_per_commitment_point"],
-            "short_channel_id_alias": None,
-        }
-        row["fields"] = [
-            {
-                "name": "channel_id",
-                "kind": "bytes",
-                "offset": 0,
-                "length": 32,
-                "hex": message_source["channel_id"],
-            },
-            {
-                "name": "next_per_commitment_point",
-                "kind": "point",
-                "offset": 32,
-                "length": 33,
-                "hex": message_source["next_per_commitment_point"],
-            },
-        ]
+        row["construction"] = message_source["construction"]
+        row["fields"] = message_source["fields"]
         row["payload"] = message_source["payload"]
         row["payload_length"] = len(payload)
         row["transport_length"] = transport_length
@@ -542,11 +650,17 @@ def probe_commands(doc: dict[str, Any]) -> list[str]:
         commands.append(f"T\t{row['id']}\t{mode}\t{row['bytes']}")
     for row in fixtures["messages"]:
         construction = row["construction"]
-        alias = construction["short_channel_id_alias"]
-        alias_arg = "-" if alias is None else str(alias)
-        commands.append(
-            f"B\t{row['id']}\t{alias_arg}\t{construction['channel_id']}\t"
-            f"{construction['next_per_commitment_point']}")
+        if row["name"] == "channel_ready":
+            alias = construction["short_channel_id_alias"]
+            alias_arg = "-" if alias is None else str(alias)
+            commands.append(
+                f"B\t{row['id']}\t{alias_arg}\t{construction['channel_id']}\t"
+                f"{construction['next_per_commitment_point']}")
+        elif row["name"] == "open_channel":
+            values = [construction[key] for key in OPEN_CHANNEL_CONSTRUCTION_KEYS]
+            commands.append("\t".join(["O", row["id"]] + [str(v) for v in values]))
+        else:
+            raise FixtureError(f"unsupported message probe row {row['name']!r}")
     commands.append("M")
     return commands
 
@@ -665,7 +779,7 @@ def live_run(source: Path, fixture_doc: dict[str, Any], timeout: int,
         for name in LIVE_TESTS:
             result = run_command(
                 ["cargo", "test", "--offline", "--locked", "-p", "lightning",
-                 "--lib", name], work, timeout)
+                 "--lib", name, "--", "--exact"], work, timeout)
             expected_line = f"test {name} ... ok"
             require(expected_line in result.stdout,
                     f"pinned test did not report '{expected_line}'")
@@ -706,9 +820,10 @@ def live_run(source: Path, fixture_doc: dict[str, Any], timeout: int,
         write_doc(transcript, transcript_path)
         digest = sha256_file(transcript_path)
         print(f"live: {counts['bigsize']} BigSize and {counts['tlv']} TLV fixtures "
-              f"agree with rust-lightning; {counts['messages']} BOLT 2 "
-              f"channel_ready payload(s) encoded live; wire: {counts['wire']} "
-              f"checked against live LN_MAX_MSG_LEN={results['LN_MAX_MSG_LEN'][0]}")
+              f"agree with rust-lightning; {counts['messages']} BOLT 2 message "
+              f"payload(s) encoded live (channel_ready, open_channel); wire: "
+              f"{counts['wire']} checked against live "
+              f"LN_MAX_MSG_LEN={results['LN_MAX_MSG_LEN'][0]}")
         print(f"live transcript: {transcript_path} ({digest})")
         transcript["_path"] = str(transcript_path)
         transcript["_sha256"] = digest

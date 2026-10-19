@@ -95,6 +95,11 @@ import LnLean.Proofs.Protocol.OpenChannelRoutingTargets
 import LnLean.Proofs.Crypto.AttributionGameTargets
 import LnLean.Proofs.Channel.PreimageCoverageTargets
 import LnLean.Proofs.Routing.NodeCanonicalTargets
+import LnLean.Proofs.Bitcoin.EcdsaDomainTargets
+import LnLean.Proofs.Protocol.TransportAuthTargets
+import LnLean.Proofs.Crypto.PopProtocolTargets
+import LnLean.Proofs.Channel.CoverageWitnessTargets
+import LnLean.Proofs.Routing.NodeIdentityTargets
 
 set_option autoImplicit false
 
@@ -385,6 +390,63 @@ set_option autoImplicit false
 #print axioms LnLean.Proofs.WaveH.H43.eventual_delivery_of_fair_attempts
 #print axioms LnLean.Proofs.WaveH.H45.channel_reorg_preserves
 
+/-! ## 22. Wave 10 headline targets -/
+
+#print axioms LnLean.Proofs.Bitcoin.EcdsaDomainTargets.not_digestBindsMod_any_tag
+#print axioms LnLean.Proofs.Bitcoin.EcdsaDomainTargets.no_digestBindsMod_anywhere
+#print axioms LnLean.Proofs.Bitcoin.EcdsaDomainTargets.not_digestBindsModOn33_any_tag
+#print axioms LnLean.Proofs.Bitcoin.EcdsaDomainTargets.digestBindsModOn_canonical33
+#print axioms LnLean.Proofs.Bitcoin.EcdsaDomainTargets.digestBindsModOn_canonical32
+#print axioms LnLean.Proofs.Bitcoin.EcdsaDomainTargets.residueBinding_vendor_funding_eq_of_canonical33
+#print axioms LnLean.Proofs.Bitcoin.EcdsaDomainTargets.digest_domain_dichotomy
+#print axioms LnLean.Proofs.Protocol.TransportAuthTargets.transport_authenticated_attributed
+#print axioms LnLean.Proofs.Protocol.TransportAuthTargets.authenticated_delivery_reaches_fundingCreated
+#print axioms LnLean.Proofs.Protocol.TransportAuthTargets.authenticated_open_reaches_funding
+#print axioms LnLean.Proofs.Protocol.TransportAuthTargets.transport_auth_not_from_wire
+#print axioms LnLean.Proofs.Protocol.TransportAuthTargets.unattributed_delivery_exists
+#print axioms LnLean.Proofs.Protocol.TransportAuthTargets.no_session_binding_counterexample
+#print axioms LnLean.Proofs.Protocol.TransportAuthTargets.no_wire_sender_function
+#print axioms LnLean.Proofs.Protocol.TransportAuthTargets.transport_auth_summary
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.challengeMessage_injective_of_valid
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.accepts_challenge_bound
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.no_cross_session_replay
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.advertised_honest_completeness
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.storedAccept_honest_registration
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.accepted_owns
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.accepted_funding_attribution
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.popSound_of_keySoundOn
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.accepted_stored_registration_attribution
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.unbound_replay_accepts
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.nonceFree_replay_accepts
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.challengeMessage_not_injective_without_valid
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.binding_fails_without_valid
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.repeated_challenge_replay
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.keySound_not_provenance
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.protocol_nonvacuous
+#print axioms LnLean.Proofs.Crypto.PopProtocolTargets.pop_protocol_summary
+#print axioms LnLean.Proofs.Channel.CoverageWitnessTargets.decodeCoverage_canonical
+#print axioms LnLean.Proofs.Channel.CoverageWitnessTargets.decodeCoverage_covers
+#print axioms LnLean.Proofs.Channel.CoverageWitnessTargets.no_legacy_only_coverage_decoder
+#print axioms LnLean.Proofs.Channel.CoverageWitnessTargets.no_legacy_only_witness_selector
+#print axioms LnLean.Proofs.Channel.CoverageWitnessTargets.wire_admits_distinct_coverage_witnesses
+#print axioms LnLean.Proofs.Channel.CoverageWitnessTargets.amount_is_necessary
+#print axioms LnLean.Proofs.Channel.CoverageWitnessTargets.toCommitmentHtlcOutput_eq_iff
+#print axioms LnLean.Proofs.Channel.CoverageWitnessTargets.coverage_witness_summary
+#print axioms LnLean.Proofs.Routing.NodeIdentityTargets.canonical_distinct_nodes_no_oriented_store_link
+#print axioms LnLean.Proofs.Routing.NodeIdentityTargets.no_store_function_selects_both_rotation_worlds
+#print axioms LnLean.Proofs.Routing.NodeIdentityTargets.concrete_intended_rotation_not_storeOnly
+#print axioms LnLean.Proofs.Routing.NodeIdentityTargets.rotation_preserves_wireMember
+#print axioms LnLean.Proofs.Routing.NodeIdentityTargets.rotation_not_signature_preserving
+#print axioms LnLean.Proofs.Routing.NodeIdentityTargets.channelAnnouncement_admitted_of_wireMember
+#print axioms LnLean.Proofs.Routing.NodeIdentityTargets.missing_endpoint_channel_admitted
+#print axioms LnLean.Proofs.Routing.NodeIdentityTargets.wireMember_applyGossipNodeCanonical
+#print axioms LnLean.Proofs.Routing.NodeIdentityTargets.graphBacked_of_nodeKeyConsistent
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_payload
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_length
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_transport
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_header
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_frame_prefix
+
 /-! ## 15. Registry
 
   The registry is a plain list of fully-qualified names.  Keeping it in the
@@ -661,8 +723,62 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Proofs.Conformance.Diff.diff_msg_channel_ready_length,
     `LnLean.Proofs.Conformance.Diff.diff_msg_channel_ready_transport,
     `LnLean.Proofs.Conformance.Diff.diff_msg_channel_ready_header,
-    `LnLean.Proofs.Conformance.Diff.diff_msg_channel_ready_frame_prefix
+    `LnLean.Proofs.Conformance.Diff.diff_msg_channel_ready_frame_prefix,
+    `LnLean.Proofs.Bitcoin.EcdsaDomainTargets.not_digestBindsMod_any_tag,
+    `LnLean.Proofs.Bitcoin.EcdsaDomainTargets.no_digestBindsMod_anywhere,
+    `LnLean.Proofs.Bitcoin.EcdsaDomainTargets.not_digestBindsModOn33_any_tag,
+    `LnLean.Proofs.Bitcoin.EcdsaDomainTargets.digestBindsModOn_canonical33,
+    `LnLean.Proofs.Bitcoin.EcdsaDomainTargets.digestBindsModOn_canonical32,
+    `LnLean.Proofs.Bitcoin.EcdsaDomainTargets.residueBinding_vendor_funding_eq_of_canonical33,
+    `LnLean.Proofs.Bitcoin.EcdsaDomainTargets.digest_domain_dichotomy,
+    `LnLean.Proofs.Protocol.TransportAuthTargets.transport_authenticated_attributed,
+    `LnLean.Proofs.Protocol.TransportAuthTargets.authenticated_delivery_reaches_fundingCreated,
+    `LnLean.Proofs.Protocol.TransportAuthTargets.authenticated_open_reaches_funding,
+    `LnLean.Proofs.Protocol.TransportAuthTargets.transport_auth_not_from_wire,
+    `LnLean.Proofs.Protocol.TransportAuthTargets.unattributed_delivery_exists,
+    `LnLean.Proofs.Protocol.TransportAuthTargets.no_session_binding_counterexample,
+    `LnLean.Proofs.Protocol.TransportAuthTargets.no_wire_sender_function,
+    `LnLean.Proofs.Protocol.TransportAuthTargets.transport_auth_summary,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.challengeMessage_injective_of_valid,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.accepts_challenge_bound,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.no_cross_session_replay,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.advertised_honest_completeness,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.storedAccept_honest_registration,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.accepted_owns,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.accepted_funding_attribution,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.popSound_of_keySoundOn,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.accepted_stored_registration_attribution,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.unbound_replay_accepts,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.nonceFree_replay_accepts,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.challengeMessage_not_injective_without_valid,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.binding_fails_without_valid,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.repeated_challenge_replay,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.keySound_not_provenance,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.protocol_nonvacuous,
+    `LnLean.Proofs.Crypto.PopProtocolTargets.pop_protocol_summary,
+    `LnLean.Proofs.Channel.CoverageWitnessTargets.decodeCoverage_canonical,
+    `LnLean.Proofs.Channel.CoverageWitnessTargets.decodeCoverage_covers,
+    `LnLean.Proofs.Channel.CoverageWitnessTargets.no_legacy_only_coverage_decoder,
+    `LnLean.Proofs.Channel.CoverageWitnessTargets.no_legacy_only_witness_selector,
+    `LnLean.Proofs.Channel.CoverageWitnessTargets.wire_admits_distinct_coverage_witnesses,
+    `LnLean.Proofs.Channel.CoverageWitnessTargets.amount_is_necessary,
+    `LnLean.Proofs.Channel.CoverageWitnessTargets.toCommitmentHtlcOutput_eq_iff,
+    `LnLean.Proofs.Channel.CoverageWitnessTargets.coverage_witness_summary,
+    `LnLean.Proofs.Routing.NodeIdentityTargets.canonical_distinct_nodes_no_oriented_store_link,
+    `LnLean.Proofs.Routing.NodeIdentityTargets.no_store_function_selects_both_rotation_worlds,
+    `LnLean.Proofs.Routing.NodeIdentityTargets.concrete_intended_rotation_not_storeOnly,
+    `LnLean.Proofs.Routing.NodeIdentityTargets.rotation_preserves_wireMember,
+    `LnLean.Proofs.Routing.NodeIdentityTargets.rotation_not_signature_preserving,
+    `LnLean.Proofs.Routing.NodeIdentityTargets.channelAnnouncement_admitted_of_wireMember,
+    `LnLean.Proofs.Routing.NodeIdentityTargets.missing_endpoint_channel_admitted,
+    `LnLean.Proofs.Routing.NodeIdentityTargets.wireMember_applyGossipNodeCanonical,
+    `LnLean.Proofs.Routing.NodeIdentityTargets.graphBacked_of_nodeKeyConsistent,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_payload,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_length,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_transport,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_header,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_frame_prefix
     ]
 
 set_option maxRecDepth 6000 in
-theorem auditedTheorems_length : auditedTheorems.length = 269 := rfl
+theorem auditedTheorems_length : auditedTheorems.length = 323 := rfl

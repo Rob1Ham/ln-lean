@@ -17,9 +17,9 @@ LEAN = "/dev/shm/btc/elan/toolchains/leanprover--lean4---v4.35.0/bin"
 
 # The repair/integrated branch adds the Phase-C2/C3 modules, LnLean/Proofs/Common,
 # the proof-wave 3 target modules, the proof-wave 4 bridge/vector modules, the
-# wave-H modules, and the five wave-9 proof modules to the original 132-file
-# final tree.
-EXPECTED_LEAN_FILES = 261
+# wave-H modules, the five wave-9 proof modules, and the five wave-10 proof
+# modules to the original 132-file final tree.
+EXPECTED_LEAN_FILES = 266
 
 # These are convenience aggregators, not root dependencies.  The root module
 # imports the concrete modules directly; importing an aggregator as well would

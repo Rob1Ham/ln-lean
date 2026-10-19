@@ -13,6 +13,7 @@
 //!   `D <id> <hex>`                   decode a BigSize
 //!   `T <id> retired|unlisted <hex>`  run the pinned TLV readers
 //!   `B <id> <alias|-> <channel_id> <point>` encode a BOLT 2 channel_ready
+//!   `O <id> ...`                     encode a BOLT 2 open_channel
 //!   `M`                              emit `LN_MAX_MSG_LEN`
 //!
 //! This file is not part of the rust-lightning source tree; it is copied into
@@ -20,10 +21,14 @@
 
 use std::io::{self, BufRead};
 
+use lightning::bitcoin::constants::ChainHash;
 use lightning::bitcoin::secp256k1::PublicKey;
+use lightning::bitcoin::Network;
 use lightning::decode_tlv_stream;
 use lightning::io::Cursor;
-use lightning::ln::msgs::{ChannelReady, DecodeError};
+use lightning::ln::msgs::{
+    ChannelReady, CommonOpenChannelFields, DecodeError, OpenChannel,
+};
 use lightning::ln::types::ChannelId;
 use lightning::ln::LN_MAX_MSG_LEN;
 use lightning::util::ser::{BigSize, Readable, Writeable};
@@ -119,6 +124,50 @@ fn encode_channel_ready(channel_id_hex: &str, point_hex: &str,
     to_hex(&message.encode())
 }
 
+/// Encode the public BOLT 2 `open_channel` fields through the pinned
+/// `Writeable` implementation.  The construction mirrors the pinned
+/// `ln::msgs::tests::do_encoding_open_channel(false, false, false)` case:
+/// mainnet chain hash, no `upfront_shutdown_script` TLV, no `channel_type`
+/// TLV.  Argument order is documented in the `O` command below.
+fn encode_open_channel(args: &[&str]) -> String {
+    let parse_u64 = |text: &str| text.parse::<u64>().expect("u64 field");
+    let parse_u32 = |text: &str| text.parse::<u32>().expect("u32 field");
+    let parse_u16 = |text: &str| text.parse::<u16>().expect("u16 field");
+    let parse_u8 = |text: &str| text.parse::<u8>().expect("u8 field");
+    let point = |text: &str| {
+        PublicKey::from_slice(&from_hex(text)).expect("valid compressed point")
+    };
+    let channel_id_bytes = from_hex(args[0]);
+    assert_eq!(channel_id_bytes.len(), 32, "temporary_channel_id must be 32 bytes");
+    let mut channel_id = [0u8; 32];
+    channel_id.copy_from_slice(&channel_id_bytes);
+    let message = OpenChannel {
+        common_fields: CommonOpenChannelFields {
+            chain_hash: ChainHash::using_genesis_block(Network::Bitcoin),
+            temporary_channel_id: ChannelId::from_bytes(channel_id),
+            funding_satoshis: parse_u64(args[1]),
+            dust_limit_satoshis: parse_u64(args[3]),
+            max_htlc_value_in_flight_msat: parse_u64(args[4]),
+            htlc_minimum_msat: parse_u64(args[6]),
+            commitment_feerate_sat_per_1000_weight: parse_u32(args[7]),
+            to_self_delay: parse_u16(args[8]),
+            max_accepted_htlcs: parse_u16(args[9]),
+            funding_pubkey: point(args[11]),
+            revocation_basepoint: point(args[12]),
+            payment_basepoint: point(args[13]),
+            delayed_payment_basepoint: point(args[14]),
+            htlc_basepoint: point(args[15]),
+            first_per_commitment_point: point(args[16]),
+            channel_flags: parse_u8(args[10]),
+            shutdown_scriptpubkey: None,
+            channel_type: None,
+        },
+        push_msat: parse_u64(args[2]),
+        channel_reserve_satoshis: parse_u64(args[5]),
+    };
+    to_hex(&message.encode())
+}
+
 fn main() {
     for line in io::stdin().lock().lines() {
         let line = line.expect("stdin");
@@ -145,6 +194,13 @@ fn main() {
                     Some(alias.parse::<u64>().expect("alias"))
                 };
                 format!("{id}\tok\t{}", encode_channel_ready(channel_id, point, alias))
+            }
+            ["O", id, ..] => {
+                // O <id> <temp_id> <funding> <push> <dust> <max_htlc> <reserve>
+                //   <htlc_min> <feerate> <to_self> <max_accepted> <flags>
+                //   <funding_pk> <revocation> <payment> <delayed_payment>
+                //   <htlc_basepoint> <first_per_commitment_point>
+                format!("{id}\tok\t{}", encode_open_channel(&fields[2..]))
             }
             ["M"] => format!("LN_MAX_MSG_LEN\t{LN_MAX_MSG_LEN}"),
             other => panic!("bad probe command: {other:?}"),
