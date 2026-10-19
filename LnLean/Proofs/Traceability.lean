@@ -211,7 +211,7 @@ def idTable : List IdEntry :=
 
 /-- Each catalog `leanTarget` string with the modules its names live in. -/
 def targetTable : List TargetEntry :=
-  [ ⟨"LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo; LnLean.Proofs.Bitcoin.FundingLinkTargets.fundingScriptPubKey_eq_p2wsh_ordered; LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.funding_interpreters_agree; LnLean.Proofs.Bitcoin.SighashBridgeTargets.funding_sighash_interpreters_agree; LnLean.Proofs.Bitcoin.FundingAuthTargets.openAccept_hash_linked; LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.fundingSignedValid_iff_vendor; LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.funding_sighash_interpreters_agree_vendor; LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.eufCma_vendorVerify_iff_totalReject; LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.bridged_model_totalReject; LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.exists_bridged_model_iff_totalReject; LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.withVendorEcdsa_no_funding; LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.not_digestBindsMod_fundingTag", ["LnLean.Proofs.Bitcoin.FundingScriptTargets", "LnLean.Proofs.Bitcoin.FundingLinkTargets", "LnLean.Proofs.Bitcoin.InterpreterBridgeTargets", "LnLean.Proofs.Bitcoin.SighashBridgeTargets", "LnLean.Proofs.Bitcoin.FundingAuthTargets", "LnLean.Proofs.Bitcoin.EcdsaBridgeTargets", "LnLean.Proofs.Bitcoin.EcdsaBridgeTargets", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets"]⟩
+  [⟨"LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo; LnLean.Proofs.Bitcoin.FundingLinkTargets.fundingScriptPubKey_eq_p2wsh_ordered; LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.funding_interpreters_agree; LnLean.Proofs.Bitcoin.SighashBridgeTargets.funding_sighash_interpreters_agree; LnLean.Proofs.Bitcoin.FundingAuthTargets.openAccept_hash_linked; LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.fundingSignedValid_iff_vendor; LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.funding_sighash_interpreters_agree_vendor; LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.eufCma_vendorVerify_iff_totalReject; LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.bridged_model_totalReject; LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.exists_bridged_model_iff_totalReject; LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.withVendorEcdsa_no_funding; LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.not_digestBindsMod_fundingTag", ["LnLean.Proofs.Bitcoin.FundingScriptTargets", "LnLean.Proofs.Bitcoin.FundingLinkTargets", "LnLean.Proofs.Bitcoin.InterpreterBridgeTargets", "LnLean.Proofs.Bitcoin.SighashBridgeTargets", "LnLean.Proofs.Bitcoin.FundingAuthTargets", "LnLean.Proofs.Bitcoin.EcdsaBridgeTargets", "LnLean.Proofs.Bitcoin.EcdsaBridgeTargets", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets"]⟩
   , ⟨"LnLean.Bitcoin.fundingOutput_moneyRange", ["LnLean.Bitcoin.Seam"]⟩
   , ⟨"LnLean.Proofs.Security.ReorgTargets.reorg_preserves_channel_safety; LnLean.Proofs.Security.ReorgTargets.deep_reorg_separate_failure_mode", ["LnLean.Proofs.Security.ReorgTargets", "LnLean.Proofs.Security.ReorgTargets"]⟩
   , ⟨"LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.commitmentOutputs_toLocal_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.toLocal_delayed_interpreters_agree; LnLean.Proofs.Bitcoin.InterpreterRevocationTargets.toLocal_revocation_interpreters_agree; LnLean.Proofs.Bitcoin.SighashBridgeTargets.toLocal_sighash_interpreters_agree; LnLean.Proofs.Bitcoin.SequenceContextTargets.toLocal_delayed_realChecker_refinement; LnLean.Proofs.Bitcoin.TxValidTransferTargets.txCheckerFor_some_eq_realCheckerOf; LnLean.Proofs.Bitcoin.TxValidTransferTargets.toLocal_delayed_txCheckerFor_refinement; LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.model_verify_eq_realChecker_seam; LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.toLocal_revocation_interpreters_agree_vendor; LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.eufCma_vendorVerify_iff_totalReject; LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.bridged_model_totalReject; LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.exists_bridged_model_iff_totalReject; LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.withVendorEcdsa_no_funding; LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.not_digestBindsMod_fundingTag", ["LnLean.Proofs.Bitcoin.ToLocalScriptTargets", "LnLean.Proofs.Bitcoin.ToLocalScriptTargets", "LnLean.Proofs.Bitcoin.ToLocalScriptTargets", "LnLean.Proofs.Bitcoin.InterpreterBridgeTargets", "LnLean.Proofs.Bitcoin.InterpreterRevocationTargets", "LnLean.Proofs.Bitcoin.SighashBridgeTargets", "LnLean.Proofs.Bitcoin.SequenceContextTargets", "LnLean.Proofs.Bitcoin.TxValidTransferTargets", "LnLean.Proofs.Bitcoin.TxValidTransferTargets", "LnLean.Proofs.Bitcoin.EcdsaBridgeTargets", "LnLean.Proofs.Bitcoin.EcdsaBridgeTargets", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets"]⟩
@@ -254,12 +254,13 @@ def targetTable : List TargetEntry :=
   , ⟨"LnLean.Payment.MPP.running_total_bound", ["LnLean.Payment.MPP"]⟩
   , ⟨"LnLean.Payment.Keysend.preimage_binding", ["LnLean.Proofs.WaveE.E31"]⟩
   , ⟨"LnLean.Security.L1Ledger.spend_preserves_noDoubleSpend", ["LnLean.Security.Invariants"]⟩
-  , ⟨"LnLean.Proofs.Conservation.global_conservation", ["LnLean.Proofs.Conservation"]⟩
-  , ⟨"LnLean.Proofs.Security.safety_async", ["LnLean.Proofs.Security"]⟩
+  , ⟨"LnLean.Proofs.Conservation.global_conservation", ["LnLean.Proofs.PhaseC2.GlobalConservation"]⟩
+  , ⟨"LnLean.Proofs.Security.safety_async", ["LnLean.Proofs.PhaseC3.SecurityGame"]⟩
   , ⟨"LnLean.Security.partial_synchrony_delivers", ["LnLean.Security.Invariants"]⟩
   , ⟨"LnLean.Proofs.Liveness.penalty_economical", ["LnLean.Proofs.Liveness"]⟩
   , ⟨"LnLean.Proofs.Liveness.watchtower_bridge", ["LnLean.Proofs.Liveness"]⟩
   ]
+
 
 /-- The 48 `proved` rows' targets and the declarations each names. -/
 def provedTable : List ProvedEntry :=
@@ -313,6 +314,7 @@ def provedTable : List ProvedEntry :=
   , ⟨"LnLean.Proofs.Liveness.watchtower_bridge", ["LnLean.Proofs.Liveness.watchtower_bridge"]⟩
   ]
 
+
 /-- Every declaration named by a `proved` row, transcribed from the model
 modules (`LnLean/Wire/Message`, `LnLean/Protocol/Peer`, the routing modules,
 `LnLean/Payment/Invoice`, `LnLean/Payment/MPP`), the foundational
@@ -325,121 +327,95 @@ and the proof modules `LnLean.Proofs.Conservation`,
 `proved` row with an unlisted target makes `proved_decls_in_snapshot` fail,
 which is the intended maintenance signal. -/
 def provedDeclarations : List DeclEntry :=
-  [ ⟨"LnLean.Bitcoin.fundingOutput_moneyRange", "LnLean.Bitcoin.Seam"⟩
-  , ⟨"LnLean.Bitcoin.anchorValue_eq", "LnLean.Bitcoin.Seam"⟩
-  , ⟨"LnLean.Crypto.Hash.paymentHash_sha256_contract", "LnLean.Proofs.CryptoTargets"⟩
-  , ⟨"LnLean.Crypto.Sig.commitmentSig_contract", "LnLean.Proofs.CryptoTargets"⟩
-  , ⟨"LnLean.Crypto.Hash.onionHmacTag_size_and_bindsOn", "LnLean.Proofs.CryptoTargets"⟩
-  , ⟨"LnLean.Wire.decode_encode", "LnLean.Wire.BigSize"⟩
-  , ⟨"LnLean.Security.Ledger.step_conserves", "LnLean.Security.Invariants"⟩
-  , ⟨"LnLean.Channel.Commitment.outputs_nonnegative", "LnLean.Channel.Commitment"⟩
-  , ⟨"LnLean.Security.advance_monotone", "LnLean.Security.Invariants"⟩
-  , ⟨"LnLean.Channel.Reserve.bounds", "LnLean.Proofs.WaveD.D14"⟩
-  , ⟨"LnLean.Security.HtlcRecord.fulfill_sound", "LnLean.Security.Invariants"⟩
-  , ⟨"LnLean.Security.HtlcRecord.fail_only_after_expiry", "LnLean.Security.Invariants"⟩
-  , ⟨"LnLean.Channel.HTLC.amount_conservation", "LnLean.Channel.HTLC"⟩
-  , ⟨"LnLean.Security.revoked_commitment_is_old", "LnLean.Security.Invariants"⟩
-  , ⟨"LnLean.Security.breach_penalty_spends_both", "LnLean.Security.Invariants"⟩
-  , ⟨"LnLean.Protocol.Handshake.channel_ready_gate", "LnLean.Proofs.WaveD.D18"⟩
-  , ⟨"LnLean.Protocol.Handshake.open_bounds", "LnLean.Proofs.ProtocolTargets"⟩
-  , ⟨"LnLean.Protocol.Handshake.feature_intersection", "LnLean.Proofs.ProtocolTargets"⟩
-  , ⟨"LnLean.Security.Route.wellFormed_connected", "LnLean.Security.Invariants"⟩
-  , ⟨"LnLean.Security.Route.wellFormed_capacity", "LnLean.Security.Invariants"⟩
-  , ⟨"LnLean.Security.Route.wellFormed_nonempty", "LnLean.Security.Invariants"⟩
-  , ⟨"LnLean.Security.Invoice.consistent_hash", "LnLean.Security.Invariants"⟩
-  , ⟨"LnLean.Security.Invoice.consistent_amount", "LnLean.Security.Invariants"⟩
-  , ⟨"LnLean.Payment.Invoice.payment_secret_match", "LnLean.Proofs.WaveD.D29"⟩
-  , ⟨"LnLean.Security.MppPayment.settle_requires_sum", "LnLean.Security.Invariants"⟩
-  , ⟨"LnLean.Payment.Keysend.preimage_binding", "LnLean.Proofs.WaveE.E31"⟩
-  , ⟨"LnLean.Security.L1Ledger.spend_preserves_noDoubleSpend", "LnLean.Security.Invariants"⟩
-  , ⟨"LnLean.Security.partial_synchrony_delivers", "LnLean.Security.Invariants"⟩
-  , ⟨"LnLean.Proofs.Liveness.penalty_economical", "LnLean.Proofs.Liveness"⟩
-  , ⟨"LnLean.Wire.Message.decode_length", "LnLean.Wire.Message"⟩
-  , ⟨"LnLean.Protocol.Peer.reestablish_no_rollback", "LnLean.Protocol.Peer"⟩
-  , ⟨"LnLean.Routing.Gossip.update_monotone", "LnLean.Routing.Gossip"⟩
-  , ⟨"LnLean.Routing.Onion.peel_deterministic", "LnLean.Routing.Onion"⟩
-  , ⟨"LnLean.Routing.Onion.hmac_sound", "LnLean.Routing.Onion"⟩
-  , ⟨"LnLean.Routing.Route.cltv_accumulates", "LnLean.Routing.Route"⟩
-  , ⟨"LnLean.Payment.Invoice.signature_valid", "LnLean.Payment.Invoice"⟩
-  , ⟨"LnLean.Payment.MPP.running_total_bound", "LnLean.Payment.MPP"⟩
-  , ⟨"LnLean.Proofs.Conservation.global_conservation", "LnLean.Proofs.PhaseC2.GlobalConservation"⟩
-  , ⟨"LnLean.Proofs.Security.safety_async", "LnLean.Proofs.PhaseC3.SecurityGame"⟩
-  , ⟨"LnLean.Proofs.Liveness.watchtower_bridge", "LnLean.Proofs.Liveness"⟩
-  , ⟨"LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo", "LnLean.Proofs.Bitcoin.FundingScriptTargets"⟩
-  , ⟨"LnLean.Proofs.Security.ReorgTargets.reorg_preserves_channel_safety", "LnLean.Proofs.Security.ReorgTargets"⟩
-  , ⟨"LnLean.Proofs.Security.ReorgTargets.deep_reorg_separate_failure_mode", "LnLean.Proofs.Security.ReorgTargets"⟩
-  , ⟨"LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey", "LnLean.Proofs.Bitcoin.ToLocalScriptTargets"⟩
-  , ⟨"LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_commits_delay_and_revocationKey", "LnLean.Proofs.Bitcoin.ToLocalScriptTargets"⟩
-  , ⟨"LnLean.Proofs.Bitcoin.ToLocalScriptTargets.commitmentOutputs_toLocal_commits_delay_and_revocationKey", "LnLean.Proofs.Bitcoin.ToLocalScriptTargets"⟩
-  , ⟨"LnLean.Proofs.Bitcoin.commitmentBaseWeight_model_target", "LnLean.Proofs.Bitcoin.WeightTargets"⟩
-  , ⟨"LnLean.Wire.TLVStream.wellFormed_iff_pairwise", "LnLean.Proofs.Wire.TLVTargets"⟩
-  , ⟨"LnLean.Wire.TLVStream.wellFormed_record_type_unique", "LnLean.Proofs.Wire.TLVTargets"⟩
-  , ⟨"LnLean.Channel.Commitment.output_ordering", "LnLean.Proofs.Channel.CommitmentOrderTargets"⟩
-  , ⟨"LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_insufficient", "LnLean.Proofs.Channel.FeeTargets"⟩
-  , ⟨"LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_no_checkedSigning", "LnLean.Proofs.Channel.FeeTargets"⟩
-  , ⟨"LnLean.Channel.HTLC.dir_id_unique", "LnLean.Channel.HTLC"⟩
-  , ⟨"LnLean.Channel.HTLC.id_unique_of_reachable_cross", "LnLean.Channel.HTLC"⟩
-  , ⟨"LnLean.Protocol.Handshake.funding_signed_signing_contract", "LnLean.Proofs.ProtocolSigningTargets"⟩
-  , ⟨"LnLean.Proofs.Routing.GossipTargets.gossip_graph_only_valid_announcements", "LnLean.Proofs.Routing.GossipTargets"⟩
-  , ⟨"LnLean.Channel.HTLC.tagged_id_unique_of_reachable", "LnLean.Proofs.Channel.HtlcGlobalIdTargets"⟩
-  , ⟨"LnLean.Channel.HTLC.tagged_ids_nodup_of_reachable", "LnLean.Proofs.Channel.HtlcGlobalIdTargets"⟩
-  , ⟨"LnLean.Channel.HTLC.cross_direction_duplicate_tagged", "LnLean.Proofs.Channel.HtlcGlobalIdTargets"⟩
-  , ⟨"LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact", "LnLean.Proofs.ProtocolWireTargets"⟩
-  , ⟨"LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary", "LnLean.Proofs.ProtocolWireTargets"⟩
+  [⟨"LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo", "LnLean.Proofs.Bitcoin.FundingScriptTargets"⟩
   , ⟨"LnLean.Proofs.Bitcoin.FundingLinkTargets.fundingScriptPubKey_eq_p2wsh_ordered", "LnLean.Proofs.Bitcoin.FundingLinkTargets"⟩
   , ⟨"LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.funding_interpreters_agree", "LnLean.Proofs.Bitcoin.InterpreterBridgeTargets"⟩
-  , ⟨"LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.toLocal_delayed_interpreters_agree", "LnLean.Proofs.Bitcoin.InterpreterBridgeTargets"⟩
-  , ⟨"LnLean.Channel.CommitmentTx.migratedFrom_outputsNet_perm_commitmentOutputs", "LnLean.Proofs.Channel.CommitmentGrossNetTargets"⟩
-  , ⟨"LnLean.Proofs.Channel.SighashTargets.funding_and_commitment_signing_contract", "LnLean.Proofs.Channel.SighashTargets"⟩
-  , ⟨"LnLean.Proofs.Channel.SighashTargets.SighashProduces.coverage", "LnLean.Proofs.Channel.SighashTargets"⟩
   , ⟨"LnLean.Proofs.Bitcoin.SighashBridgeTargets.funding_sighash_interpreters_agree", "LnLean.Proofs.Bitcoin.SighashBridgeTargets"⟩
-  , ⟨"LnLean.Proofs.Bitcoin.InterpreterRevocationTargets.toLocal_revocation_interpreters_agree", "LnLean.Proofs.Bitcoin.InterpreterRevocationTargets"⟩
-  , ⟨"LnLean.Proofs.Bitcoin.SighashBridgeTargets.toLocal_sighash_interpreters_agree", "LnLean.Proofs.Bitcoin.SighashBridgeTargets"⟩
-  , ⟨"LnLean.Proofs.Channel.CommitmentTypes.CommitmentTx.migrateNet_canonicalOutputs_eq_commitmentOutputs", "LnLean.Proofs.Channel.CommitmentTypesTargets"⟩
-  , ⟨"LnLean.Proofs.Channel.SighashViewBindingTargets.commitmentSignature_binds_viewOfState", "LnLean.Proofs.Channel.SighashViewBindingTargets"⟩
-  , ⟨"LnLean.Proofs.Channel.SighashTargets.CommitmentWire.txBytes_parse", "LnLean.Proofs.Channel.SighashTargets"⟩
   , ⟨"LnLean.Proofs.Bitcoin.FundingAuthTargets.openAccept_hash_linked", "LnLean.Proofs.Bitcoin.FundingAuthTargets"⟩
-  , ⟨"LnLean.Proofs.Bitcoin.SequenceContextTargets.toLocal_delayed_realChecker_refinement", "LnLean.Proofs.Bitcoin.SequenceContextTargets"⟩
-  , ⟨"LnLean.Proofs.Channel.CommitmentConsumer.migratedConsumerOutputs_eq_consumerOutputs_of_migrated", "LnLean.Proofs.Channel.CommitmentConsumerTargets"⟩
-  , ⟨"LnLean.Proofs.Crypto.KeyModelTargets.funding_signature_attribution", "LnLean.Proofs.Crypto.KeyModelTargets"⟩
-  , ⟨"LnLean.Proofs.Channel.SighashTargets.Bip143Preimage.preimageBytes_eq_bip143MsgL_ofTx", "LnLean.Proofs.Channel.SighashTargets"⟩
-  , ⟨"LnLean.Proofs.Channel.SighashTargets.commitmentBip143Preimage_eq_bip143MsgL", "LnLean.Proofs.Channel.SighashTargets"⟩
   , ⟨"LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.fundingSignedValid_iff_vendor", "LnLean.Proofs.Bitcoin.EcdsaBridgeTargets"⟩
   , ⟨"LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.funding_sighash_interpreters_agree_vendor", "LnLean.Proofs.Bitcoin.EcdsaBridgeTargets"⟩
-  , ⟨"LnLean.Proofs.Bitcoin.TxValidTransferTargets.txCheckerFor_some_eq_realCheckerOf", "LnLean.Proofs.Bitcoin.TxValidTransferTargets"⟩
-  , ⟨"LnLean.Proofs.Bitcoin.TxValidTransferTargets.toLocal_delayed_txCheckerFor_refinement", "LnLean.Proofs.Bitcoin.TxValidTransferTargets"⟩
-  , ⟨"LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.model_verify_eq_realChecker_seam", "LnLean.Proofs.Bitcoin.EcdsaBridgeTargets"⟩
-  , ⟨"LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.toLocal_revocation_interpreters_agree_vendor", "LnLean.Proofs.Bitcoin.EcdsaBridgeTargets"⟩
-  , ⟨"LnLean.Proofs.Protocol.OpenChannelWireTargets.openChannelWire_end_to_end", "LnLean.Proofs.Protocol.OpenChannelWireTargets"⟩
-  , ⟨"LnLean.Protocol.OpenChannelWire.toFundingParams_hash_linked", "LnLean.Proofs.Protocol.OpenChannelWireTargets"⟩
-  , ⟨"LnLean.Proofs.Protocol.OpenChannelWireTargets.acceptKey_bound_before_fundingCreated_wire", "LnLean.Proofs.Protocol.OpenChannelWireTargets"⟩
-  , ⟨"LnLean.Proofs.Crypto.AcceptPayloadTargets.stored_accept_payload_attribution", "LnLean.Proofs.Crypto.AcceptPayloadTargets"⟩
-  , ⟨"LnLean.Proofs.Crypto.AcceptPayloadTargets.acceptPayload_not_proof_of_possession", "LnLean.Proofs.Crypto.AcceptPayloadTargets"⟩
-  , ⟨"LnLean.Proofs.Channel.HtlcPreimageTargets.htlcBip143Preimage_eq_bip143MsgL", "LnLean.Proofs.Channel.HtlcPreimageTargets"⟩
-  , ⟨"LnLean.Proofs.Channel.HtlcPreimageTargets.HtlcSpend.successPreimage_eq_bip143MsgL", "LnLean.Proofs.Channel.HtlcPreimageTargets"⟩
-  , ⟨"LnLean.Proofs.Channel.HtlcPreimageTargets.HtlcSpend.timeoutPreimage_eq_bip143MsgL", "LnLean.Proofs.Channel.HtlcPreimageTargets"⟩
-  , ⟨"LnLean.Proofs.Channel.HtlcPreimageTargets.htlc_preimage_target_summary", "LnLean.Proofs.Channel.HtlcPreimageTargets"⟩
-  , ⟨"LnLean.Proofs.Channel.CommitmentConsumerSites.commitment_signed_full_covers_migrated", "LnLean.Proofs.Channel.CommitmentConsumerSitesTargets"⟩
-  , ⟨"LnLean.Proofs.Channel.CommitmentConsumerSites.migratedConsumerOutputs_eq_viewOfState_outputs", "LnLean.Proofs.Channel.CommitmentConsumerSitesTargets"⟩
-  , ⟨"LnLean.Proofs.Channel.CommitmentConsumerSites.viewOfState_outputs_perm_netConsumerOutputs", "LnLean.Proofs.Channel.CommitmentConsumerSitesTargets"⟩
-  , ⟨"LnLean.Proofs.Routing.GossipStoreEpochTargets.epochFold_gossip_eq_canonicalStoreView_rawFold", "LnLean.Proofs.Routing.GossipStoreEpochTargets"⟩
-  , ⟨"LnLean.Routing.replacedUpdates_timestamp_lt", "LnLean.Routing.Gossip"⟩
-  , ⟨"LnLean.Proofs.Routing.GossipStoreEpochTargets.StoreEpoch.epochFold_store_eq_foldl", "LnLean.Proofs.Routing.GossipStoreEpochTargets"⟩
   , ⟨"LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.eufCma_vendorVerify_iff_totalReject", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets"⟩
   , ⟨"LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.bridged_model_totalReject", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets"⟩
   , ⟨"LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.exists_bridged_model_iff_totalReject", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets"⟩
   , ⟨"LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.withVendorEcdsa_no_funding", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets"⟩
   , ⟨"LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.not_digestBindsMod_fundingTag", "LnLean.Proofs.Bitcoin.EcdsaConcreteTargets"⟩
+  , ⟨"LnLean.Bitcoin.fundingOutput_moneyRange", "LnLean.Bitcoin.Seam"⟩
+  , ⟨"LnLean.Proofs.Security.ReorgTargets.reorg_preserves_channel_safety", "LnLean.Proofs.Security.ReorgTargets"⟩
+  , ⟨"LnLean.Proofs.Security.ReorgTargets.deep_reorg_separate_failure_mode", "LnLean.Proofs.Security.ReorgTargets"⟩
+  , ⟨"LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey", "LnLean.Proofs.Bitcoin.ToLocalScriptTargets"⟩
+  , ⟨"LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_commits_delay_and_revocationKey", "LnLean.Proofs.Bitcoin.ToLocalScriptTargets"⟩
+  , ⟨"LnLean.Proofs.Bitcoin.ToLocalScriptTargets.commitmentOutputs_toLocal_commits_delay_and_revocationKey", "LnLean.Proofs.Bitcoin.ToLocalScriptTargets"⟩
+  , ⟨"LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.toLocal_delayed_interpreters_agree", "LnLean.Proofs.Bitcoin.InterpreterBridgeTargets"⟩
+  , ⟨"LnLean.Proofs.Bitcoin.InterpreterRevocationTargets.toLocal_revocation_interpreters_agree", "LnLean.Proofs.Bitcoin.InterpreterRevocationTargets"⟩
+  , ⟨"LnLean.Proofs.Bitcoin.SighashBridgeTargets.toLocal_sighash_interpreters_agree", "LnLean.Proofs.Bitcoin.SighashBridgeTargets"⟩
+  , ⟨"LnLean.Proofs.Bitcoin.SequenceContextTargets.toLocal_delayed_realChecker_refinement", "LnLean.Proofs.Bitcoin.SequenceContextTargets"⟩
+  , ⟨"LnLean.Proofs.Bitcoin.TxValidTransferTargets.txCheckerFor_some_eq_realCheckerOf", "LnLean.Proofs.Bitcoin.TxValidTransferTargets"⟩
+  , ⟨"LnLean.Proofs.Bitcoin.TxValidTransferTargets.toLocal_delayed_txCheckerFor_refinement", "LnLean.Proofs.Bitcoin.TxValidTransferTargets"⟩
+  , ⟨"LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.model_verify_eq_realChecker_seam", "LnLean.Proofs.Bitcoin.EcdsaBridgeTargets"⟩
+  , ⟨"LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.toLocal_revocation_interpreters_agree_vendor", "LnLean.Proofs.Bitcoin.EcdsaBridgeTargets"⟩
+  , ⟨"LnLean.Bitcoin.anchorValue_eq", "LnLean.Bitcoin.Seam"⟩
+  , ⟨"LnLean.Proofs.Bitcoin.commitmentBaseWeight_model_target", "LnLean.Proofs.Bitcoin.WeightTargets"⟩
+  , ⟨"LnLean.Crypto.Hash.paymentHash_sha256_contract", "LnLean.Proofs.CryptoTargets"⟩
+  , ⟨"LnLean.Crypto.Sig.commitmentSig_contract", "LnLean.Proofs.CryptoTargets"⟩
+  , ⟨"LnLean.Crypto.Hash.onionHmacTag_size_and_bindsOn", "LnLean.Proofs.CryptoTargets"⟩
+  , ⟨"LnLean.Wire.decode_encode", "LnLean.Wire.BigSize"⟩
+  , ⟨"LnLean.Wire.TLVStream.wellFormed_iff_pairwise", "LnLean.Proofs.Wire.TLVTargets"⟩
+  , ⟨"LnLean.Wire.TLVStream.wellFormed_record_type_unique", "LnLean.Proofs.Wire.TLVTargets"⟩
+  , ⟨"LnLean.Wire.Message.decode_length", "LnLean.Wire.Message"⟩
+  , ⟨"LnLean.Security.Ledger.step_conserves", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Channel.Commitment.outputs_nonnegative", "LnLean.Channel.Commitment"⟩
+  , ⟨"LnLean.Channel.Commitment.output_ordering", "LnLean.Proofs.Channel.CommitmentOrderTargets"⟩
+  , ⟨"LnLean.Channel.CommitmentTx.migratedFrom_outputsNet_perm_commitmentOutputs", "LnLean.Proofs.Channel.CommitmentGrossNetTargets"⟩
+  , ⟨"LnLean.Proofs.Channel.CommitmentTypes.CommitmentTx.migrateNet_canonicalOutputs_eq_commitmentOutputs", "LnLean.Proofs.Channel.CommitmentTypesTargets"⟩
+  , ⟨"LnLean.Proofs.Channel.CommitmentConsumer.migratedConsumerOutputs_eq_consumerOutputs_of_migrated", "LnLean.Proofs.Channel.CommitmentConsumerTargets"⟩
+  , ⟨"LnLean.Proofs.Channel.CommitmentConsumerSites.commitment_signed_full_covers_migrated", "LnLean.Proofs.Channel.CommitmentConsumerSitesTargets"⟩
+  , ⟨"LnLean.Proofs.Channel.CommitmentConsumerSites.migratedConsumerOutputs_eq_viewOfState_outputs", "LnLean.Proofs.Channel.CommitmentConsumerSitesTargets"⟩
+  , ⟨"LnLean.Proofs.Channel.CommitmentConsumerSites.viewOfState_outputs_perm_netConsumerOutputs", "LnLean.Proofs.Channel.CommitmentConsumerSitesTargets"⟩
+  , ⟨"LnLean.Security.advance_monotone", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_insufficient", "LnLean.Proofs.Channel.FeeTargets"⟩
+  , ⟨"LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_no_checkedSigning", "LnLean.Proofs.Channel.FeeTargets"⟩
+  , ⟨"LnLean.Channel.Reserve.bounds", "LnLean.Proofs.WaveD.D14"⟩
+  , ⟨"LnLean.Security.HtlcRecord.fulfill_sound", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Security.HtlcRecord.fail_only_after_expiry", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Channel.HTLC.amount_conservation", "LnLean.Channel.HTLC"⟩
+  , ⟨"LnLean.Channel.HTLC.dir_id_unique", "LnLean.Channel.HTLC"⟩
+  , ⟨"LnLean.Channel.HTLC.id_unique_of_reachable_cross", "LnLean.Channel.HTLC"⟩
+  , ⟨"LnLean.Channel.HTLC.tagged_id_unique_of_reachable", "LnLean.Proofs.Channel.HtlcGlobalIdTargets"⟩
+  , ⟨"LnLean.Channel.HTLC.tagged_ids_nodup_of_reachable", "LnLean.Proofs.Channel.HtlcGlobalIdTargets"⟩
+  , ⟨"LnLean.Channel.HTLC.cross_direction_duplicate_tagged", "LnLean.Proofs.Channel.HtlcGlobalIdTargets"⟩
+  , ⟨"LnLean.Security.revoked_commitment_is_old", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Security.breach_penalty_spends_both", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Protocol.Handshake.open_bounds", "LnLean.Proofs.ProtocolTargets"⟩
+  , ⟨"LnLean.Proofs.Protocol.OpenChannelWireTargets.openChannelWire_end_to_end", "LnLean.Proofs.Protocol.OpenChannelWireTargets"⟩
+  , ⟨"LnLean.Protocol.OpenChannelWire.toFundingParams_hash_linked", "LnLean.Proofs.Protocol.OpenChannelWireTargets"⟩
+  , ⟨"LnLean.Proofs.Protocol.OpenChannelWireTargets.acceptKey_bound_before_fundingCreated_wire", "LnLean.Proofs.Protocol.OpenChannelWireTargets"⟩
   , ⟨"LnLean.Proofs.Protocol.OpenChannelRoutingTargets.openRoute_initial_to_fundingCreated", "LnLean.Proofs.Protocol.OpenChannelRoutingTargets"⟩
   , ⟨"LnLean.Proofs.Protocol.OpenChannelRoutingTargets.openChannel_routing_summary", "LnLean.Proofs.Protocol.OpenChannelRoutingTargets"⟩
   , ⟨"LnLean.Proofs.Protocol.OpenChannelRoutingTargets.unattributed_open_is_routed", "LnLean.Proofs.Protocol.OpenChannelRoutingTargets"⟩
   , ⟨"LnLean.Proofs.Protocol.OpenChannelRoutingTargets.wire_payload_does_not_determine_sender", "LnLean.Proofs.Protocol.OpenChannelRoutingTargets"⟩
   , ⟨"LnLean.Proofs.Protocol.OpenChannelRoutingTargets.wire_binding_needs_FundingScript_C1", "LnLean.Proofs.Protocol.OpenChannelRoutingTargets"⟩
+  , ⟨"LnLean.Protocol.Handshake.channel_ready_gate", "LnLean.Proofs.WaveD.D18"⟩
+  , ⟨"LnLean.Protocol.Handshake.funding_signed_signing_contract", "LnLean.Proofs.ProtocolSigningTargets"⟩
+  , ⟨"LnLean.Proofs.Channel.SighashTargets.funding_and_commitment_signing_contract", "LnLean.Proofs.Channel.SighashTargets"⟩
+  , ⟨"LnLean.Proofs.Crypto.KeyModelTargets.funding_signature_attribution", "LnLean.Proofs.Crypto.KeyModelTargets"⟩
+  , ⟨"LnLean.Proofs.Crypto.AcceptPayloadTargets.stored_accept_payload_attribution", "LnLean.Proofs.Crypto.AcceptPayloadTargets"⟩
+  , ⟨"LnLean.Proofs.Crypto.AcceptPayloadTargets.acceptPayload_not_proof_of_possession", "LnLean.Proofs.Crypto.AcceptPayloadTargets"⟩
   , ⟨"LnLean.Proofs.Crypto.AttributionGameTargets.stored_registration_funding_attribution", "LnLean.Proofs.Crypto.AttributionGameTargets"⟩
   , ⟨"LnLean.Proofs.Crypto.AttributionGameTargets.stored_pop_attribution", "LnLean.Proofs.Crypto.AttributionGameTargets"⟩
   , ⟨"LnLean.Proofs.Crypto.AttributionGameTargets.stored_payload_not_possession", "LnLean.Proofs.Crypto.AttributionGameTargets"⟩
   , ⟨"LnLean.Proofs.Crypto.AttributionGameTargets.stored_attribution_fails_without_keyBinding", "LnLean.Proofs.Crypto.AttributionGameTargets"⟩
   , ⟨"LnLean.Proofs.Crypto.AttributionGameTargets.attribution_game_summary", "LnLean.Proofs.Crypto.AttributionGameTargets"⟩
+  , ⟨"LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact", "LnLean.Proofs.ProtocolWireTargets"⟩
+  , ⟨"LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary", "LnLean.Proofs.ProtocolWireTargets"⟩
+  , ⟨"LnLean.Proofs.Channel.SighashTargets.SighashProduces.coverage", "LnLean.Proofs.Channel.SighashTargets"⟩
+  , ⟨"LnLean.Proofs.Channel.SighashViewBindingTargets.commitmentSignature_binds_viewOfState", "LnLean.Proofs.Channel.SighashViewBindingTargets"⟩
+  , ⟨"LnLean.Proofs.Channel.SighashTargets.CommitmentWire.txBytes_parse", "LnLean.Proofs.Channel.SighashTargets"⟩
+  , ⟨"LnLean.Proofs.Channel.SighashTargets.Bip143Preimage.preimageBytes_eq_bip143MsgL_ofTx", "LnLean.Proofs.Channel.SighashTargets"⟩
+  , ⟨"LnLean.Proofs.Channel.SighashTargets.commitmentBip143Preimage_eq_bip143MsgL", "LnLean.Proofs.Channel.SighashTargets"⟩
+  , ⟨"LnLean.Proofs.Channel.HtlcPreimageTargets.htlcBip143Preimage_eq_bip143MsgL", "LnLean.Proofs.Channel.HtlcPreimageTargets"⟩
+  , ⟨"LnLean.Proofs.Channel.HtlcPreimageTargets.HtlcSpend.successPreimage_eq_bip143MsgL", "LnLean.Proofs.Channel.HtlcPreimageTargets"⟩
+  , ⟨"LnLean.Proofs.Channel.HtlcPreimageTargets.HtlcSpend.timeoutPreimage_eq_bip143MsgL", "LnLean.Proofs.Channel.HtlcPreimageTargets"⟩
+  , ⟨"LnLean.Proofs.Channel.HtlcPreimageTargets.htlc_preimage_target_summary", "LnLean.Proofs.Channel.HtlcPreimageTargets"⟩
   , ⟨"LnLean.Proofs.Channel.PreimageCoverageTargets.fieldAgreement_iff_eq_ofTx_and_amount", "LnLean.Proofs.Channel.PreimageCoverageTargets"⟩
   , ⟨"LnLean.Proofs.Channel.PreimageCoverageTargets.FieldAgreement.bytes_eq", "LnLean.Proofs.Channel.PreimageCoverageTargets"⟩
   , ⟨"LnLean.Proofs.Channel.PreimageCoverageTargets.FieldAgreement.digest_eq_vendor", "LnLean.Proofs.Channel.PreimageCoverageTargets"⟩
@@ -452,6 +428,15 @@ def provedDeclarations : List DeclEntry :=
   , ⟨"LnLean.Proofs.Channel.PreimageCoverageTargets.displayOrderPreimage_not_fieldAgreement", "LnLean.Proofs.Channel.PreimageCoverageTargets"⟩
   , ⟨"LnLean.Proofs.Channel.PreimageCoverageTargets.vectorHtlcSpend_amount_is_gross", "LnLean.Proofs.Channel.PreimageCoverageTargets"⟩
   , ⟨"LnLean.Proofs.Channel.PreimageCoverageTargets.preimage_coverage_summary", "LnLean.Proofs.Channel.PreimageCoverageTargets"⟩
+  , ⟨"LnLean.Protocol.Peer.reestablish_no_rollback", "LnLean.Protocol.Peer"⟩
+  , ⟨"LnLean.Protocol.Handshake.feature_intersection", "LnLean.Proofs.ProtocolTargets"⟩
+  , ⟨"LnLean.Security.Route.wellFormed_connected", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Security.Route.wellFormed_capacity", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Security.Route.wellFormed_nonempty", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Routing.Gossip.update_monotone", "LnLean.Routing.Gossip"⟩
+  , ⟨"LnLean.Proofs.Routing.GossipStoreEpochTargets.epochFold_gossip_eq_canonicalStoreView_rawFold", "LnLean.Proofs.Routing.GossipStoreEpochTargets"⟩
+  , ⟨"LnLean.Routing.replacedUpdates_timestamp_lt", "LnLean.Routing.Gossip"⟩
+  , ⟨"LnLean.Proofs.Routing.GossipStoreEpochTargets.StoreEpoch.epochFold_store_eq_foldl", "LnLean.Proofs.Routing.GossipStoreEpochTargets"⟩
   , ⟨"LnLean.Proofs.Routing.NodeCanonicalTargets.reachableNodeCanonical_node_replacement", "LnLean.Proofs.Routing.NodeCanonicalTargets"⟩
   , ⟨"LnLean.Proofs.Routing.NodeCanonicalTargets.reachableNodeCanonical_rotation_keeps_both", "LnLean.Proofs.Routing.NodeCanonicalTargets"⟩
   , ⟨"LnLean.Proofs.Routing.NodeCanonicalTargets.reachableNodeCanonical_equal_timestamp_tie_boundary", "LnLean.Proofs.Routing.NodeCanonicalTargets"⟩
@@ -462,7 +447,25 @@ def provedDeclarations : List DeclEntry :=
   , ⟨"LnLean.Proofs.Routing.NodeCanonicalTargets.epoch_square_lifts_to_node_canonical_view", "LnLean.Proofs.Routing.NodeCanonicalTargets"⟩
   , ⟨"LnLean.Proofs.Routing.NodeCanonicalTargets.canonicalNodeStoreView_nodeCanonical", "LnLean.Proofs.Routing.NodeCanonicalTargets"⟩
   , ⟨"LnLean.Proofs.Routing.NodeCanonicalTargets.applyGossipNodeCanonical_node_of_admitted", "LnLean.Proofs.Routing.NodeCanonicalTargets"⟩
+  , ⟨"LnLean.Routing.Onion.peel_deterministic", "LnLean.Routing.Onion"⟩
+  , ⟨"LnLean.Routing.Onion.hmac_sound", "LnLean.Routing.Onion"⟩
+  , ⟨"LnLean.Routing.Route.cltv_accumulates", "LnLean.Routing.Route"⟩
+  , ⟨"LnLean.Proofs.Routing.GossipTargets.gossip_graph_only_valid_announcements", "LnLean.Proofs.Routing.GossipTargets"⟩
+  , ⟨"LnLean.Security.Invoice.consistent_hash", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Security.Invoice.consistent_amount", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Payment.Invoice.signature_valid", "LnLean.Payment.Invoice"⟩
+  , ⟨"LnLean.Payment.Invoice.payment_secret_match", "LnLean.Proofs.WaveD.D29"⟩
+  , ⟨"LnLean.Security.MppPayment.settle_requires_sum", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Payment.MPP.running_total_bound", "LnLean.Payment.MPP"⟩
+  , ⟨"LnLean.Payment.Keysend.preimage_binding", "LnLean.Proofs.WaveE.E31"⟩
+  , ⟨"LnLean.Security.L1Ledger.spend_preserves_noDoubleSpend", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Proofs.Conservation.global_conservation", "LnLean.Proofs.PhaseC2.GlobalConservation"⟩
+  , ⟨"LnLean.Proofs.Security.safety_async", "LnLean.Proofs.PhaseC3.SecurityGame"⟩
+  , ⟨"LnLean.Security.partial_synchrony_delivers", "LnLean.Security.Invariants"⟩
+  , ⟨"LnLean.Proofs.Liveness.penalty_economical", "LnLean.Proofs.Liveness"⟩
+  , ⟨"LnLean.Proofs.Liveness.watchtower_bridge", "LnLean.Proofs.Liveness"⟩
   ]
+
 
 /-- Modules named by the catalog, all of them under `LnLean`. -/
 def lneanModules : List String :=
