@@ -2,10 +2,10 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `b48d041` (`[PROOF] integrate proof-wave 7 sequence, preimage,
-consumer, fold, and key lanes`). Status commits may advance the branch tip.
-Proof-wave 6 code was `0a3a5fb`; wave 7 launched from `3180581`.
-**Catalog:** 48 proved / 0 statementOnly / 0 unresolved / 79 targets.
+**Gate HEAD:** the Wave H merge commit on `wave-h/48` (remote base `e3e0aa8`).
+Status commits may advance the branch tip. Proof-wave 7 code was `b48d041`;
+wave 8 launched from `50d78ed`.
+**Catalog:** 48 proved / 0 statementOnly / 0 unresolved / 100 targets.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 
 This file describes the repair branch. Older wave tables are retained as
@@ -16,49 +16,50 @@ history; they are not a claim about the current tree. Current open work is in
 
 | Metric | Value |
 |---|---|
-| Lean files under `LnLean/` | **204** |
-| Root imports in `LnLean.lean` | **202** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
-| Full build | **RC 0**, `Build completed successfully (233 jobs)` |
+| Lean files under `LnLean/` | **256** |
+| Root imports in `LnLean.lean` | **254** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
+| Full build | **RC 0**, `Build completed successfully (295 jobs)` |
 | Actual `sorry` lines | **0** (`grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` → no matches, grep RC 1) |
 | Proof files with the word `sorry` in prose | comments only, not proof terms |
 | Catalog rows | **48** |
 | Catalog `proved` | **48** |
 | Catalog `statementOnly` | **0** |
-| Catalog targets | **79** |
+| Catalog targets | **100** |
 | Unresolved/planned targets | **0** |
-| Vendor snapshot | **OK**, 119 files; `fetch-vendor.sh` tested |
-| Anchors | **306 checked, 0 bad**, 2 unanchored rows |
-| Generated obligation index | 166 proof files, 81 markers, 5761 declarations, 0 `sorry` sites |
-| Axiom audit | 194 theorems; only `propext`, `Quot.sound`, `Classical.choice` |
-| Conformance | 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 146 Lean references, 9/9 mutation controls, 3 declared model gaps; live 26 BigSize + 3 TLV + 4 wire |
+| Vendor snapshot | **OK**, 149 files from public `btc-lean` `4f5c4f8`; `fetch-vendor.sh --from-git` tested |
+| Anchors | **309 checked, 0 bad**, 2 unanchored rows |
+| Generated obligation index | 218 proof files, 81 markers, 8228 declarations, 0 `sorry` sites |
+| Axiom audit | 227 theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Conformance | 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 175 Lean references, 13/13 mutation controls, 3 declared model gaps; live 26 BigSize + 3 TLV + 4 wire; 6 BOLT 2 message vectors |
 | Public L1 pin | `Rob1Ham/btc-lean` `main@4f5c4f8` |
-| Build dependency | `vendor/btc-lean-core` `f950806` |
+| Build dependency | `vendor/btc-lean-core` `4f5c4f8` (public `spec/core` copy) |
 
 The exact `sorry` result is **zero matching lines**. Prose mentions of
 `sorry` in documentation are not `sorry` terms.
 
-## Proof-wave 7 gate
+## Proof-wave 8 gate
 
-- `lake build` — **RC 0**, 233 jobs.
+- `lake build` — **RC 0**, 295 jobs.
 - `check-catalog.py --audit` — **RC 0**, 48 proved, 0 statement-only,
-  79 targets, 0 unresolved, 0 proved failures, 0 candidates, 7707
+  100 targets, 0 unresolved, 0 proved failures, 0 candidates, 10484
   declarations.
 - `check-catalog.py --allow-planned` — **RC 0**, same counts with
   `planned=0`.
-- `check.sh` — **RC 0**: `files=204 obligations=82 sorry_in_proofs=0`,
+- `check.sh` — **RC 0**: `files=256 obligations=82 sorry_in_proofs=0`,
   `check: OK`.
-- `check-final.py` — **RC 0**: 204 Lean files, 202 root imports, D=33 E=15
+- `check-final.py` — **RC 0**: 256 Lean files, 254 root imports, D=33 E=15
   F=15.
 - `check-conformance.py` — **RC 0**: 61 base + 16 framing + 9 boundary
-  checks, 33 differential fixtures, 146 Lean references, 9/9 mutation
-  controls, deterministic fixture provenance verified, live transcript
-  `3dd7a98f…` with 26 BigSize + 3 TLV + 4 wire live rows.
-- `verify-vendor.sh` — **RC 0**, 119 files.
-- `verify-anchors.py` — **RC 0**, 306 anchors, 0 bad, 2 unanchored rows.
-- `AxiomAudit` — **RC 0**, 194 audited theorems with the permitted classical
+  checks, 33 differential fixtures, 175 Lean references, 13/13 mutation
+  controls, 6 BOLT 2 message vectors, deterministic fixture provenance
+  verified, live transcript `3dd7a98f…` with 26 BigSize + 3 TLV + 4 wire
+  live rows.
+- `verify-vendor.sh` — **RC 0**, 149 files (public `4f5c4f8` snapshot).
+- `verify-anchors.py` — **RC 0**, 309 anchors, 0 bad, 2 unanchored rows.
+- `AxiomAudit` — **RC 0**, 227 audited theorems with the permitted classical
   axioms only.
 
-**Proof-wave 7 gate: PASS.** Push is non-force to
+**Proof-wave 8 gate: PASS.** Push is non-force to
 `origin/repair/integrated`; the exact commit is recorded in
 `docs/FINAL-STATUS.md`.
 
@@ -98,36 +99,24 @@ audit to 194 headline theorems, and closed `CH-01`, `RT-01`, `CONF-02`,
 `MODEL-02`, and `MODEL-03`. The remaining open issues are in
 `docs/OPEN-ISSUES.md`.
 
-## Wave 8 lanes
+## Wave H 48-lane integration
 
-Wave 8 launched 48 lanes from `50d78ed`. **45 Lean modules** and the three
-artifact lanes H46–H48 are integrated. H04 and H08 were initially absent/red
-during integration; both were re-written by their lanes and parent-verified
-green, so the final tree carries them. The full gate is **288 Lake jobs, RC 0**,
-with **249 Lean files**, **247 root imports**, **48/48 catalog rows proved**,
-**79 targets**, **206 audited headline theorems**, and zero actual `sorry`.
+The independent Wave H branch was merged into the remote wave-8 residual tree.
+It adds **45 proof modules** under `LnLean/Proofs/WaveH/` and keeps the remote
+public-core bump, protocol/routing changes, and 100-target catalog. The merged
+gate is **295 Lake jobs, RC 0**, with **256 Lean files**, **254 root imports**,
+**227 audited theorems**, **309 anchors**, **149 vendor files**, and zero actual
+`sorry`.
 
-| Lane group | Issues | Result |
-|---|---|---|
-| `H01`, `H02`, `H03`, `H05`, `H06`, `H31`, `H32` | `L1-02`, `L1-07` | Unconditional `txCheckerFor (some amount) = realCheckerOf` equality; delayed/revocation branches at `txCheckerFor`; exact `csv < 32768` boundary and `MINIMALDATA` policy split; the general full-script/block-flag composition remains open |
-| `H04` | `L1-02`, `L1-07` | Concrete one-input P2WSH `scriptLaneTx`/`txVerdictFull` reduction to the vendored witness verifier at standard flags, with positive, bad-signature, and CSV-false cases and fuel inertness; unconditional consensus/general composition remains open |
-| `H29`, `H30`, `H31` | `L1-01`, `L1-07` | Concrete `verifyImpl` interface and funding 2-of-2 checker instantiation; positive EC witness remains open |
-| `H07`, `H08`, `H09`, `H11`, `H12`, `H37` | `PR-05`, `PR-02` | HTLC BIP 143 preimage/digest equality, the four BOLT 3 witness scripts and exact scriptCode synthesis (H08), wire serialization domain, conditional wire-view binding, and exact 65533/65535 framing boundary |
-| `H13`, `H14`, `H15`, `H16`, `H17`, `H18`, `H19` | `L1-03`, `PR-01` | BOLT 2 type-32 `open_channel` mandatory payload fixed at **319 bytes** (not 313), encode/decode round-trip, field projections; `accept_channel` 270-byte payload; `Messages.lean` patch remains unapplied |
-| `H20`, `H21`, `H22` | `PR-01` | Accept payload carried through the handshake extension; registration + PoP contract and attribution under `KeyBinding`; PoP game remains open |
-| `H23`, `H24`, `H25`, `H26`, `H27`, `H28` | `CH-01`, `CH-02`, `PR-02` | Commitment/tx view adapters, transaction view, consumer boundary, downstream accounting, and the construction-site coverage-loss counterexample |
-| `H33` | `L1-04` | **Closed**: witness-inclusive commitment weight is `1116 + 172*k`; `1124 + 172*k` is the fee basis, the extra 8 WU is `count_tx_out`, not missing witness bytes |
-| `H34` | `L1-05` | **Closed on its recorded boundary**: C1 is refuted for 71-byte script injectivity; a domain-separated commitment binds under the retained finite pair admission |
-| `H35`, `H36`, `H38` | `CONF-01` | Additional conformance/decoder/TLV boundary targets; finite-vector scope retained |
-| `H39`, `H40`, `H41`, `H42` | `RT-01`, `RT-02` | Epoch store, sequence projection square, supersession/rotation preservation, and raw boundary-extension impossibility |
-| `H43` | `NET-01` | Explicit adversarial schedule/fairness model with eventual-delivery and eventual-inclusion instances; unconditional liveness still open |
-| `H44` | `SEC-01`, `CR-01` | Lossless event bound, event-cover accounting, negligible-add closure, and sharp separations; no reduction/game claimed |
-| `H45` | `L1-06` | Reorg safety with explicit common-tip/bounded-depth hypotheses; concrete reorg preservation |
-| `H46`–`H48` | release/artifact | Vendor artifact digest verifier, clean-checkout dry run, and release/PR decision support; H46 intentionally flags the OPS-04 absolute symlink |
-
-H46’s strict vendor check still fails on the absolute symlink
-`vendor/btc-lean-core/btc-lean-core`; it is not wired into CI. The ordinary
-`verify-vendor.sh` gate is green for the 119-file manifest.
+Wave H closes `L1-04` (H33: `1116 + 172*k` witness weight vs `1124 + 172*k`
+fee basis; the 8 WU is `count_tx_out`) and `L1-05` (H34: 71-byte script
+injectivity counterexample plus a domain-separated commitment). H07/H08/H09
+independently confirm the HTLC preimage/scriptCode path and `PR-05`. H13–H22
+fix the **319-byte** `open_channel` payload and add the accept/PoP contract.
+H39–H45 add epoch gossip, schedule/fairness liveness, reduction arithmetic,
+and conditional reorg preservation. H46–H48 provide vendor/clean-checkout and
+release artifacts. H20 was adapted to the remote `HandshakeState` change that
+removed `DecidableEq`.
 
 ## Historical waves
 
@@ -141,7 +130,8 @@ H46’s strict vendor check still fails on the absolute symlink
 | Proof-wave 5 (8 lanes) | Vendored L1 bridge, gross/net, sighash, differential conformance, update step, funding link, gossip consistency, crypto limits | **8 modules; 67 targets; 204-job gate** |
 | Proof-wave 6 (8 lanes) | BIP 143/revocation, five-field commitment, bit-exact wire, conditional view binding, dance, canonical gossip, transport promotion | **7 files; 73 targets; 218-job gate** |
 | Proof-wave 7 (8 lanes) | Sequence context, preimage equality, consumer migration, guarded fold, raw gossip, live conformance, open_channel auth, key model | **7 files; 79 targets; 233-job gate** |
-| Proof-wave 8 (48 lanes) | Per-input L1 checker, HTLC preimage/wire/scriptCode, 319-byte `open_channel`, accept/PoP, commitment sites, anchor/script-commitment, epoch gossip, liveness, security arithmetic, reorg, release artifacts | **45 files; 79 targets; 206 audited; 288-job gate** |
+| Proof-wave 8 (8 lanes) | `TxValidation.Full` transfer, HTLC preimage, type-32 `open_channel`, accept payload, consumer adapter, conditional ECDSA bridge, BOLT 2 encodings, store epochs | **7 files; 100 targets; 250-job gate** |
+| Wave H 48-lane integration | 45 independent modules: per-input checker/composition, HTLC preimage/scriptCode, 319-byte `open_channel`, accept/PoP, commitment sites, anchor/script-commitment, epoch gossip, liveness, reduction arithmetic, reorg, release artifacts | **45 files; 100 targets; 227 audited; 295-job merged gate** |
 
 ## Reproduce
 
@@ -168,3 +158,22 @@ Lightning verification. The concrete EC/transaction-validity bridge, the
 and release packaging remain open. The literal unguarded fold and canonical
 raw-gossip refinement are now mechanized as impossible rather than merely
 unfinished. See `docs/OPEN-ISSUES.md`.
+
+
+## Wave 8 lanes
+
+Wave 8 launched from `50d78ed` and integrated seven new proof modules plus
+additive protocol/routing/conformance changes. The catalog stayed at 48 rows
+and 0 statement-only; seven existing rows were strengthened from 79 to **100
+resolved targets**. Reports are under `agents/reports/swarm8/`.
+
+| Lane | Issue(s) | Result | Owned files |
+|---|---|---|---|
+| `S8-L1-TXVALID` | `L1-02`, `L1-07` | Exact `txCheckerFor (some amount) = realCheckerOf` transfer; delayed/revocation branch transfer; missing amount fail-closed; `minimalData` and `csv ≥ 32768` decode boundaries, including the `csv = 32768` collapse | new `TxValidTransferTargets.lean` |
+| `S8-PR-HTLCPREIMAGE` | `PR-05`, `PR-02` | Exact `HtlcWire` BIP 143 preimage byte equality, `ofTx`/`toPreimage` bridge, 143/136-byte scriptCode synthesis, 300/293-byte preimages, display-order txid conversion | new `HtlcPreimageTargets.lean` |
+| `S8-L1-OPENCHANNEL-WIRE` | `L1-03` | Type-32 `Msg.openChannel`, `MsgKind.openChannel`, six-key/type/length/identity laws, projection to `Handshake.OpenChannel`, funding construction, end-to-end `FundingPhase` reachability | `Messages.lean`, new `OpenChannelWireTargets.lean` |
+| `S8-PR-ACCEPT-PAYLOAD` | `PR-01` | `HandshakeState.acceptChannel?`, `handshakeStepRecvAccept`, provenance/stability lemmas, `StoredAccept`, conditional attribution, negative proof-of-possession | `Handshake.lean`, new `AcceptPayloadTargets.lean` |
+| `S8-CH-CONSUMER-SITES` | `CH-01` | Proof-layer `SignedState.toCommitmentTx`, legacy-boundary equality/Perm theorems, coverage bridge, concrete site examples; no production `CommitmentTx` consumer | `CommitmentConsumerTargets.lean`, new `CommitmentConsumerSitesTargets.lean` |
+| `S8-L1-EC-BRIDGE` | `L1-01`, `L1-07` | Sharp conditional `VendorEcdsaBridge`; exact `verifyImpl` argument-order bridge; funding/commitment/close agreement; EUF-CMA/key-binding transfer; message-reduction and key-parsing boundaries | new `EcdsaBridgeTargets.lean` |
+| `S8-CONF-ENCODINGS` | `CONF-01` | Six BOLT 2 message vectors, 29 `decide` theorems, 13/13 mutation controls; live message row deferred | `ConformanceDiffTargets.lean`, `scripts/check-conformance.py`, `tests/conformance/**` |
+| `S8-MODEL-STORE-EPOCH` | `RT-01`, `RT-02` | Typed replacement history, `StoreEpoch`/`epochStep`/`epochFold`, sequence-level canonical square, two divergence witnesses; replacement removals in `Gossip.lean`; node-announcement canonicalisation remains open | `Gossip.lean`, new `GossipStoreEpochTargets.lean` |

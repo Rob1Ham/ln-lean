@@ -2,14 +2,14 @@
 # Provision or verify the pinned read-only btc-lean L1 snapshot.
 #
 # OPS-01 background: vendor/btc-lean-core is excluded by .gitignore (only
-# vendor/VENDOR-SHA256 is tracked), and the pinned commit f950806... is not in
-# public btc-lean history. A clean public checkout therefore has no build input.
+# vendor/VENDOR-SHA256 is tracked), so a clean checkout has no build input.
+# The pinned public btc-lean commit is fetchable and its spec/core tree is the
+# authoritative snapshot. This script never fetches a branch or tag tip.
 #
-# This script never fetches a branch or tag tip. It accepts only an explicit
-# local archive, an explicit URL plus its archive SHA-256, or the exact pinned
-# commit. Every provisioning path is verified against the tracked per-file
-# manifest vendor/VENDOR-SHA256 (119 files) before anything is installed, and
-# the installed tree is verified a second time.
+# This script accepts only an explicit local archive, an explicit URL plus its
+# archive SHA-256, or the exact pinned commit. Every provisioning path is
+# verified against the tracked per-file manifest vendor/VENDOR-SHA256 before
+# anything is installed, and the installed tree is verified a second time.
 #
 # Exit codes:
 #   0  snapshot present and verified (or provisioned and verified)
@@ -19,7 +19,7 @@
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")/.."
 
-PINNED_COMMIT="f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb"
+PINNED_COMMIT="4f5c4f858fb9ca0743042644453cfa92d30dd271"
 PINNED_REPO="https://github.com/Rob1Ham/btc-lean.git"
 DEFAULT_DEST="vendor/btc-lean-core"
 MANIFEST="vendor/VENDOR-SHA256"
@@ -69,7 +69,7 @@ Modes (choose at most one; the default is --check):
 Options:
   --sha256 HEX               Expected SHA-256 of the downloaded/copied archive.
   --repo URL                 Git remote for --from-git (default: pinned btc-lean).
-  --commit SHA               Commit for --from-git (default: pinned f950806...).
+  --commit SHA               Commit for --from-git (default: pinned 4f5c4f8...).
   --dest DIR                 Verify/install location (default: vendor/btc-lean-core).
   --dry-run                  Extract and verify, but never write DEST.
   --force                    Replace an existing DEST (moved to DEST.bak-*).
@@ -260,7 +260,7 @@ dest_abs="$(readlink -f "$DEST" 2>/dev/null || printf '%s' "$DEST")"
 check_archive_hash() {
   local file="$1" actual
   if [ -z "$ARCHIVE_SHA256" ]; then
-    note "no archive SHA-256 supplied; the 119-file manifest is the integrity gate"
+    note "no archive SHA-256 supplied; the per-file manifest is the integrity gate"
     return 0
   fi
   actual="$(sha256sum "$file" | awk '{print $1}')"
@@ -457,16 +457,15 @@ unavailable() {
   cat >&2 <<EOF
 fetch-vendor: no pinned btc-lean snapshot at $DEST.
 fetch-vendor: pinned commit: $PINNED_COMMIT
-fetch-vendor: that commit is NOT in public btc-lean history, so a clean public
-fetch-vendor: checkout cannot download it from the public repository.
+fetch-vendor: the pinned public commit is fetchable from $PINNED_REPO.
 
-This is the OPS-01 build-input gap. Supply one explicit, checksummed input:
+Supply one explicit input:
+  scripts/fetch-vendor.sh --from-git
   scripts/fetch-vendor.sh --from-tarball /path/to/btc-lean-core-$PINNED_COMMIT.tar.gz
   scripts/fetch-vendor.sh --url https://.../btc-lean-core.tar.gz --sha256 <64-hex>
   VENDOR_ARTIFACT_URL=... VENDOR_ARTIFACT_SHA256=... scripts/fetch-vendor.sh --ci
-  scripts/fetch-vendor.sh --from-git   # only if the pinned commit is reachable
 
-Every path is verified against $MANIFEST (119 files) before installation.
+Every path is verified against $MANIFEST before installation.
 Use --dry-run to test an input without touching $DEST.
 EOF
   exit "$EXIT_UNAVAILABLE"

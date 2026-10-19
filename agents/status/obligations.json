@@ -1,8 +1,8 @@
 {
-  "files": 166,
+  "files": 218,
   "obligations": 81,
   "catalog_obligations": 48,
-  "declarations": 5761,
+  "declarations": 8228,
   "sorries": 0,
   "by_domain": {
     "Bitcoin": 3,
@@ -14,11 +14,11 @@
     "WaveE": 14
   },
   "by_kind": {
-    "abbrev": 29,
-    "def": 1238,
-    "inductive": 43,
-    "structure": 130,
-    "theorem": 4321
+    "abbrev": 58,
+    "def": 1711,
+    "inductive": 54,
+    "structure": 168,
+    "theorem": 6237
   },
   "duplicate_ids": [],
   "catalog_duplicate_ids": [],
@@ -595,7 +595,7 @@
     {
       "id": "LN-L1-001",
       "claim": "The funding output is P2WSH over the constructed 2-of-2 funding witness script; the handshake construction derives the witness-script hash link, the vendored interpreter executes the funding script, and the BIP 143 witness-v0 digest/locktime context is constructed and consumed by the vendor checker under explicit signature laws; the joint open/accept construction proves the same hash link.",
-      "lean_target": "LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo; LnLean.Proofs.Bitcoin.FundingLinkTargets.fundingScriptPubKey_eq_p2wsh_ordered; LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.funding_interpreters_agree; LnLean.Proofs.Bitcoin.SighashBridgeTargets.funding_sighash_interpreters_agree; LnLean.Proofs.Bitcoin.FundingAuthTargets.openAccept_hash_linked",
+      "lean_target": "LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo; LnLean.Proofs.Bitcoin.FundingLinkTargets.fundingScriptPubKey_eq_p2wsh_ordered; LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.funding_interpreters_agree; LnLean.Proofs.Bitcoin.SighashBridgeTargets.funding_sighash_interpreters_agree; LnLean.Proofs.Bitcoin.FundingAuthTargets.openAccept_hash_linked; LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.fundingSignedValid_iff_vendor; LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.funding_sighash_interpreters_agree_vendor",
       "boltdoc": "BOLT 2 \u00a7Channel Establishment v1; BOLT 3 \u00a7Funding Transaction Output",
       "anchor": "lightning/src/ln/chan_utils.rs:847",
       "status": "proved",
@@ -622,7 +622,7 @@
     {
       "id": "LN-L1-004",
       "claim": "The full BOLT 3 to_local witness script carries the CSV contest delay and the revocation key, the commitment output commits to both, and both the delayed and revocation branches execute through the vendored interpreter with a constructed BIP 143 digest/locktime context; the decoded BIP 68/112 sequence context is characterized exactly and transferred to the real checker, while EC/key-separation/signature hypotheses remain.",
-      "lean_target": "LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.commitmentOutputs_toLocal_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.toLocal_delayed_interpreters_agree; LnLean.Proofs.Bitcoin.InterpreterRevocationTargets.toLocal_revocation_interpreters_agree; LnLean.Proofs.Bitcoin.SighashBridgeTargets.toLocal_sighash_interpreters_agree; LnLean.Proofs.Bitcoin.SequenceContextTargets.toLocal_delayed_realChecker_refinement",
+      "lean_target": "LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.commitmentOutputs_toLocal_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.toLocal_delayed_interpreters_agree; LnLean.Proofs.Bitcoin.InterpreterRevocationTargets.toLocal_revocation_interpreters_agree; LnLean.Proofs.Bitcoin.SighashBridgeTargets.toLocal_sighash_interpreters_agree; LnLean.Proofs.Bitcoin.SequenceContextTargets.toLocal_delayed_realChecker_refinement; LnLean.Proofs.Bitcoin.TxValidTransferTargets.txCheckerFor_some_eq_realCheckerOf; LnLean.Proofs.Bitcoin.TxValidTransferTargets.toLocal_delayed_txCheckerFor_refinement; LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.model_verify_eq_realChecker_seam; LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.toLocal_revocation_interpreters_agree_vendor",
       "boltdoc": "BOLT 3 \u00a7to_local Output",
       "anchor": "lightning/src/ln/chan_utils.rs:687",
       "status": "proved",
@@ -721,7 +721,7 @@
     {
       "id": "LN-CH-003",
       "claim": "In the rich commitment-output model, outputs are sorted by value, script, and CLTV, and dust HTLCs are trimmed; the five-field gross/net record layer proves the canonical commitment refinement, migration conservation, and effective fee at arbitrary dust, while the legacy output function remains refuted by D12; the consumer migration preserves the legacy list only in the BOLT 3 survivor normal form, and the no-trim counterexample is retained.",
-      "lean_target": "LnLean.Channel.Commitment.output_ordering; LnLean.Channel.CommitmentTx.migratedFrom_outputsNet_perm_commitmentOutputs; LnLean.Proofs.Channel.CommitmentTypes.CommitmentTx.migrateNet_canonicalOutputs_eq_commitmentOutputs; LnLean.Proofs.Channel.CommitmentConsumer.migratedConsumerOutputs_eq_consumerOutputs_of_migrated",
+      "lean_target": "LnLean.Channel.Commitment.output_ordering; LnLean.Channel.CommitmentTx.migratedFrom_outputsNet_perm_commitmentOutputs; LnLean.Proofs.Channel.CommitmentTypes.CommitmentTx.migrateNet_canonicalOutputs_eq_commitmentOutputs; LnLean.Proofs.Channel.CommitmentConsumer.migratedConsumerOutputs_eq_consumerOutputs_of_migrated; LnLean.Proofs.Channel.CommitmentConsumerSites.commitment_signed_full_covers_migrated; LnLean.Proofs.Channel.CommitmentConsumerSites.migratedConsumerOutputs_eq_viewOfState_outputs; LnLean.Proofs.Channel.CommitmentConsumerSites.viewOfState_outputs_perm_netConsumerOutputs",
       "boltdoc": "BOLT 3 \u00a7Transaction Output Ordering; BOLT 3 \u00a7Trimmed Outputs",
       "anchor": "lightning/src/ln/chan_utils.rs:1985",
       "status": "proved",
@@ -811,7 +811,7 @@
     {
       "id": "LN-PR-001",
       "claim": "open_channel accepts a funding amount only above the dust and minimum-channel bounds.",
-      "lean_target": "LnLean.Protocol.Handshake.open_bounds",
+      "lean_target": "LnLean.Protocol.Handshake.open_bounds; LnLean.Proofs.Protocol.OpenChannelWireTargets.openChannelWire_end_to_end; LnLean.Protocol.OpenChannelWire.toFundingParams_hash_linked; LnLean.Proofs.Protocol.OpenChannelWireTargets.acceptKey_bound_before_fundingCreated_wire",
       "boltdoc": "BOLT 2 \u00a7The open_channel Message",
       "anchor": "lightning/src/ln/channelmanager.rs:17521",
       "status": "proved",
@@ -829,7 +829,7 @@
     {
       "id": "LN-PR-003",
       "claim": "Under an explicit signing law and key-binding hypothesis, funding_signed carries a valid signature over the funding transaction and attributes it to the funding key; one joint contract also covers commitment_signed, while C3 alone gives neither; a secret-key model proves attribution under the unchanged KeyBinding and mechanizes why key generation alone does not attribute.",
-      "lean_target": "LnLean.Protocol.Handshake.funding_signed_signing_contract; LnLean.Proofs.Channel.SighashTargets.funding_and_commitment_signing_contract; LnLean.Proofs.Crypto.KeyModelTargets.funding_signature_attribution",
+      "lean_target": "LnLean.Protocol.Handshake.funding_signed_signing_contract; LnLean.Proofs.Channel.SighashTargets.funding_and_commitment_signing_contract; LnLean.Proofs.Crypto.KeyModelTargets.funding_signature_attribution; LnLean.Proofs.Crypto.AcceptPayloadTargets.stored_accept_payload_attribution; LnLean.Proofs.Crypto.AcceptPayloadTargets.acceptPayload_not_proof_of_possession",
       "boltdoc": "BOLT 2 \u00a7The funding_signed Message",
       "anchor": "lightning/src/ln/channel.rs:2107",
       "status": "proved",
@@ -838,7 +838,7 @@
     {
       "id": "LN-PR-004",
       "claim": "Under a BOLT 3-shaped serializer with an exact transaction wire layout, an explicit signing law, and the commitment value equations, commitment_signed covers exactly the current HTLC set and fee and its digest/signatures are derived under C3; digest binding implies view binding only under explicit collision-free/serialization hypotheses, and the wire record alone determines neither; the commitment-wire preimage is byte-equal to the vendored BIP 143 encoder, with the HTLC instantiation still open.",
-      "lean_target": "LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact; LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary; LnLean.Proofs.Channel.SighashTargets.SighashProduces.coverage; LnLean.Proofs.Channel.SighashViewBindingTargets.commitmentSignature_binds_viewOfState; LnLean.Proofs.Channel.SighashTargets.CommitmentWire.txBytes_parse; LnLean.Proofs.Channel.SighashTargets.Bip143Preimage.preimageBytes_eq_bip143MsgL_ofTx; LnLean.Proofs.Channel.SighashTargets.commitmentBip143Preimage_eq_bip143MsgL",
+      "lean_target": "LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact; LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary; LnLean.Proofs.Channel.SighashTargets.SighashProduces.coverage; LnLean.Proofs.Channel.SighashViewBindingTargets.commitmentSignature_binds_viewOfState; LnLean.Proofs.Channel.SighashTargets.CommitmentWire.txBytes_parse; LnLean.Proofs.Channel.SighashTargets.Bip143Preimage.preimageBytes_eq_bip143MsgL_ofTx; LnLean.Proofs.Channel.SighashTargets.commitmentBip143Preimage_eq_bip143MsgL; LnLean.Proofs.Channel.HtlcPreimageTargets.htlcBip143Preimage_eq_bip143MsgL; LnLean.Proofs.Channel.HtlcPreimageTargets.HtlcSpend.successPreimage_eq_bip143MsgL; LnLean.Proofs.Channel.HtlcPreimageTargets.HtlcSpend.timeoutPreimage_eq_bip143MsgL; LnLean.Proofs.Channel.HtlcPreimageTargets.htlc_preimage_target_summary",
       "boltdoc": "BOLT 2 \u00a7Committing Updates So Far",
       "anchor": "lightning/src/ln/channel.rs:2386; lightning/src/ln/channel.rs:6270",
       "status": "proved",
@@ -874,7 +874,7 @@
     {
       "id": "LN-RT-002",
       "claim": "A newer channel_update replaces an older one only if its timestamp is greater.",
-      "lean_target": "LnLean.Routing.Gossip.update_monotone",
+      "lean_target": "LnLean.Routing.Gossip.update_monotone; LnLean.Proofs.Routing.GossipStoreEpochTargets.epochFold_gossip_eq_canonicalStoreView_rawFold; LnLean.Routing.replacedUpdates_timestamp_lt; LnLean.Proofs.Routing.GossipStoreEpochTargets.StoreEpoch.epochFold_store_eq_foldl",
       "boltdoc": "BOLT 7 \u00a7The channel_update Message",
       "anchor": "lightning/src/routing/gossip.rs:906; lightning/src/routing/gossip.rs:422",
       "status": "proved",

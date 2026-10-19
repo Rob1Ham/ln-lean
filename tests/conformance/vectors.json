@@ -1,8 +1,8 @@
 {
   "schema": "lnlean.conformance.v1",
-  "lane": "S7-CONF-LIVE",
-  "issue": "CONF-02, CONF-01",
-  "scope": "Wire-encoding and message-framing vector conformance for BOLT 1 BigSize/TLV and the BOLT 8 transport frame, plus pinned rust-lightning differential fixtures and a recorded live rust-lightning run. The BOLT 8 transport model is promoted to LnLean.Wire.Transport in LnLean/Wire/Message.lean; the payload-only Wire.unframe is unchanged. This is NOT a full implementation test: it checks encoded bytes and the modelled accept/reject decisions for a finite vector set. IO, allocation limits, message-specific TLV value decoding, namespace/known-type policy, Noise encryption, and byte-for-byte equivalence with a running rust-lightning node are out of scope.",
+  "lane": "S8-CONF-ENCODINGS",
+  "issue": "CONF-01, CONF-02",
+  "scope": "Wire-encoding and message-framing vector conformance for BOLT 1 BigSize/TLV, the BOLT 8 transport frame, and finite BOLT 2 open_channel/accept_channel/commitment_signed/update_add_htlc payload vectors, plus pinned rust-lightning differential fixtures and a recorded live rust-lightning run. The BOLT 8 transport model is promoted to LnLean.Wire.Transport in LnLean/Wire/Message.lean; the payload-only Wire.unframe is unchanged. This is NOT a full implementation test: it checks encoded bytes and the modelled accept/reject decisions for a finite vector set. IO, allocation limits, message-specific TLV value decoding, namespace/known-type policy, Noise encryption, signature validity, and byte-for-byte equivalence with a running rust-lightning node are out of scope.",
   "sources": {
     "bolts": {
       "path": "refs/bolts/01-messaging.md",
@@ -21,6 +21,17 @@
       ],
       "anchor": "Each message is prefixed with a 2-byte big-endian total message length; maximum 65535."
     },
+    "bolts_peer_protocol": {
+      "path": "refs/bolts/02-peer-protocol.md",
+      "commit": "1aadb719b4007c4cea0ba6e36b08c4fb53788dee",
+      "sections": [
+        "The open_channel Message",
+        "The accept_channel Message",
+        "Adding an HTLC: update_add_htlc",
+        "Committing Updates So Far: commitment_signed"
+      ],
+      "anchor": "open_channel type 32, accept_channel type 33, update_add_htlc type 128, commitment_signed type 132; field widths from the pinned section layouts."
+    },
     "rust_lightning": {
       "anchors": [
         "lightning/src/util/ser.rs:442-490 (BigSize Writeable/Readable and canonicality)",
@@ -36,7 +47,8 @@
       "tlv": "LnLean/Wire/TLV.lean",
       "admission": "LnLean/Proofs/Wire/TLVTargets.lean",
       "vector_theorems": "LnLean/Proofs/ConformanceTargets.lean",
-      "framing": "LnLean/Wire/Message.lean (LnLean.Wire.Transport model); LnLean/Proofs/ConformanceDiffTargets.lean (vectors)"
+      "framing": "LnLean/Wire/Message.lean (LnLean.Wire.Transport model); LnLean/Proofs/ConformanceDiffTargets.lean (vectors)",
+      "messages": "LnLean/Proofs/ConformanceDiffTargets.lean (local BOLT 2 wire records and decide vectors; open_channel is not LnLean.Protocol.Messages.Msg.openChannel)"
     }
   },
   "bigsize": {
@@ -618,6 +630,720 @@
         "model_scope": "not-modelled:known-type-length",
         "source": "BOLT 1 Appendix B (0x01 02 0001; not minimal amount_msat)",
         "lean": {"decode": "tlv_known_type_nonminimal_value_decode", "admission": "tlv_known_type_nonminimal_value_admission"}
+      }
+    ]
+  },
+  "messages": {
+    "layout": "type(2 bytes, big-endian) || payload; the BOLT 8 transport frame adds a 2-byte length equal to 2 + payload.size",
+    "source": "BOLT 1 \u00a7Lightning Message Format and BOLT 2 channel-establishment/HTLC sections, pinned at refs/bolts/01-messaging.md and refs/bolts/02-peer-protocol.md commit 1aadb719b4007c4cea0ba6e36b08c4fb53788dee",
+    "model_note": "open_channel is represented by a local wire record in ConformanceDiffTargets.lean, not by LnLean.Protocol.Messages.Msg.openChannel; the type-32 constructor belongs to a separate lane. accept_channel, commitment_signed, and update_add_htlc field names follow BOLT 2 but the payload bytes here are independent fixtures, not a serializer from LnLean.Protocol.Messages.",
+    "cases": [
+      {
+        "id": "msg_open_channel_base",
+        "name": "open_channel",
+        "type": 32,
+        "payload_length": 319,
+        "transport_length": 321,
+        "transport_header": "0141",
+        "frame_prefix": "00200141",
+        "payload": "6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d61900000000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2000000000000186a000000000000000000000000000000222000000003b9aca0000000000000003e800000000000003e8000000fd009001e302111111111111111111111111111111111111111111111111111111111111111103222222222222222222222222222222222222222222222222222222222222222202333333333333333333333333333333333333333333333333333333333333333303444444444444444444444444444444444444444444444444444444444444444402555555555555555555555555555555555555555555555555555555555555555503666666666666666666666666666666666666666666666666666666666666666601",
+        "fields": [
+          {
+            "name": "chain_hash",
+            "kind": "bytes",
+            "offset": 0,
+            "length": 32,
+            "hex": "6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000"
+          },
+          {
+            "name": "temporary_channel_id",
+            "kind": "bytes",
+            "offset": 32,
+            "length": 32,
+            "hex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+          },
+          {
+            "name": "funding_satoshis",
+            "kind": "u64",
+            "offset": 64,
+            "length": 8,
+            "hex": "00000000000186a0",
+            "value": 100000
+          },
+          {
+            "name": "push_msat",
+            "kind": "u64",
+            "offset": 72,
+            "length": 8,
+            "hex": "0000000000000000",
+            "value": 0
+          },
+          {
+            "name": "dust_limit_satoshis",
+            "kind": "u64",
+            "offset": 80,
+            "length": 8,
+            "hex": "0000000000000222",
+            "value": 546
+          },
+          {
+            "name": "max_htlc_value_in_flight_msat",
+            "kind": "u64",
+            "offset": 88,
+            "length": 8,
+            "hex": "000000003b9aca00",
+            "value": 1000000000
+          },
+          {
+            "name": "channel_reserve_satoshis",
+            "kind": "u64",
+            "offset": 96,
+            "length": 8,
+            "hex": "00000000000003e8",
+            "value": 1000
+          },
+          {
+            "name": "htlc_minimum_msat",
+            "kind": "u64",
+            "offset": 104,
+            "length": 8,
+            "hex": "00000000000003e8",
+            "value": 1000
+          },
+          {
+            "name": "feerate_per_kw",
+            "kind": "u32",
+            "offset": 112,
+            "length": 4,
+            "hex": "000000fd",
+            "value": 253
+          },
+          {
+            "name": "to_self_delay",
+            "kind": "u16",
+            "offset": 116,
+            "length": 2,
+            "hex": "0090",
+            "value": 144
+          },
+          {
+            "name": "max_accepted_htlcs",
+            "kind": "u16",
+            "offset": 118,
+            "length": 2,
+            "hex": "01e3",
+            "value": 483
+          },
+          {
+            "name": "funding_pubkey",
+            "kind": "point",
+            "offset": 120,
+            "length": 33,
+            "hex": "021111111111111111111111111111111111111111111111111111111111111111"
+          },
+          {
+            "name": "revocation_basepoint",
+            "kind": "point",
+            "offset": 153,
+            "length": 33,
+            "hex": "032222222222222222222222222222222222222222222222222222222222222222"
+          },
+          {
+            "name": "payment_basepoint",
+            "kind": "point",
+            "offset": 186,
+            "length": 33,
+            "hex": "023333333333333333333333333333333333333333333333333333333333333333"
+          },
+          {
+            "name": "delayed_payment_basepoint",
+            "kind": "point",
+            "offset": 219,
+            "length": 33,
+            "hex": "034444444444444444444444444444444444444444444444444444444444444444"
+          },
+          {
+            "name": "htlc_basepoint",
+            "kind": "point",
+            "offset": 252,
+            "length": 33,
+            "hex": "025555555555555555555555555555555555555555555555555555555555555555"
+          },
+          {
+            "name": "first_per_commitment_point",
+            "kind": "point",
+            "offset": 285,
+            "length": 33,
+            "hex": "036666666666666666666666666666666666666666666666666666666666666666"
+          },
+          {
+            "name": "channel_flags",
+            "kind": "u8",
+            "offset": 318,
+            "length": 1,
+            "hex": "01",
+            "value": 1
+          }
+        ],
+        "scope": "enforced",
+        "source": "BOLT 2 \u00a7The open_channel Message (pinned 02-peer-protocol.md:680-706); base payload without open_channel_tlvs",
+        "lean": {
+          "payload": "msg_open_channel_base_payload",
+          "length": "msg_open_channel_base_length",
+          "transport": "msg_open_channel_base_transport",
+          "header": "msg_open_channel_base_header",
+          "frame_prefix": "msg_open_channel_base_frame_prefix"
+        }
+      },
+      {
+        "id": "msg_open_channel_upfront_shutdown",
+        "name": "open_channel",
+        "type": 32,
+        "payload_length": 343,
+        "transport_length": 345,
+        "transport_header": "0159",
+        "frame_prefix": "00200159",
+        "payload": "6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d61900000000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2000000000000186a000000000000000000000000000000222000000003b9aca0000000000000003e800000000000003e8000000fd009001e302111111111111111111111111111111111111111111111111111111111111111103222222222222222222222222222222222222222222222222222222222222222202333333333333333333333333333333333333333333333333333333333333333303444444444444444444444444444444444444444444444444444444444444444402555555555555555555555555555555555555555555555555555555555555555503666666666666666666666666666666666666666666666666666666666666666601001600145a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+        "fields": [
+          {
+            "name": "chain_hash",
+            "kind": "bytes",
+            "offset": 0,
+            "length": 32,
+            "hex": "6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000"
+          },
+          {
+            "name": "temporary_channel_id",
+            "kind": "bytes",
+            "offset": 32,
+            "length": 32,
+            "hex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+          },
+          {
+            "name": "funding_satoshis",
+            "kind": "u64",
+            "offset": 64,
+            "length": 8,
+            "hex": "00000000000186a0",
+            "value": 100000
+          },
+          {
+            "name": "push_msat",
+            "kind": "u64",
+            "offset": 72,
+            "length": 8,
+            "hex": "0000000000000000",
+            "value": 0
+          },
+          {
+            "name": "dust_limit_satoshis",
+            "kind": "u64",
+            "offset": 80,
+            "length": 8,
+            "hex": "0000000000000222",
+            "value": 546
+          },
+          {
+            "name": "max_htlc_value_in_flight_msat",
+            "kind": "u64",
+            "offset": 88,
+            "length": 8,
+            "hex": "000000003b9aca00",
+            "value": 1000000000
+          },
+          {
+            "name": "channel_reserve_satoshis",
+            "kind": "u64",
+            "offset": 96,
+            "length": 8,
+            "hex": "00000000000003e8",
+            "value": 1000
+          },
+          {
+            "name": "htlc_minimum_msat",
+            "kind": "u64",
+            "offset": 104,
+            "length": 8,
+            "hex": "00000000000003e8",
+            "value": 1000
+          },
+          {
+            "name": "feerate_per_kw",
+            "kind": "u32",
+            "offset": 112,
+            "length": 4,
+            "hex": "000000fd",
+            "value": 253
+          },
+          {
+            "name": "to_self_delay",
+            "kind": "u16",
+            "offset": 116,
+            "length": 2,
+            "hex": "0090",
+            "value": 144
+          },
+          {
+            "name": "max_accepted_htlcs",
+            "kind": "u16",
+            "offset": 118,
+            "length": 2,
+            "hex": "01e3",
+            "value": 483
+          },
+          {
+            "name": "funding_pubkey",
+            "kind": "point",
+            "offset": 120,
+            "length": 33,
+            "hex": "021111111111111111111111111111111111111111111111111111111111111111"
+          },
+          {
+            "name": "revocation_basepoint",
+            "kind": "point",
+            "offset": 153,
+            "length": 33,
+            "hex": "032222222222222222222222222222222222222222222222222222222222222222"
+          },
+          {
+            "name": "payment_basepoint",
+            "kind": "point",
+            "offset": 186,
+            "length": 33,
+            "hex": "023333333333333333333333333333333333333333333333333333333333333333"
+          },
+          {
+            "name": "delayed_payment_basepoint",
+            "kind": "point",
+            "offset": 219,
+            "length": 33,
+            "hex": "034444444444444444444444444444444444444444444444444444444444444444"
+          },
+          {
+            "name": "htlc_basepoint",
+            "kind": "point",
+            "offset": 252,
+            "length": 33,
+            "hex": "025555555555555555555555555555555555555555555555555555555555555555"
+          },
+          {
+            "name": "first_per_commitment_point",
+            "kind": "point",
+            "offset": 285,
+            "length": 33,
+            "hex": "036666666666666666666666666666666666666666666666666666666666666666"
+          },
+          {
+            "name": "channel_flags",
+            "kind": "u8",
+            "offset": 318,
+            "length": 1,
+            "hex": "01",
+            "value": 1
+          },
+          {
+            "name": "upfront_shutdown_script",
+            "kind": "tlv",
+            "offset": 319,
+            "length": 24,
+            "hex": "001600145a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "tlv_type": 0,
+            "value_length": 22
+          }
+        ],
+        "scope": "enforced",
+        "source": "BOLT 2 \u00a7The open_channel Message (pinned 02-peer-protocol.md:680-715); open_channel_tlvs type 0 upfront_shutdown_script",
+        "lean": {
+          "payload": "msg_open_channel_upfront_shutdown_payload",
+          "length": "msg_open_channel_upfront_shutdown_length",
+          "transport": "msg_open_channel_upfront_shutdown_transport",
+          "header": "msg_open_channel_upfront_shutdown_header",
+          "frame_prefix": "msg_open_channel_upfront_shutdown_frame_prefix"
+        }
+      },
+      {
+        "id": "msg_accept_channel_base",
+        "name": "accept_channel",
+        "type": 33,
+        "payload_length": 270,
+        "transport_length": 272,
+        "transport_header": "0110",
+        "frame_prefix": "00210110",
+        "payload": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f200000000000000222000000003b9aca0000000000000003e800000000000003e800000006009001e302777777777777777777777777777777777777777777777777777777777777777703888888888888888888888888888888888888888888888888888888888888888802999999999999999999999999999999999999999999999999999999999999999903aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa02bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb03cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "fields": [
+          {
+            "name": "temporary_channel_id",
+            "kind": "bytes",
+            "offset": 0,
+            "length": 32,
+            "hex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+          },
+          {
+            "name": "dust_limit_satoshis",
+            "kind": "u64",
+            "offset": 32,
+            "length": 8,
+            "hex": "0000000000000222",
+            "value": 546
+          },
+          {
+            "name": "max_htlc_value_in_flight_msat",
+            "kind": "u64",
+            "offset": 40,
+            "length": 8,
+            "hex": "000000003b9aca00",
+            "value": 1000000000
+          },
+          {
+            "name": "channel_reserve_satoshis",
+            "kind": "u64",
+            "offset": 48,
+            "length": 8,
+            "hex": "00000000000003e8",
+            "value": 1000
+          },
+          {
+            "name": "htlc_minimum_msat",
+            "kind": "u64",
+            "offset": 56,
+            "length": 8,
+            "hex": "00000000000003e8",
+            "value": 1000
+          },
+          {
+            "name": "minimum_depth",
+            "kind": "u32",
+            "offset": 64,
+            "length": 4,
+            "hex": "00000006",
+            "value": 6
+          },
+          {
+            "name": "to_self_delay",
+            "kind": "u16",
+            "offset": 68,
+            "length": 2,
+            "hex": "0090",
+            "value": 144
+          },
+          {
+            "name": "max_accepted_htlcs",
+            "kind": "u16",
+            "offset": 70,
+            "length": 2,
+            "hex": "01e3",
+            "value": 483
+          },
+          {
+            "name": "funding_pubkey",
+            "kind": "point",
+            "offset": 72,
+            "length": 33,
+            "hex": "027777777777777777777777777777777777777777777777777777777777777777"
+          },
+          {
+            "name": "revocation_basepoint",
+            "kind": "point",
+            "offset": 105,
+            "length": 33,
+            "hex": "038888888888888888888888888888888888888888888888888888888888888888"
+          },
+          {
+            "name": "payment_basepoint",
+            "kind": "point",
+            "offset": 138,
+            "length": 33,
+            "hex": "029999999999999999999999999999999999999999999999999999999999999999"
+          },
+          {
+            "name": "delayed_payment_basepoint",
+            "kind": "point",
+            "offset": 171,
+            "length": 33,
+            "hex": "03aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "name": "htlc_basepoint",
+            "kind": "point",
+            "offset": 204,
+            "length": 33,
+            "hex": "02bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          {
+            "name": "first_per_commitment_point",
+            "kind": "point",
+            "offset": 237,
+            "length": 33,
+            "hex": "03cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        ],
+        "scope": "enforced",
+        "source": "BOLT 2 \u00a7The accept_channel Message (pinned 02-peer-protocol.md:907-938); base payload without accept_channel_tlvs",
+        "lean": {
+          "payload": "msg_accept_channel_base_payload",
+          "length": "msg_accept_channel_base_length",
+          "transport": "msg_accept_channel_base_transport",
+          "header": "msg_accept_channel_base_header",
+          "frame_prefix": "msg_accept_channel_base_frame_prefix"
+        }
+      },
+      {
+        "id": "msg_accept_channel_upfront_shutdown",
+        "name": "accept_channel",
+        "type": 33,
+        "payload_length": 306,
+        "transport_length": 308,
+        "transport_header": "0134",
+        "frame_prefix": "00210134",
+        "payload": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f200000000000000222000000003b9aca0000000000000003e800000000000003e800000006009001e302777777777777777777777777777777777777777777777777777777777777777703888888888888888888888888888888888888888888888888888888888888888802999999999999999999999999999999999999999999999999999999999999999903aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa02bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb03cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc00220020dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "fields": [
+          {
+            "name": "temporary_channel_id",
+            "kind": "bytes",
+            "offset": 0,
+            "length": 32,
+            "hex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+          },
+          {
+            "name": "dust_limit_satoshis",
+            "kind": "u64",
+            "offset": 32,
+            "length": 8,
+            "hex": "0000000000000222",
+            "value": 546
+          },
+          {
+            "name": "max_htlc_value_in_flight_msat",
+            "kind": "u64",
+            "offset": 40,
+            "length": 8,
+            "hex": "000000003b9aca00",
+            "value": 1000000000
+          },
+          {
+            "name": "channel_reserve_satoshis",
+            "kind": "u64",
+            "offset": 48,
+            "length": 8,
+            "hex": "00000000000003e8",
+            "value": 1000
+          },
+          {
+            "name": "htlc_minimum_msat",
+            "kind": "u64",
+            "offset": 56,
+            "length": 8,
+            "hex": "00000000000003e8",
+            "value": 1000
+          },
+          {
+            "name": "minimum_depth",
+            "kind": "u32",
+            "offset": 64,
+            "length": 4,
+            "hex": "00000006",
+            "value": 6
+          },
+          {
+            "name": "to_self_delay",
+            "kind": "u16",
+            "offset": 68,
+            "length": 2,
+            "hex": "0090",
+            "value": 144
+          },
+          {
+            "name": "max_accepted_htlcs",
+            "kind": "u16",
+            "offset": 70,
+            "length": 2,
+            "hex": "01e3",
+            "value": 483
+          },
+          {
+            "name": "funding_pubkey",
+            "kind": "point",
+            "offset": 72,
+            "length": 33,
+            "hex": "027777777777777777777777777777777777777777777777777777777777777777"
+          },
+          {
+            "name": "revocation_basepoint",
+            "kind": "point",
+            "offset": 105,
+            "length": 33,
+            "hex": "038888888888888888888888888888888888888888888888888888888888888888"
+          },
+          {
+            "name": "payment_basepoint",
+            "kind": "point",
+            "offset": 138,
+            "length": 33,
+            "hex": "029999999999999999999999999999999999999999999999999999999999999999"
+          },
+          {
+            "name": "delayed_payment_basepoint",
+            "kind": "point",
+            "offset": 171,
+            "length": 33,
+            "hex": "03aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "name": "htlc_basepoint",
+            "kind": "point",
+            "offset": 204,
+            "length": 33,
+            "hex": "02bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          {
+            "name": "first_per_commitment_point",
+            "kind": "point",
+            "offset": 237,
+            "length": 33,
+            "hex": "03cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+            "name": "upfront_shutdown_script",
+            "kind": "tlv",
+            "offset": 270,
+            "length": 36,
+            "hex": "00220020dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "tlv_type": 0,
+            "value_length": 34
+          }
+        ],
+        "scope": "enforced",
+        "source": "BOLT 2 \u00a7The accept_channel Message (pinned 02-peer-protocol.md:907-938); accept_channel_tlvs type 0 upfront_shutdown_script",
+        "lean": {
+          "payload": "msg_accept_channel_upfront_shutdown_payload",
+          "length": "msg_accept_channel_upfront_shutdown_length",
+          "transport": "msg_accept_channel_upfront_shutdown_transport",
+          "header": "msg_accept_channel_upfront_shutdown_header",
+          "frame_prefix": "msg_accept_channel_upfront_shutdown_frame_prefix"
+        }
+      },
+      {
+        "id": "msg_commitment_signed_two_htlcs",
+        "name": "commitment_signed",
+        "type": 132,
+        "payload_length": 226,
+        "transport_length": 228,
+        "transport_header": "00e4",
+        "frame_prefix": "008400e4",
+        "payload": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf0002e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeffe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfefff0f1f2f3f4f5f6f7f8f9fafbfcfdfefff0f1f2f3f4f5f6f7f8f9fafbfcfdfefff0f1f2f3f4f5f6f7f8f9fafbfcfdfefff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+        "fields": [
+          {
+            "name": "channel_id",
+            "kind": "bytes",
+            "offset": 0,
+            "length": 32,
+            "hex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+          },
+          {
+            "name": "signature",
+            "kind": "signature64",
+            "offset": 32,
+            "length": 64,
+            "hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
+          },
+          {
+            "name": "num_htlcs",
+            "kind": "u16",
+            "offset": 96,
+            "length": 2,
+            "hex": "0002",
+            "value": 2
+          },
+          {
+            "name": "htlc_signature_0",
+            "kind": "signature64",
+            "offset": 98,
+            "length": 64,
+            "hex": "e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeffe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+          },
+          {
+            "name": "htlc_signature_1",
+            "kind": "signature64",
+            "offset": 162,
+            "length": 64,
+            "hex": "f0f1f2f3f4f5f6f7f8f9fafbfcfdfefff0f1f2f3f4f5f6f7f8f9fafbfcfdfefff0f1f2f3f4f5f6f7f8f9fafbfcfdfefff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+          }
+        ],
+        "scope": "enforced",
+        "source": "BOLT 2 \u00a7Committing Updates So Far: commitment_signed (pinned 02-peer-protocol.md:3097-3115); two 64-byte HTLC signatures",
+        "lean": {
+          "payload": "msg_commitment_signed_two_htlcs_payload",
+          "length": "msg_commitment_signed_two_htlcs_length",
+          "transport": "msg_commitment_signed_two_htlcs_transport",
+          "header": "msg_commitment_signed_two_htlcs_header",
+          "frame_prefix": "msg_commitment_signed_two_htlcs_frame_prefix"
+        }
+      },
+      {
+        "id": "msg_update_add_htlc_base",
+        "name": "update_add_htlc",
+        "type": 128,
+        "payload_length": 1450,
+        "transport_length": 1452,
+        "transport_header": "05ac",
+        "frame_prefix": "008005ac",
+        "payload": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20000000000000000700000000000f42404242424242424242424242424242424242424242424242424242424242424242000c350001aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fields": [
+          {
+            "name": "channel_id",
+            "kind": "bytes",
+            "offset": 0,
+            "length": 32,
+            "hex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+          },
+          {
+            "name": "htlc_id",
+            "kind": "u64",
+            "offset": 32,
+            "length": 8,
+            "hex": "0000000000000007",
+            "value": 7
+          },
+          {
+            "name": "amount_msat",
+            "kind": "u64",
+            "offset": 40,
+            "length": 8,
+            "hex": "00000000000f4240",
+            "value": 1000000
+          },
+          {
+            "name": "payment_hash",
+            "kind": "bytes",
+            "offset": 48,
+            "length": 32,
+            "hex": "4242424242424242424242424242424242424242424242424242424242424242"
+          },
+          {
+            "name": "cltv_expiry",
+            "kind": "u32",
+            "offset": 80,
+            "length": 4,
+            "hex": "000c3500",
+            "value": 800000
+          },
+          {
+            "name": "onion_routing_packet",
+            "kind": "bytes",
+            "offset": 84,
+            "length": 1366,
+            "hex": "01aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ],
+        "scope": "enforced",
+        "source": "BOLT 2 \u00a7Adding an HTLC: update_add_htlc (pinned 02-peer-protocol.md:2772-2800); 1366-byte onion_routing_packet",
+        "lean": {
+          "payload": null,
+          "length": "msg_update_add_htlc_base_length",
+          "transport": "msg_update_add_htlc_base_transport",
+          "header": "msg_update_add_htlc_base_header",
+          "frame_prefix": "msg_update_add_htlc_base_frame_prefix"
+        }
       }
     ]
   },

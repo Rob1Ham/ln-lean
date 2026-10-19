@@ -1,15 +1,12 @@
-# Wave 8 integration report
+# Wave 8 / Wave H integration report
 
-**Base:** `50d78ed` (`repair/integrated`)
+**Remote base:** `e3e0aa8` (`[DOCS] record hosted CI verification for OPS-01`)
+**Wave H base:** `50d78ed`
 **Worktree:** `/home/ubuntu/ln-lean-waveh`
 **Branch:** `wave-h/48`
-**Code commits:** `2052425` (43-module base), `79cd090` (H04), `3fdf61b` (H08 restore)
-**Status commit:** the commit containing this report (docs only)
-**Push:** not performed. `git push --dry-run origin wave-h/48:repair/integrated`
-returned `403 Permission to Rob1Ham/ln-lean.git denied to Rob1Ham`; `gh auth
-status` reports the `hosts.yml` token invalid and `/tmp/opencode/gh-token` is
-absent. Push must be non-force to `origin/repair/integrated` when credentials
-are available.
+**Merge commit:** the commit containing this report merges `origin/repair/integrated`
+into the Wave H branch; status commits may advance the tip.
+**Push:** non-force to `origin/repair/integrated`; the remote was not rewritten.
 
 ## Gate
 
@@ -17,17 +14,28 @@ Run with `/tmp/opencode/waveh-gate.sh`; log at `/tmp/opencode/waveh-gate.log`.
 
 | Check | Result |
 |---|---|
-| Full build | **RC 0**, `Build completed successfully (288 jobs)` |
-| Policy checker | **RC 0**, `files=249 obligations=82 sorry_in_proofs=0`, `check: OK` |
-| Selection/root | **RC 0**, 249 Lean files, 247 root imports |
-| Catalog strict | **RC 0**, 48/48 proved, 79 targets, 0 unresolved, 0 proved failures |
-| Conformance | **RC 0**, finite vector/differential suite PASS |
-| Anchors | **RC 0**, `anchors=308 bad=0 unanchored_rows=2` |
-| Vendor | **RC 0**, `OK (119 files)` |
-| Axiom audit | **RC 0**, 206 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Full build | **RC 0**, `Build completed successfully (295 jobs)` |
+| Policy checker | **RC 0**, `files=256 obligations=82 sorry_in_proofs=0`, `check: OK` |
+| Selection/root | **RC 0**, 256 Lean files, 254 root imports |
+| Catalog strict | **RC 0**, 48/48 proved, 100 targets, 0 unresolved, 0 proved failures |
+| Conformance | **RC 0**, 175 Lean references, 13/13 mutation controls, 6 BOLT 2 vectors, live 26 BigSize + 3 TLV + 4 wire |
+| Anchors | **RC 0**, `anchors=309 bad=0 unanchored_rows=2` |
+| Vendor | **RC 0**, `OK (149 files)` from public `btc-lean` `4f5c4f8` |
+| Axiom audit | **RC 0**, 227 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Generated index | 218 proof files, 81 markers, 8228 declarations, 0 `sorry` sites |
 | Exact `sorry` scan | **0 matches** |
 
-## Kept Lean modules (45)
+## What was merged
+
+The remote branch already contained the public-core bump and eight wave-8
+residual lanes (`TxValidTransferTargets`, `HtlcPreimageTargets`,
+`OpenChannelWireTargets`, `AcceptPayloadTargets`,
+`CommitmentConsumerSitesTargets`, `EcdsaBridgeTargets`,
+`ConformanceDiffTargets`, `GossipStoreEpochTargets`). The Wave H branch adds
+**45 independent proof modules** under `LnLean/Proofs/WaveH/`; no remote
+changes were reverted.
+
+### Kept Wave H modules (45)
 
 `H01 H02 H03 H04 H05 H06 H07 H08 H09 H10 H11 H12 H13 H14 H15 H16 H17 H18
 H19 H20 H21 H22 H23 H24 H25 H26 H27 H28 H29 H30 H31 H32 H33 H34 H35 H36 H37
@@ -36,57 +44,47 @@ H38 H39 H40 H41 H42 H43 H44 H45`
 Each module has a report under `agents/reports/wave8/`. H46–H48 are artifact
 lanes and have no Lean module.
 
-## Recovered lanes
+## Merge resolutions
 
-Both lanes that were initially missing or red were re-written by their owners
-and parent-verified before the final commit; no Lean lane is dropped.
+* `LnLean.lean` — regenerated from the merged 256-file tree; 254 root imports.
+* `scripts/check-final.py` — `EXPECTED_LEAN_FILES = 256`.
+* `LnLean/Proofs/PhaseC3/AxiomAudit.lean` — union of the remote wave-8 pins
+  and the 12 Wave H pins; `auditedTheorems.length = 227`.
+* `vendor/btc-lean-core` — provisioned from public `btc-lean` `4f5c4f8` with
+  `scripts/fetch-vendor.sh --from-git --force`; 149-file manifest verified.
+* `LnLean/Proofs/WaveH/H20.lean` — adapted to the remote `HandshakeState`
+  change that removed `DecidableEq`; the concrete witness transitions are now
+  proved by definitional equality instead of `decide`.
+* `docs/` and `agents/swarm/WAVE-8.md` — remote status preserved, with the
+  Wave H 48-lane results appended.
 
-* **H04** — initially absent, then delivered a 1,425-line module. Parent build:
-  **RC 0**, 61 jobs. It reduces `scriptLaneTx`/`txVerdictFull` for the concrete
-  one-input P2WSH transaction at standard flags and proves the delayed,
-  revocation, positive, bad-signature, and CSV-false cases. General
-  full-script/block-flag composition remains open.
-* **H08** — the first parent build was red and the module was removed. The lane
-  then restored a 1,203-line version; parent build: **RC 0**, 49 jobs. It adds
-  the four BOLT 3 witness scripts, exact scriptCode synthesis, preimage sizes,
-  and vendor `bip143MsgL`/`signatureHashBip143Impl` equalities, closing `PR-05`
-  on its recorded scope.
+## Wave H results
 
-## Important corrections and boundaries
-
-* The BOLT 2 type-32 `open_channel` mandatory payload is **319 bytes**, not
-  the wave-7 sketch's 313. H13/H14/H15/H17/H18/H19 agree; `docs/OPEN-ISSUES.md`
-  and `agents/swarm/WAVE-8.md` are corrected.
-* H01 proves the unconditional whole-record equality
-  `txCheckerFor tx nIn (some amount) = realCheckerOf tx nIn amount`. H02's
-  earlier prose saying no whole-record equality was claimed is annotated as
-  superseded.
-* H33 closes `L1-04`: the witness-inclusive weight is `1116 + 172*k`; the
-  `1124 + 172*k` figure is the fee basis and the extra 8 WU is
-  `count_tx_out`, not missing witness bytes.
-* H34 closes `L1-05` on its recorded boundary: C1 is refuted for 71-byte
-  script injectivity, and a domain-separated commitment binds under the
-  retained finite pair admission.
-* H07/H08 close `PR-05` on its recorded scope: the HTLC preimage, the four BOLT
-  3 witness scripts, scriptCode synthesis, and the vendor digest/encoder
-  equalities are all proved.
-* H46's strict vendor check intentionally rejects the `OPS-04` absolute
-  symlink; it is not in CI. The ordinary 119-file vendor digest gate is green.
-
-## Shared-file changes
-
-* `LnLean.lean` — regenerated by `scripts/regen-root.sh`.
-* `scripts/check-final.py` — `EXPECTED_LEAN_FILES = 249`.
-* `LnLean/Proofs/PhaseC3/AxiomAudit.lean` — 12 Wave H headline imports and
-  `#print axioms` pins; `auditedTheorems.length = 206`.
-* `.gitignore` — ignore the `.lake` symlink as well as `.lake/`.
-* `docs/OPEN-ISSUES.md`, `docs/WAVE-STATUS.md`, `docs/FINAL-STATUS.md`, this
-  report, and the Wave H manifest/reports/artifacts.
+* **H01/H04/H06/H30/H31/H32** — unconditional per-input
+  `txCheckerFor (some amount) = realCheckerOf`, concrete one-input P2WSH
+  `scriptLaneTx`/`txVerdictFull` composition, exact `csv < 32768` and
+  `MINIMALDATA` boundaries, and funding/revocation checker instances.
+* **H07/H08/H09/H11/H12/H37** — HTLC BIP 143 preimage/digest equality, four
+  BOLT 3 witness scripts with exact scriptCode synthesis, serialization-domain
+  and framing boundaries; independently confirms `PR-05`.
+* **H13–H22** — **319-byte** BOLT 2 type-32 `open_channel` mandatory payload
+  (correcting the earlier 313-byte sketch), 270-byte `accept_channel`, and the
+  additive stored-accept/PoP contract.
+* **H23–H28** — commitment consumer/view adapters, downstream accounting, and
+  the construction-site coverage-loss counterexample.
+* **H33/H34** — closes `L1-04` (witness weight `1116 + 172*k`, fee basis
+  `1124 + 172*k`, the 8 WU is `count_tx_out`) and `L1-05` (71-byte script
+  injectivity counterexample plus a domain-separated commitment).
+* **H39–H45** — epoch-gossip projection/supersession, concrete
+  schedule/fairness liveness, lossless reduction arithmetic/separations, and
+  conditional reorg preservation.
+* **H46–H48** — vendor artifact verifier, clean-checkout dry run, and release
+  decision support.
 
 ## Scope
 
-Wave 8 is a model/proof integration, not a full Lightning verification or
-release. `Messages.lean` still lacks the type-32 `open_channel` patch; the
-concrete EC positive witness, general block-flag/full-transaction
-`verifyScriptFull` composition, PoP game, computational reductions,
-unconditional liveness, and release packaging remain open.
+This is a model/proof integration, not a full Lightning verification or a
+release. The concrete EC positive witness, transport attribution for
+`open_channel`, registration/proof-of-possession game, arbitrary-preimage and
+wire-only coverage, computational reductions, unconditional network liveness,
+and release packaging remain open. See `docs/OPEN-ISSUES.md`.

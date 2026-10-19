@@ -4,7 +4,8 @@
 **Branch:** `repair/integrated` (from `final/integrated@af6caae`)
 **Toolchain:** `leanprover/lean4:v4.35.0`
 **L1 public reference:** `https://github.com/Rob1Ham/btc-lean` (`main@4f5c4f8`)
-**Vendor L1 snapshot:** `f950806` (read-only; retained for build compatibility)
+**Vendor L1 snapshot:** public `btc-lean` `spec/core` at `4f5c4f8` (149 files;
+  read-only copy; `repair/pubbump` merged)
 
 ## Baseline (done)
 
@@ -262,14 +263,51 @@ Five disjoint lanes extended the model and promoted eight more exact targets.
   retained `L1-02`/`L1-07`, `PR-05`, `L1-03`, and `PR-01` with narrower
   boundaries.
 
-### Wave 8 and beyond
+### Public-core vendor bump — merged
+
+- [x] `V01` — replace the private `f950806` snapshot with the public
+  `btc-lean` `spec/core` at `4f5c4f8`; 149-file real directory, no self-symlink,
+  regenerated `vendor/VENDOR-SHA256`; full 233-job build green on the bump.
+- [x] Parent — merge `repair/pubbump`, pin `scripts/fetch-vendor.sh` to
+  `4f5c4f8`, make CI fall back to `--from-git` instead of skipping the build,
+  and retire the merged branch.
+- [x] `OPS-01` closed with hosted CI run `39175507618` executing the pinned-vendor full build; `OPS-04` closed.
+
+### Proof-wave 8 — residual transfer, wire, registration, EC, and store epochs
+
+Wave 8 launched from `50d78ed`; the lane plan is `agents/swarm/WAVE-8.md` and
+reports go to `agents/reports/swarm8/`.
+
+- [x] `S8-L1-TXVALID` — exact known-amount `txCheckerFor`/`realCheckerOf`
+  transfer, delayed/revocation transfer, missing-amount fail-closed, and
+  `minimalData`/`csv ≥ 32768` policy edges.
+- [x] `S8-PR-HTLCPREIMAGE` — `HtlcWire` preimage byte equality, 143/136-byte
+  scriptCode synthesis, and display-order txid boundary.
+- [x] `S8-L1-OPENCHANNEL-WIRE` — type-32 `Msg.openChannel` constructor,
+  six-key/type/length/identity laws, and end-to-end funding projection.
+- [x] `S8-PR-ACCEPT-PAYLOAD` — `acceptChannel?` storage/provenance and the
+  conditional attribution/negative possession bridge.
+- [x] `S8-CH-CONSUMER-SITES` — proof-layer consumer adapter and compiled site
+  examples; no production `CommitmentTx` consumer.
+- [x] `S8-L1-EC-BRIDGE` — sharp conditional `VendorEcdsaBridge` and exact
+  `verifyImpl` transfer; no unconditional EC claim.
+- [x] `S8-CONF-ENCODINGS` — six BOLT 2 message vectors, 29 `decide` theorems,
+  and 13/13 mutation controls; live message row deferred.
+- [x] `S8-MODEL-STORE-EPOCH` — gossip-store epochs/replacement history over
+  the canonical wrapper, with two divergence witnesses.
+- [x] Parent integration: seven new root imports, seven catalog rows
+  strengthened from 79 to 100 targets, audit extended to 215 theorems, generated
+  indexes/docs refreshed, full gate green, and code commit `9bafdab`.
+
+Wave-8 reports are in `agents/reports/swarm8/`. The proof-wave-8 gate is
+**build 250 jobs, strict catalog 100 targets / 8181 declarations, check.sh
+`files=211 obligations=82 sorry_in_proofs=0`, 215 audited theorems, 306
+anchors, 149 vendor files, and 0 forbidden constructs.** The next candidates
+are listed in `docs/OPEN-ISSUES.md` under “Wave 9 candidates”.
 
 The catalog is no longer the work queue. Open issues are tracked in
-`docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`. Wave 8
-candidates are the `TxValidation.Full` transfer, `HtlcWire` preimage equality,
-`Messages.openChannel`, `AcceptChannel` registration, consumer construction
-sites, a concrete EC bridge, more live encodings, and a gossip store-epoch
-model. Human-gated release decisions remain outside agent lanes.
+`docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`.
+Human-gated release decisions remain outside agent lanes.
 
 ## Commands
 

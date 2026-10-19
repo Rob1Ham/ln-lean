@@ -83,6 +83,13 @@ import LnLean.Proofs.WaveH.H34
 import LnLean.Proofs.WaveH.H39
 import LnLean.Proofs.WaveH.H43
 import LnLean.Proofs.WaveH.H45
+import LnLean.Proofs.Bitcoin.EcdsaBridgeTargets
+import LnLean.Proofs.Bitcoin.TxValidTransferTargets
+import LnLean.Proofs.Protocol.OpenChannelWireTargets
+import LnLean.Proofs.Crypto.AcceptPayloadTargets
+import LnLean.Proofs.Channel.HtlcPreimageTargets
+import LnLean.Proofs.Channel.CommitmentConsumerSitesTargets
+import LnLean.Proofs.Routing.GossipStoreEpochTargets
 
 set_option autoImplicit false
 
@@ -336,6 +343,27 @@ set_option autoImplicit false
 #print axioms LnLean.Proofs.Crypto.KeyModelTargets.key_generation_not_key_attribution
 #print axioms LnLean.Proofs.Crypto.KeyModelTargets.attribution_contract_nonvacuous
 #print axioms LnLean.Proofs.Crypto.KeyModelTargets.fundingSigningLaw_sign_injective
+#print axioms LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.fundingSignedValid_iff_vendor
+#print axioms LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.funding_sighash_interpreters_agree_vendor
+#print axioms LnLean.Proofs.Bitcoin.TxValidTransferTargets.txCheckerFor_some_eq_realCheckerOf
+#print axioms LnLean.Proofs.Bitcoin.TxValidTransferTargets.toLocal_delayed_txCheckerFor_refinement
+#print axioms LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.model_verify_eq_realChecker_seam
+#print axioms LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.toLocal_revocation_interpreters_agree_vendor
+#print axioms LnLean.Proofs.Protocol.OpenChannelWireTargets.openChannelWire_end_to_end
+#print axioms LnLean.Protocol.OpenChannelWire.toFundingParams_hash_linked
+#print axioms LnLean.Proofs.Protocol.OpenChannelWireTargets.acceptKey_bound_before_fundingCreated_wire
+#print axioms LnLean.Proofs.Crypto.AcceptPayloadTargets.stored_accept_payload_attribution
+#print axioms LnLean.Proofs.Crypto.AcceptPayloadTargets.acceptPayload_not_proof_of_possession
+#print axioms LnLean.Proofs.Channel.HtlcPreimageTargets.htlcBip143Preimage_eq_bip143MsgL
+#print axioms LnLean.Proofs.Channel.HtlcPreimageTargets.HtlcSpend.successPreimage_eq_bip143MsgL
+#print axioms LnLean.Proofs.Channel.HtlcPreimageTargets.HtlcSpend.timeoutPreimage_eq_bip143MsgL
+#print axioms LnLean.Proofs.Channel.HtlcPreimageTargets.htlc_preimage_target_summary
+#print axioms LnLean.Proofs.Channel.CommitmentConsumerSites.commitment_signed_full_covers_migrated
+#print axioms LnLean.Proofs.Channel.CommitmentConsumerSites.migratedConsumerOutputs_eq_viewOfState_outputs
+#print axioms LnLean.Proofs.Channel.CommitmentConsumerSites.viewOfState_outputs_perm_netConsumerOutputs
+#print axioms LnLean.Proofs.Routing.GossipStoreEpochTargets.epochFold_gossip_eq_canonicalStoreView_rawFold
+#print axioms LnLean.Routing.replacedUpdates_timestamp_lt
+#print axioms LnLean.Proofs.Routing.GossipStoreEpochTargets.StoreEpoch.epochFold_store_eq_foldl
 
 /-! ## 21. Wave 8 headline targets -/
 
@@ -566,7 +594,28 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Proofs.WaveH.H39.epochStep_semantics,
     `LnLean.Proofs.WaveH.H43.eventual_delivery_of_fair_attempts,
     `LnLean.Proofs.WaveH.H45.channel_reorg_preserves,
+    `LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.fundingSignedValid_iff_vendor,
+    `LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.funding_sighash_interpreters_agree_vendor,
+    `LnLean.Proofs.Bitcoin.TxValidTransferTargets.txCheckerFor_some_eq_realCheckerOf,
+    `LnLean.Proofs.Bitcoin.TxValidTransferTargets.toLocal_delayed_txCheckerFor_refinement,
+    `LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.model_verify_eq_realChecker_seam,
+    `LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.toLocal_revocation_interpreters_agree_vendor,
+    `LnLean.Proofs.Protocol.OpenChannelWireTargets.openChannelWire_end_to_end,
+    `LnLean.Protocol.OpenChannelWire.toFundingParams_hash_linked,
+    `LnLean.Proofs.Protocol.OpenChannelWireTargets.acceptKey_bound_before_fundingCreated_wire,
+    `LnLean.Proofs.Crypto.AcceptPayloadTargets.stored_accept_payload_attribution,
+    `LnLean.Proofs.Crypto.AcceptPayloadTargets.acceptPayload_not_proof_of_possession,
+    `LnLean.Proofs.Channel.HtlcPreimageTargets.htlcBip143Preimage_eq_bip143MsgL,
+    `LnLean.Proofs.Channel.HtlcPreimageTargets.HtlcSpend.successPreimage_eq_bip143MsgL,
+    `LnLean.Proofs.Channel.HtlcPreimageTargets.HtlcSpend.timeoutPreimage_eq_bip143MsgL,
+    `LnLean.Proofs.Channel.HtlcPreimageTargets.htlc_preimage_target_summary,
+    `LnLean.Proofs.Channel.CommitmentConsumerSites.commitment_signed_full_covers_migrated,
+    `LnLean.Proofs.Channel.CommitmentConsumerSites.migratedConsumerOutputs_eq_viewOfState_outputs,
+    `LnLean.Proofs.Channel.CommitmentConsumerSites.viewOfState_outputs_perm_netConsumerOutputs,
+    `LnLean.Proofs.Routing.GossipStoreEpochTargets.epochFold_gossip_eq_canonicalStoreView_rawFold,
+    `LnLean.Routing.replacedUpdates_timestamp_lt,
+    `LnLean.Proofs.Routing.GossipStoreEpochTargets.StoreEpoch.epochFold_store_eq_foldl,
     ]
 
 set_option maxRecDepth 6000 in
-theorem auditedTheorems_length : auditedTheorems.length = 206 := rfl
+theorem auditedTheorems_length : auditedTheorems.length = 227 := rfl

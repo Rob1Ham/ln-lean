@@ -6,9 +6,9 @@ kept in sync with it; every id below appears in `docs/TRACEABILITY.md` and in
 the Lean catalog, and vice versa.
 
 The proof-wave lanes added declarations and replaced `statement-only` rows with
-proved theorems. At the proof-wave 7 gate, all 48 rows are `proved` (the target
+proved theorems. At the proof-wave 8 gate, all 48 rows are `proved` (the target
 theorem exists in the tree); 0 rows remain `statement-only`, and the catalog
-has 79 resolved targets. A `proved` row is not a claim that the full
+has 100 resolved targets. A `proved` row is not a claim that the full
 English property is proved by the cited theorem alone when the row names
 several targets, or when the theorem keeps cryptographic/model hypotheses
 explicit; the targets listed are the declarations that together establish the
@@ -34,10 +34,10 @@ per-lane reports under `agents/reports/`.
 
 | Id | Domain | Claim | Lean target (module/declaration) | Status |
 |---|---|---|---|---|
-| `LN-L1-001` | L1 / foundations | The funding output is P2WSH over the constructed 2-of-2 funding witness script; the handshake construction derives the witness-script hash link, the vendored interpreter executes the funding script, and the BIP 143 witness-v0 digest/locktime context is constructed and consumed by the vendor checker under explicit signature laws; the joint open/accept construction proves the same hash link. | `LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo; LnLean.Proofs.Bitcoin.FundingLinkTargets.fundingScriptPubKey_eq_p2wsh_ordered; LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.funding_interpreters_agree; LnLean.Proofs.Bitcoin.SighashBridgeTargets.funding_sighash_interpreters_agree; LnLean.Proofs.Bitcoin.FundingAuthTargets.openAccept_hash_linked` | proved |
+| `LN-L1-001` | L1 / foundations | The funding output is P2WSH over the constructed 2-of-2 funding witness script; the handshake construction derives the witness-script hash link, the vendored interpreter executes the funding script, and the BIP 143 witness-v0 digest/locktime context is constructed and consumed by the vendor checker under explicit signature laws; the joint open/accept construction proves the same hash link. | `LnLean.Proofs.Bitcoin.FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo; LnLean.Proofs.Bitcoin.FundingLinkTargets.fundingScriptPubKey_eq_p2wsh_ordered; LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.funding_interpreters_agree; LnLean.Proofs.Bitcoin.SighashBridgeTargets.funding_sighash_interpreters_agree; LnLean.Proofs.Bitcoin.FundingAuthTargets.openAccept_hash_linked; LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.fundingSignedValid_iff_vendor; LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.funding_sighash_interpreters_agree_vendor` | proved |
 | `LN-L1-002` | L1 / foundations | If the seam MoneyRange predicate holds for a funding output, the btc-lean L1 MoneyRange predicate holds. | `LnLean.Bitcoin.fundingOutput_moneyRange` | proved |
 | `LN-L1-003` | L1 / foundations | Under a common chain tip and the adversary's bounded reorg-depth budget, channel safety is preserved; deep reorgs are a separate failure mode. | `LnLean.Proofs.Security.ReorgTargets.reorg_preserves_channel_safety; LnLean.Proofs.Security.ReorgTargets.deep_reorg_separate_failure_mode` | proved |
-| `LN-L1-004` | L1 / foundations | The full BOLT 3 to_local witness script carries the CSV contest delay and the revocation key, the commitment output commits to both, and both the delayed and revocation branches execute through the vendored interpreter with a constructed BIP 143 digest/locktime context; the decoded BIP 68/112 sequence context is characterized exactly and transferred to the real checker, while EC/key-separation/signature hypotheses remain. | `LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.commitmentOutputs_toLocal_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.toLocal_delayed_interpreters_agree; LnLean.Proofs.Bitcoin.InterpreterRevocationTargets.toLocal_revocation_interpreters_agree; LnLean.Proofs.Bitcoin.SighashBridgeTargets.toLocal_sighash_interpreters_agree; LnLean.Proofs.Bitcoin.SequenceContextTargets.toLocal_delayed_realChecker_refinement` | proved |
+| `LN-L1-004` | L1 / foundations | The full BOLT 3 to_local witness script carries the CSV contest delay and the revocation key, the commitment output commits to both, and both the delayed and revocation branches execute through the vendored interpreter with a constructed BIP 143 digest/locktime context; the decoded BIP 68/112 sequence context is characterized exactly and transferred to the real checker, while EC/key-separation/signature hypotheses remain. | `LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.toLocalScriptFull_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.ToLocalScriptTargets.commitmentOutputs_toLocal_commits_delay_and_revocationKey; LnLean.Proofs.Bitcoin.InterpreterBridgeTargets.toLocal_delayed_interpreters_agree; LnLean.Proofs.Bitcoin.InterpreterRevocationTargets.toLocal_revocation_interpreters_agree; LnLean.Proofs.Bitcoin.SighashBridgeTargets.toLocal_sighash_interpreters_agree; LnLean.Proofs.Bitcoin.SequenceContextTargets.toLocal_delayed_realChecker_refinement; LnLean.Proofs.Bitcoin.TxValidTransferTargets.txCheckerFor_some_eq_realCheckerOf; LnLean.Proofs.Bitcoin.TxValidTransferTargets.toLocal_delayed_txCheckerFor_refinement; LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.model_verify_eq_realChecker_seam; LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.toLocal_revocation_interpreters_agree_vendor` | proved |
 | `LN-L1-005` | L1 / foundations | An anchor output is worth exactly 330 satoshis. | `LnLean.Bitcoin.anchorValue_eq` | proved |
 | `LN-L1-006` | L1 / foundations | The commitment base weight is the BOLT 3 fee-basis constant 724 before HTLC outputs, 1124 with anchors, plus 172 per untrimmed HTLC, with the anchor serialization gap explicit. | `LnLean.Proofs.Bitcoin.commitmentBaseWeight_model_target` | proved |
 | `LN-CR-001` | Crypto / wire | Constructed and opened payment hashes are SHA-256 outputs; under assumption C1 (collision resistance on the 32-byte preimage domain), a payment hash determines at most one valid preimage. | `LnLean.Crypto.Hash.paymentHash_sha256_contract` | proved |
@@ -48,7 +48,7 @@ per-lane reports under `agents/reports/`.
 | `LN-CR-006` | Crypto / wire | A Lightning message frame's declared length matches the payload actually consumed. | `LnLean.Wire.Message.decode_length` | proved |
 | `LN-CH-001` | Channel / commitment | Every ledger transition preserves funding = local + remote + in-flight + fee. | `LnLean.Security.Ledger.step_conserves` | proved |
 | `LN-CH-002` | Channel / commitment | No commitment output has a negative value and the output sum stays within the funding value. | `LnLean.Channel.Commitment.outputs_nonnegative` | proved |
-| `LN-CH-003` | Channel / commitment | In the rich commitment-output model, outputs are sorted by value, script, and CLTV, and dust HTLCs are trimmed; the five-field gross/net record layer proves the canonical commitment refinement, migration conservation, and effective fee at arbitrary dust, while the legacy output function remains refuted by D12; the consumer migration preserves the legacy list only in the BOLT 3 survivor normal form, and the no-trim counterexample is retained. | `LnLean.Channel.Commitment.output_ordering; LnLean.Channel.CommitmentTx.migratedFrom_outputsNet_perm_commitmentOutputs; LnLean.Proofs.Channel.CommitmentTypes.CommitmentTx.migrateNet_canonicalOutputs_eq_commitmentOutputs; LnLean.Proofs.Channel.CommitmentConsumer.migratedConsumerOutputs_eq_consumerOutputs_of_migrated` | proved |
+| `LN-CH-003` | Channel / commitment | In the rich commitment-output model, outputs are sorted by value, script, and CLTV, and dust HTLCs are trimmed; the five-field gross/net record layer proves the canonical commitment refinement, migration conservation, and effective fee at arbitrary dust, while the legacy output function remains refuted by D12; the consumer migration preserves the legacy list only in the BOLT 3 survivor normal form, and the no-trim counterexample is retained. | `LnLean.Channel.Commitment.output_ordering; LnLean.Channel.CommitmentTx.migratedFrom_outputsNet_perm_commitmentOutputs; LnLean.Proofs.Channel.CommitmentTypes.CommitmentTx.migrateNet_canonicalOutputs_eq_commitmentOutputs; LnLean.Proofs.Channel.CommitmentConsumer.migratedConsumerOutputs_eq_consumerOutputs_of_migrated; LnLean.Proofs.Channel.CommitmentConsumerSites.commitment_signed_full_covers_migrated; LnLean.Proofs.Channel.CommitmentConsumerSites.migratedConsumerOutputs_eq_viewOfState_outputs; LnLean.Proofs.Channel.CommitmentConsumerSites.viewOfState_outputs_perm_netConsumerOutputs` | proved |
 | `LN-CH-004` | Channel / commitment | A committed update never decreases the commitment number. | `LnLean.Security.advance_monotone` | proved |
 | `LN-CH-005` | Channel / commitment | A commitment is rejected before signing exactly when its feerate is insufficient for its weight, equivalently when no checked commitment_signed step exists in the normal phase. | `LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_insufficient; LnLean.Channel.Fee.commitmentSigningGate_rejected_iff_no_checkedSigning` | proved |
 | `LN-CH-006` | Channel / commitment | HTLC exposure and channel reserve bounds are respected by admissible updates. | `LnLean.Channel.Reserve.bounds` | proved |
@@ -58,14 +58,14 @@ per-lane reports under `agents/reports/`.
 | `LN-HT-004` | HTLC / revocation | An HTLC id is unique among the live HTLCs of one sender; a direction-tagged id is globally unique, while the untagged global claim needs explicit cross-direction disjointness. | `LnLean.Channel.HTLC.dir_id_unique; LnLean.Channel.HTLC.id_unique_of_reachable_cross; LnLean.Channel.HTLC.tagged_id_unique_of_reachable; LnLean.Channel.HTLC.tagged_ids_nodup_of_reachable; LnLean.Channel.HTLC.cross_direction_duplicate_tagged` | proved |
 | `LN-HT-005` | HTLC / revocation | A revoked commitment is strictly older than the current commitment and cannot be the current one. | `LnLean.Security.revoked_commitment_is_old` | proved |
 | `LN-HT-006` | HTLC / revocation | A punishable breach has a penalty transaction that spends both commitment outputs. | `LnLean.Security.breach_penalty_spends_both` | proved |
-| `LN-PR-001` | Protocol / peer | open_channel accepts a funding amount only above the dust and minimum-channel bounds. | `LnLean.Protocol.Handshake.open_bounds` | proved |
+| `LN-PR-001` | Protocol / peer | open_channel accepts a funding amount only above the dust and minimum-channel bounds. | `LnLean.Protocol.Handshake.open_bounds; LnLean.Proofs.Protocol.OpenChannelWireTargets.openChannelWire_end_to_end; LnLean.Protocol.OpenChannelWire.toFundingParams_hash_linked; LnLean.Proofs.Protocol.OpenChannelWireTargets.acceptKey_bound_before_fundingCreated_wire` | proved |
 | `LN-PR-002` | Protocol / peer | The channel enters normal operation only after both channel_ready messages. | `LnLean.Protocol.Handshake.channel_ready_gate` | proved |
-| `LN-PR-003` | Protocol / peer | Under an explicit signing law and key-binding hypothesis, funding_signed carries a valid signature over the funding transaction and attributes it to the funding key; one joint contract also covers commitment_signed, while C3 alone gives neither; a secret-key model proves attribution under the unchanged KeyBinding and mechanizes why key generation alone does not attribute. | `LnLean.Protocol.Handshake.funding_signed_signing_contract; LnLean.Proofs.Channel.SighashTargets.funding_and_commitment_signing_contract; LnLean.Proofs.Crypto.KeyModelTargets.funding_signature_attribution` | proved |
-| `LN-PR-004` | Protocol / peer | Under a BOLT 3-shaped serializer with an exact transaction wire layout, an explicit signing law, and the commitment value equations, commitment_signed covers exactly the current HTLC set and fee and its digest/signatures are derived under C3; digest binding implies view binding only under explicit collision-free/serialization hypotheses, and the wire record alone determines neither; the commitment-wire preimage is byte-equal to the vendored BIP 143 encoder, with the HTLC instantiation still open. | `LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact; LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary; LnLean.Proofs.Channel.SighashTargets.SighashProduces.coverage; LnLean.Proofs.Channel.SighashViewBindingTargets.commitmentSignature_binds_viewOfState; LnLean.Proofs.Channel.SighashTargets.CommitmentWire.txBytes_parse; LnLean.Proofs.Channel.SighashTargets.Bip143Preimage.preimageBytes_eq_bip143MsgL_ofTx; LnLean.Proofs.Channel.SighashTargets.commitmentBip143Preimage_eq_bip143MsgL` | proved |
+| `LN-PR-003` | Protocol / peer | Under an explicit signing law and key-binding hypothesis, funding_signed carries a valid signature over the funding transaction and attributes it to the funding key; one joint contract also covers commitment_signed, while C3 alone gives neither; a secret-key model proves attribution under the unchanged KeyBinding and mechanizes why key generation alone does not attribute. | `LnLean.Protocol.Handshake.funding_signed_signing_contract; LnLean.Proofs.Channel.SighashTargets.funding_and_commitment_signing_contract; LnLean.Proofs.Crypto.KeyModelTargets.funding_signature_attribution; LnLean.Proofs.Crypto.AcceptPayloadTargets.stored_accept_payload_attribution; LnLean.Proofs.Crypto.AcceptPayloadTargets.acceptPayload_not_proof_of_possession` | proved |
+| `LN-PR-004` | Protocol / peer | Under a BOLT 3-shaped serializer with an exact transaction wire layout, an explicit signing law, and the commitment value equations, commitment_signed covers exactly the current HTLC set and fee and its digest/signatures are derived under C3; digest binding implies view binding only under explicit collision-free/serialization hypotheses, and the wire record alone determines neither; the commitment-wire preimage is byte-equal to the vendored BIP 143 encoder, with the HTLC instantiation still open. | `LnLean.Proofs.ProtocolWireTargets.commitment_signed_full_covers_exact; LnLean.Proofs.ProtocolWireTargets.protocol_wire_summary; LnLean.Proofs.Channel.SighashTargets.SighashProduces.coverage; LnLean.Proofs.Channel.SighashViewBindingTargets.commitmentSignature_binds_viewOfState; LnLean.Proofs.Channel.SighashTargets.CommitmentWire.txBytes_parse; LnLean.Proofs.Channel.SighashTargets.Bip143Preimage.preimageBytes_eq_bip143MsgL_ofTx; LnLean.Proofs.Channel.SighashTargets.commitmentBip143Preimage_eq_bip143MsgL; LnLean.Proofs.Channel.HtlcPreimageTargets.htlcBip143Preimage_eq_bip143MsgL; LnLean.Proofs.Channel.HtlcPreimageTargets.HtlcSpend.successPreimage_eq_bip143MsgL; LnLean.Proofs.Channel.HtlcPreimageTargets.HtlcSpend.timeoutPreimage_eq_bip143MsgL; LnLean.Proofs.Channel.HtlcPreimageTargets.htlc_preimage_target_summary` | proved |
 | `LN-PR-005` | Protocol / peer | channel_reestablish retransmits unacknowledged updates without rolling state back. | `LnLean.Protocol.Peer.reestablish_no_rollback` | proved |
 | `LN-PR-006` | Protocol / peer | Negotiated channel features are the intersection of both peers' supported features. | `LnLean.Protocol.Handshake.feature_intersection` | proved |
 | `LN-RT-001` | Routing / onion | A well-formed route is non-empty, connected end-to-end, and every hop has enough capacity. | `LnLean.Security.Route.wellFormed_connected; LnLean.Security.Route.wellFormed_capacity; LnLean.Security.Route.wellFormed_nonempty` | proved |
-| `LN-RT-002` | Routing / onion | A newer channel_update replaces an older one only if its timestamp is greater. | `LnLean.Routing.Gossip.update_monotone` | proved |
+| `LN-RT-002` | Routing / onion | A newer channel_update replaces an older one only if its timestamp is greater. | `LnLean.Routing.Gossip.update_monotone; LnLean.Proofs.Routing.GossipStoreEpochTargets.epochFold_gossip_eq_canonicalStoreView_rawFold; LnLean.Routing.replacedUpdates_timestamp_lt; LnLean.Proofs.Routing.GossipStoreEpochTargets.StoreEpoch.epochFold_store_eq_foldl` | proved |
 | `LN-RT-003` | Routing / onion | Peeling one onion layer exposes the next hop or a terminal payload, never both. | `LnLean.Routing.Onion.peel_deterministic` | proved |
 | `LN-RT-004` | Routing / onion | An onion layer with an invalid HMAC is rejected rather than forwarded. | `LnLean.Routing.Onion.hmac_sound` | proved |
 | `LN-RT-005` | Routing / onion | The CLTV expiry at each hop increases by at least that hop's cltv_expiry_delta. | `LnLean.Routing.Route.cltv_accumulates` | proved |
@@ -171,3 +171,47 @@ targets; the following are the significant caveats:
 * `ConformanceTargets.lean` proves 86 vector expectations for BigSize/TLV. The
   suite is vector conformance, not a differential implementation test; two TLV
   value/unknown-type cases are declared model gaps.
+
+
+### Proof-wave 8 transfer and registration notes
+
+Proof-wave 8 added seven proof modules and strengthened seven existing catalog
+rows from 79 to **100 resolved targets**. The 48-row count is unchanged; the
+new targets are evidence attached to existing rows.
+
+* `LN-L1-001` adds the concrete vendor-ECDSA bridge targets
+  `EcdsaBridgeTargets.fundingSignedValid_iff_vendor` and
+  `funding_sighash_interpreters_agree_vendor`. The bridge is the exact
+  conditional `VendorEcdsaBridge` transfer; it does not make `EcdsaVerify`
+  unconstrained or prove EUF-CMA.
+* `LN-L1-004` adds `TxValidTransferTargets.txCheckerFor_some_eq_realCheckerOf`
+  and the delayed-branch transfer, plus the revocation vendor bridge. The
+  transfer is exact for a **known** spent amount; the missing-amount case is
+  mechanized as fail-closed, and `csv ≥ 32768`/`minimalData` are exact
+  decode/verdict boundaries, not unconditional consensus rules.
+* `LN-PR-001` adds the type-32 `open_channel` wire constructor, its projection
+  to `Handshake.OpenChannel`, the funding construction, and end-to-end
+  `FundingPhase` reachability. Transport attribution remains an explicit
+  boundary.
+* `LN-PR-003` adds `stored_accept_payload_attribution` and
+  `acceptPayload_not_proof_of_possession`. The received `accept_channel`
+  payload is stored with provenance; attribution is still conditional on
+  `KeyBinding`, and storage is not a proof of possession.
+* `LN-PR-004` adds the exact `HtlcWire` BIP 143 byte equality, the
+  HTLC-success/timeout scriptCode synthesis, 300/293-byte preimage sizes, and
+  the packaged `htlc_preimage_target_summary`. Display-order txid conversion and
+  the explicit 20-byte hash-image/amount context remain documented.
+* `LN-CH-003` adds the proof-layer consumer adapter:
+  `commitment_signed_full_covers_migrated`,
+  `migratedConsumerOutputs_eq_viewOfState_outputs`, and the sorted net
+  permutation. There is still no production `CommitmentTx` consumer; the
+  adapter is the compiled bridge.
+* `LN-RT-002` adds the epoch/replacement-history layer,
+  `epochFold_gossip_eq_canonicalStoreView_rawFold`, and
+  `StoreEpoch.epochFold_store_eq_foldl`. The two divergence witnesses show both
+  admission hypotheses are necessary; node-announcement canonicalisation
+  remains tracked separately.
+
+The wave-8 conformance lane also added six BOLT 2 payload/field vectors, 29
+`decide` theorems, and 13/13 mutation controls; the live message row remains
+deferred and is tracked under `CONF-01`.

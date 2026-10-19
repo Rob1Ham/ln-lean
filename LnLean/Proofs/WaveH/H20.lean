@@ -481,7 +481,7 @@ theorem witness_sendInit :
   show lift HandshakeStateExt.initial HandshakeStateExt.initial.acceptReceived?
       (handshakeStep HandshakeStateExt.initial.base .sendInit) = some witnessAfterSendInit
   rw [show handshakeStep HandshakeStateExt.initial.base .sendInit =
-        some witnessAfterSendInit.base from by decide]
+        some witnessAfterSendInit.base from by rfl]
   rfl
 
 theorem witness_recvInit :
@@ -489,7 +489,7 @@ theorem witness_recvInit :
   show lift witnessAfterSendInit witnessAfterSendInit.acceptReceived?
       (handshakeStep witnessAfterSendInit.base .recvInit) = some witnessAfterInit
   rw [show handshakeStep witnessAfterSendInit.base .recvInit =
-        some witnessAfterInit.base from by decide]
+        some witnessAfterInit.base from by rfl]
   rfl
 
 theorem witness_recvAccept :
@@ -497,7 +497,7 @@ theorem witness_recvAccept :
   show lift witnessAfterInit (some witnessAcceptChannel)
       (handshakeStep witnessAfterInit.base .recvAcceptChannel) = some witnessAfterAccept
   rw [show handshakeStep witnessAfterInit.base .recvAcceptChannel =
-        some witnessAfterAccept.base from by decide]
+        some witnessAfterAccept.base from by rfl]
   rfl
 
 /-- **The extension is non-vacuous.**  A concrete reachable state stores the

@@ -27,22 +27,34 @@ git-excluded symlink to it (never commit the symlink).
 
 ## Vendor snapshot (build input)
 
-`vendor/btc-lean-core` remains the read-only snapshot used by the current
-build: commit `f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb` (source branch
-`wallet-peer`). **That commit is not present in public `btc-lean` history**:
-`git -C /home/ubuntu/btc-lean-public cat-file -e f950806...` fails, and the
-clone holds no object for it. The snapshot is a separate lineage, not an
-ancestor of public `main`.
+`vendor/btc-lean-core` is a byte-identical copy of the public `spec/core` at
+`4f5c4f858fb9ca0743042644453cfa92d30dd271` (public `main`, tag
+`data-2026.10.17`), taken from the clean local clone on 2026-10-18. It is a
+real directory copy, not a symlink, and the public clone is not modified.
 
+* Scope: `spec/core` only (`spec/proofs` is not copied).
+* Size: 149 files, 146 `.lean`; source files mode `0444`.
 * Imported by `lakefile.lean` as the path dependency `«core»`.
-* Integrity: `vendor/VENDOR-SHA256` (119 files); check with
+* Integrity: `vendor/VENDOR-SHA256` (149 files); check with
   `./scripts/verify-vendor.sh` or `./scripts/check-public-reference.sh`.
+* Equivalence: `diff -r -x .lake vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core`
+  is empty (only the `.lake/` build cache is excluded).
 * Never edit; see `docs/L1-PIN.md`.
+
+Historical note: before this bump the build input was the `wallet-peer`
+snapshot `f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb` (119 manifest files),
+which is **not present in public `btc-lean` history** (`git cat-file -e`
+fails; the clone holds no object for it). It was a separate lineage, not an
+ancestor of public `main`, and is retired on this branch. `vendor/` is
+gitignored, so the payload is not committed; the manifest and this file are
+the tracked record.
 
 ## Bump policy
 
-A vendor bump is a separate, deliberate change outside any repair lane: take
-the chosen public commit's `spec/core`, refresh `vendor/VENDOR-SHA256`, run a
-full `lake build`, re-run `scripts/verify-anchors.py` and `scripts/check.sh`,
-and review the vendored line anchors. It is **not** part of the L01 public
-reference repair, and the public clone must never become a build dependency.
+A vendor bump is a separate, deliberate change: take the chosen public
+commit's `spec/core` as a **copy**, refresh `vendor/VENDOR-SHA256`, run a full
+`lake build`, re-run `scripts/verify-anchors.py` and `scripts/check.sh`, and
+review the vendored line anchors. The public clone must never become a build
+dependency: point the Lake path dependency at the copy under `vendor/`, not at
+`/home/ubuntu/btc-lean-public`. The bump executed in lane `V01` on branch
+`repair/pubbump` is recorded in `docs/L1-PIN.md` and `agents/reports/V01.md`.

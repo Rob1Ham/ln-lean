@@ -7,11 +7,11 @@ tag name, a merge strategy, or a tag signing method.
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Lane base:** `3180581` (wave 7 launch; original checklist lane was
-`47189fe`)
-**Snapshot used for the original lane checks:** `f2123ef`; waves 4–7 later
-added twenty-eight Lean modules and new gate commands. The current tree is
-**204 Lean files / 202 root imports / 233 build jobs / 79 catalog targets**;
+**Lane base:** `50d78ed` (wave 8 launch; wave 7 launched from `3180581`;
+original checklist lane was `47189fe`)
+**Snapshot used for the original lane checks:** `f2123ef`; waves 4–8 later
+added thirty-five Lean modules and new gate commands. The current tree is
+**211 Lean files / 209 root imports / 250 build jobs / 100 catalog targets**;
 re-run every gate row before tagging.
 **Target release type:** a **model/proof-tree** release, not an implementation
 release and not a complete verification of Lightning.
@@ -29,21 +29,21 @@ Evidence labels used below:
 
 | Item | State | Evidence |
 |---|---|---|
-| Branch tip | `b48d041` proof-wave 7 integration (status commits may advance) | `git rev-parse HEAD` |
+| Branch tip | `9bafdab` proof-wave 8 code integration (status commits may advance) | `git rev-parse HEAD` |
 | `origin/main` | `b891a59`; **71 commits behind** `HEAD`; `main` is an ancestor of `HEAD` | `git rev-list --count origin/main..HEAD` = 71; `git merge-base --is-ancestor origin/main HEAD` |
 | Release tags | none | `git tag -l` empty; GitHub tags API empty |
 | GitHub releases | none | GitHub releases API empty |
 | `LICENSE` | **none** at repository root | `find` / `git ls-files` |
 | Project version | **not declared** in `lakefile.lean` | `lake-manifest.json` `"version": "1.3.0"` is the Lake manifest schema version, not this project's version |
-| Vendor snapshot | 119 files, checksums OK locally; **gitignored and not tracked** | `./scripts/verify-vendor.sh`; `git check-ignore vendor/btc-lean-core/lakefile.lean` |
-| Vendor provenance | `vendor/btc-lean-core` at `f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb`, **not present in public `btc-lean` history** | `refs/PINNED.md` |
-| Catalog | 48 rows, 48 `proved`, 0 `statementOnly`, 0 unresolved, 0 proved failures, 79 targets | `python3 scripts/check-catalog.py --audit` — **Verified** |
-| Source policy check | `files=204 obligations=82 sorry_in_proofs=0` | `./scripts/check.sh` — **Verified** |
-| File/import check | 204 Lean files, 202 root imports, D=33 E=15 F=15 | `python3 scripts/check-final.py` — **Verified** |
-| Vendor integrity | `OK (119 files)` | `./scripts/verify-vendor.sh` — **Verified** |
+| Vendor snapshot | 149 files, checksums OK locally; **gitignored and not tracked** | `./scripts/verify-vendor.sh`; `git check-ignore vendor/btc-lean-core/lakefile.lean` |
+| Vendor provenance | `vendor/btc-lean-core` is a copy of public `btc-lean` `spec/core` at `4f5c4f858fb9ca0743042644453cfa92d30dd271` (MIT repository) | `refs/PINNED.md`, `docs/L1-PIN.md` |
+| Catalog | 48 rows, 48 `proved`, 0 `statementOnly`, 0 unresolved, 0 proved failures, 100 targets | `python3 scripts/check-catalog.py --audit` — **Verified** |
+| Source policy check | `files=211 obligations=82 sorry_in_proofs=0` | `./scripts/check.sh` — **Verified** |
+| File/import check | 211 Lean files, 209 root imports, D=33 E=15 F=15 | `python3 scripts/check-final.py` — **Verified** |
+| Vendor integrity | `OK (149 files)` | `./scripts/verify-vendor.sh` — **Verified** |
 | Anchors | 306 anchors, 0 bad, 2 unanchored rows | `python3 scripts/verify-anchors.py` — **Verified** |
-| Full build | **not run in this release lane**. Historical claim: 233 jobs, RC 0 at the wave-7 gate. | See build gate below |
-| Public CI | 3 runs, all `success`; latest run #3 at `f2123ef`. The build job's `lake build` and `verify-vendor.sh` steps were **skipped**. | GitHub Actions API, run `39138200828` |
+| Full build | **Verified at the wave-8 code gate: 250 jobs, RC 0.** | See build gate below |
+| Public CI | Build provisioning now falls back to exact public commit `4f5c4f8`; hosted run `39175507618` completed the source gates and the pinned-vendor `lake build`. | `.github/workflows/ci.yml`; GitHub Actions run `39175507618` |
 
 The working tree at the snapshot was clean except for the pre-existing untracked
 `agents/status/REPAIR.status`. Other Wave-4 lanes may add unrelated changes in
@@ -69,8 +69,8 @@ unconditional. The scope caveats in `docs/THEOREM-INDEX.md`,
 - [ ] Require: 48 rows, 48 `proved`, 0 `statementOnly`, 0 unresolved,
       0 proved failures, 0 duplicate ids, 0 promotion candidates.
       **Verified at the wave-7 gate:** `rows=48 proved=48 statementOnly=0
-      targets=79 unresolved=0 proved_failures=0 duplicate_ids=0 candidates=0
-      declarations=7707`. If integration deliberately changes the catalog,
+      targets=100 unresolved=0 proved_failures=0 duplicate_ids=0 candidates=0
+      declarations=8181`. If integration deliberately changes the catalog,
       record the new expected counts and why; do not silently accept a
       different number.
 - [ ] Reconcile every catalog target with `docs/THEOREM-INDEX.md` and
@@ -87,7 +87,8 @@ unconditional. The scope caveats in `docs/THEOREM-INDEX.md`,
 ## 2. Build gates
 
 The full build is the only gate that compiles every module. Source checks are
-not a substitute. **This lane did not run `lake build`.**
+not a substitute. The parent wave-8 gate ran `lake build`; the historical
+release-lane snapshot did not.
 
 - [ ] Toolchain: `leanprover/lean4:v4.35.0` from `lean-toolchain`; `lake
       --version` must report Lean 4.35.0.
@@ -98,17 +99,15 @@ not a substitute. **This lane did not run `lake build`.**
   LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build
   ```
 
-- [ ] Require RC 0 and record the exact job count from the output. The docs
-      claim `Build completed successfully (233 jobs)`; treat that as
-      **historical** until the same command passes at the tag commit.
+- [ ] Require RC 0 and record the exact job count from the output. The wave-8 code gate
+      reports `Build completed successfully (250 jobs)`; rerun at the tag commit.
 - [ ] Axiom audit:
 
   ```sh
   lake build LnLean.Proofs.PhaseC3.AxiomAudit
   ```
 
-  Require RC 0 and only `propext`, `Quot.sound`, `Classical.choice`. Historical
-  count: 194 audited theorems.
+  Require RC 0 and only `propext`, `Quot.sound`, `Classical.choice`. Wave-8 count: 215 audited theorems.
 - [ ] Exact `sorry` scan (must print nothing):
 
   ```sh
@@ -143,26 +142,26 @@ not a substitute. **This lane did not run `lake build`.**
       `refs/btc-lean`, or any other local-only path. The build dependency must
       remain `vendor/btc-lean-core` or the chosen replacement policy.
 
-## 3. Vendor reproducibility (`OPS-01`)
+## 3. Vendor reproducibility (`OPS-01`, closed)
 
-**This is a hard release blocker and is not resolved.** `vendor/btc-lean-core`
-is excluded by `.gitignore` (`vendor/`), its pin `f950806` is not in public
-`btc-lean` history, and the public CI build job therefore skips the build.
-A clean public checkout of the current tree cannot satisfy the `core` path
-dependency declared in `lakefile.lean`, so `lake build` cannot proceed without
-external provisioning.
+`vendor/btc-lean-core` is still excluded by `.gitignore` (`vendor/`), but the
+build input is now the **public** `btc-lean` `spec/core` at
+`4f5c4f858fb9ca0743042644453cfa92d30dd271`, not the private `f950806` lineage.
+The tree is a 149-file real directory copied from the public MIT repository;
+`vendor/VENDOR-SHA256` covers every file.
 
-A maintainer must choose one packaging policy (this checklist does not choose):
+`scripts/fetch-vendor.sh` pins the same commit. `--from-git` fetches exactly
+that commit (never a branch or tag tip), extracts `spec/core`, and verifies the
+149-file manifest. The CI build job uses an explicitly configured checksummed
+archive when available and otherwise runs `--from-git`; it no longer skips the
+build. `--from-git --dry-run`, the full build, and the local gate were verified;
+the first hosted CI run on this path remains to be observed.
 
-| Option | What it requires | Consequence |
-|---|---|---|
-| Commit a checksummed vendor snapshot | Track the 119 files (or an archive), keep `vendor/VENDOR-SHA256`, confirm redistribution rights, include the upstream license/provenance | Public checkout can build; repository grows; vendor edits become reviewable |
-| Publish a separate vendor artifact | Versioned archive + `SHA256SUMS`, download/provision script, checksum verification in CI, documented pin | Public checkout needs a provisioning step; artifact hosting and retention must be maintained |
-| Fetch a public ancestor | Bump the pin to a commit in public `btc-lean` history, adapt imports, refresh checksums and anchors, full rebuild | Requires a deliberate pin-bump project; the current snapshot lineage is not public |
-
-- [ ] Record the chosen policy and its checksum/provenance record in the release
-      notes and in `docs/OPEN-ISSUES.md` (`OPS-01`).
-- [ ] Verify the pack procedure from a **clean clone**, not the working tree:
+- [x] Record the public pin and 149-file checksum manifest in
+      `refs/PINNED.md`, `docs/L1-PIN.md`, and `vendor/VENDOR-SHA256`.
+- [x] Remove the dangling vendor self-symlink; the snapshot is a real directory
+      (`OPS-04`).
+- [ ] Verify the clean-clone path at the exact release commit:
 
   ```sh
   rm -rf /tmp/ln-lean-release-check
@@ -170,19 +169,17 @@ A maintainer must choose one packaging policy (this checklist does not choose):
   git clone https://github.com/Rob1Ham/ln-lean.git /tmp/ln-lean-release-check
   cd /tmp/ln-lean-release-check
   git checkout "$TAG"
-  test ! -e vendor/btc-lean-core/lakefile.lean   # current state
-  python3 scripts/check-catalog.py --audit
-  ./scripts/check.sh
-  python3 scripts/check-final.py
+  ./scripts/fetch-vendor.sh --from-git
+  ./scripts/verify-vendor.sh
+  lake build
   ```
 
-  Then provision the vendor exactly as the chosen policy specifies and run the
-  full build and `./scripts/verify-vendor.sh` in that clone.
 - [ ] If the snapshot is redistributed, include the upstream `btc-lean` MIT
-      license and Bitcoin Core notice, plus the provenance record. The snapshot
-      itself contains **no `LICENSE` file**; see `docs/LICENSE-DECISION.md`.
-- [ ] Do not remove the CI skip gate until the clean-clone build path actually
-      runs and `verify-vendor.sh` passes in CI.
+      license and Bitcoin Core notice, plus the provenance record. The copied
+      `spec/core` tree contains **no `LICENSE` file**; see
+      `docs/LICENSE-DECISION.md`.
+- [ ] Confirm the next public CI run executes the full build and passes
+      `verify-vendor.sh`; reopen `OPS-01` if it does not.
 
 ## 4. License decision (`OPS-02`)
 
@@ -316,7 +313,7 @@ Therefore:
 
 - [ ] Update `README.md` counts and release status **after** integration, using
       the actual numbers at the release commit, not the wave-3 numbers
-      (currently 204 Lean files, 202 root imports, 48 catalog rows, 79 targets).
+      (currently 211 Lean files, 209 root imports, 48 catalog rows, 100 targets).
 - [ ] Update `docs/FINAL-STATUS.md` and `docs/WAVE-STATUS.md` with the release
       commit/tag and current gate evidence. Remove stale "Gate HEAD" references
       if they no longer identify the tagged commit.
@@ -445,7 +442,7 @@ the public CI build steps are still skipped without an explicit release caveat.
 | `OPS-01` — vendor snapshot is gitignored and not reproducible from public history | Hard release blocker | Clean public build and honest build CI | Maintainer chooses packaging policy |
 | `OPS-02` — no `LICENSE` | Hard release blocker | Any public grant of rights | Maintainer chooses license; see `docs/LICENSE-DECISION.md` |
 | `OPS-03` — no tag, `main` behind | Hard release blocker | Tagged release and release notes | Maintainer chooses PR/merge/tag path |
-| Vendor snapshot has no `LICENSE`; public `btc-lean` is MIT but the `f950806` lineage is not public | Legal/provenance blocker if the snapshot or a build artifact is redistributed | Redistribution of vendor code or compiled artifacts | Maintainer confirms grant and adds notices |
+| Vendor snapshot has no `LICENSE` file of its own; public `btc-lean` at `4f5c4f8` is MIT | Notice/provenance item if the snapshot or a build artifact is redistributed | Redistribution of vendor code or compiled artifacts | Add upstream MIT and Bitcoin Core notices; project license remains `OPS-02` |
 | BOLT text is CC-BY-4.0 and no project-level attribution file exists | Compliance blocker for quoted spec text | Publishing docs/release notes with BOLT excerpts | Maintainer adds attribution |
 | No project version or release notes | Packaging blocker | Artifact naming and release publication | Maintainer chooses version and notes |
 | Public CI build steps skipped | Claim blocker | Any statement that CI proves the build | Resolved only by `OPS-01` |
@@ -471,6 +468,6 @@ would be false.
 | PR/merge strategy (`OPS-03`) | _pending_ | | | |
 | Tag name / version | _pending_ | | | |
 | Tag signing method | _pending_ | | | |
-| Full build at release commit | _not run in this lane_ | | | 233-job wave-7 historical claim only |
+| Full build at release commit | _not run in this lane_ | | | 250-job wave-8 code-gate result; rerun at tag |
 | Public CI build actually executed | _pending `OPS-01`_ | | | Run #3 skipped build steps |
 | Release notes scope review | _pending_ | | | Must repeat open-issue caveats |

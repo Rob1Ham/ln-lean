@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate the S5-CONF-DIFF wire, framing, and differential fixtures.
 
-This checker is deliberately small and dependency-free.  It does seven things:
+This checker is deliberately small and dependency-free.  It does eight things:
 
 1. Recomputes every BigSize encoding and decoding decision with an independent
    reference implementation and compares it to ``tests/conformance/vectors.json``.
@@ -13,17 +13,21 @@ This checker is deliberately small and dependency-free.  It does seven things:
    ``length = 2 + payload.size``, including malformed/truncated frames and the
    maximum transport length.  This is deliberately separate from the model's
    payload-only ``LnLean.Wire.frame``.
-4. Replays pinned rust-lightning differential fixtures from
+4. Recomputes each finite BOLT 2 message payload from its field table
+   (``open_channel`` type 32, ``accept_channel`` type 33, ``update_add_htlc``
+   type 128, ``commitment_signed`` type 132) and checks the payload length,
+   transport length, and transport header.
+5. Replays pinned rust-lightning differential fixtures from
    ``tests/conformance/rust-lightning/fixtures.json`` (committed JSON only; no
    network or Rust toolchain).
-5. Verifies the fixture provenance against the pinned checkout when
+6. Verifies the fixture provenance against the pinned checkout when
    ``refs/rust-lightning`` is present: the recorded SHA-256 for each source
    file and, when the checkout has a ``.git`` directory, its exact HEAD.  Use
    ``--no-provenance`` to skip this optional check.
-6. Requires the promoted BOLT 8 model to exist in
+7. Requires the promoted BOLT 8 model to exist in
    ``LnLean/Wire/Message.lean`` (``transportFrame``, ``unframeTransport``, the
    round trip, the declared-length law, and the payload-decoder boundary).
-7. Cross-checks that every vector names a theorem that exists in
+8. Cross-checks that every vector names a theorem that exists in
    ``LnLean/Proofs/ConformanceTargets.lean`` or
    ``LnLean/Proofs/ConformanceDiffTargets.lean`` and that the theorem statement
    mentions the vector's input bytes (and, where applicable, its value).
@@ -445,6 +449,194 @@ def check_framing(doc: dict[str, Any], seen_ids: set[str]) -> tuple[int, int, in
     for entry in boundaries:
         check_framing_boundary(entry, seen_ids)
     return len(cases), accepted, len(boundaries)
+
+
+# ---------------------------------------------------------------------------
+# Finite BOLT 2 message payload/field vectors
+# ---------------------------------------------------------------------------
+
+MESSAGE_TYPES = {
+    "open_channel": 32,
+    "accept_channel": 33,
+    "update_add_htlc": 128,
+    "commitment_signed": 132,
+}
+
+MESSAGE_REQUIRED_FIELDS = {
+    "open_channel": [
+        "chain_hash", "temporary_channel_id", "funding_satoshis", "push_msat",
+        "dust_limit_satoshis", "max_htlc_value_in_flight_msat",
+        "channel_reserve_satoshis", "htlc_minimum_msat", "feerate_per_kw",
+        "to_self_delay", "max_accepted_htlcs", "funding_pubkey",
+        "revocation_basepoint", "payment_basepoint",
+        "delayed_payment_basepoint", "htlc_basepoint",
+        "first_per_commitment_point", "channel_flags",
+    ],
+    "accept_channel": [
+        "temporary_channel_id", "dust_limit_satoshis",
+        "max_htlc_value_in_flight_msat", "channel_reserve_satoshis",
+        "htlc_minimum_msat", "minimum_depth", "to_self_delay",
+        "max_accepted_htlcs", "funding_pubkey", "revocation_basepoint",
+        "payment_basepoint", "delayed_payment_basepoint", "htlc_basepoint",
+        "first_per_commitment_point",
+    ],
+    "update_add_htlc": [
+        "channel_id", "htlc_id", "amount_msat", "payment_hash",
+        "cltv_expiry", "onion_routing_packet",
+    ],
+    "commitment_signed": ["channel_id", "signature", "num_htlcs"],
+}
+
+MESSAGE_FIELD_WIDTHS = {"u8": 1, "u16": 2, "u32": 4, "u64": 8}
+MESSAGE_FIELD_KINDS = set(MESSAGE_FIELD_WIDTHS) | {
+    "bytes", "point", "signature64", "tlv",
+}
+
+
+def expected_message_fields(name: str, fields: list[dict[str, Any]]) -> list[str]:
+    """Return the exact field-name list a message vector must carry.
+
+    `open_channel`/`accept_channel` may append the single optional type-0
+    `upfront_shutdown_script` TLV.  `commitment_signed` has one
+    `htlc_signature_<i>` per `num_htlcs`.
+    """
+    required = list(MESSAGE_REQUIRED_FIELDS[name])
+    if name in ("open_channel", "accept_channel"):
+        if len(fields) == len(required) + 1:
+            required.append("upfront_shutdown_script")
+        return required
+    if name == "commitment_signed":
+        num = next((f.get("value") for f in fields if f.get("name") == "num_htlcs"), None)
+        require(isinstance(num, int) and 0 <= num <= 0xFFFF,
+                "commitment_signed: num_htlcs must be a u16 value")
+        return required + [f"htlc_signature_{index}" for index in range(num)]
+    return required
+
+
+def check_message_field(entry: dict[str, Any], where: str,
+                        offset: int) -> int:
+    for key in ("name", "kind", "offset", "length", "hex"):
+        require(key in entry, f"{where}: missing key {key!r}")
+    name = entry["name"]
+    kind = entry["kind"]
+    require(kind in MESSAGE_FIELD_KINDS, f"{where}: unknown field kind {kind!r}")
+    require(entry["offset"] == offset,
+            f"{where}: field {name} offset {entry['offset']} != {offset}")
+    raw = parse_hex(entry["hex"], f"{where}.{name}")
+    require(entry["length"] == len(raw),
+            f"{where}: field {name} length {entry['length']} != {len(raw)} bytes")
+    if kind in MESSAGE_FIELD_WIDTHS:
+        width = MESSAGE_FIELD_WIDTHS[kind]
+        require(len(raw) == width,
+                f"{where}: {kind} field {name} must be {width} bytes")
+        value = entry.get("value")
+        require(isinstance(value, int) and 0 <= value < 256 ** width,
+                f"{where}: {kind} field {name} value is out of range")
+        require(raw == value.to_bytes(width, "big"),
+                f"{where}: {kind} field {name} bytes {raw.hex()} != "
+                f"{value.to_bytes(width, 'big').hex()}")
+    elif kind == "point":
+        require(len(raw) == 33,
+                f"{where}: point field {name} must be 33 bytes")
+        require(raw[0] in (2, 3),
+                f"{where}: point field {name} must start with 02 or 03")
+    elif kind == "signature64":
+        require(len(raw) == 64,
+                f"{where}: signature field {name} must be 64 bytes")
+    elif kind == "tlv":
+        tlv_type = entry.get("tlv_type")
+        value_length = entry.get("value_length")
+        require(isinstance(tlv_type, int) and 0 <= tlv_type <= UINT64_MAX,
+                f"{where}: TLV field {name} needs a uint64 tlv_type")
+        require(isinstance(value_length, int) and value_length >= 0,
+                f"{where}: TLV field {name} needs a non-negative value_length")
+        ty, n1 = ref_bigsize_decode(raw)
+        require(ty == tlv_type,
+                f"{where}: TLV field {name} type {ty} != {tlv_type}")
+        length, n2 = ref_bigsize_decode(raw[n1:])
+        require(length == value_length,
+                f"{where}: TLV field {name} length {length} != {value_length}")
+        require(n1 + n2 + value_length == len(raw),
+                f"{where}: TLV field {name} does not contain exactly its value")
+    return offset + len(raw)
+
+
+def check_message_case(entry: dict[str, Any], seen_ids: set[str]) -> str:
+    where = f"messages.cases[{entry.get('id', '?')}]"
+    for key in ("id", "name", "type", "payload_length", "transport_length",
+                "transport_header", "frame_prefix", "payload", "fields",
+                "scope", "source", "lean"):
+        require(key in entry, f"{where}: missing key {key!r}")
+    require(entry["id"] not in seen_ids, f"{where}: duplicate id {entry['id']!r}")
+    seen_ids.add(entry["id"])
+
+    name = entry["name"]
+    require(name in MESSAGE_TYPES, f"{where}: unknown message name {name!r}")
+    require(entry["type"] == MESSAGE_TYPES[name],
+            f"{where}: type {entry['type']} != BOLT type {MESSAGE_TYPES[name]}")
+    require(entry["scope"] == "enforced",
+            f"{where}: only enforced message vectors are supported")
+
+    fields = entry["fields"]
+    require(isinstance(fields, list) and fields,
+            f"{where}: fields must be a non-empty list")
+    expected_names = expected_message_fields(name, fields)
+    actual_names = [field.get("name") for field in fields]
+    require(actual_names == expected_names,
+            f"{where}: field names {actual_names} != expected {expected_names}")
+
+    payload = b""
+    offset = 0
+    for field in fields:
+        offset = check_message_field(field, where, offset)
+        payload += parse_hex(field["hex"], where)
+    stated = parse_hex(entry["payload"], where)
+    require(payload == stated,
+            f"{where}: concatenated fields {payload.hex()} != payload "
+            f"{stated.hex()}")
+    require(entry["payload_length"] == len(payload),
+            f"{where}: payload_length {entry['payload_length']} != {len(payload)}")
+    transport = 2 + len(payload)
+    require(transport <= 0xFFFF,
+            f"{where}: message does not fit the BOLT 8 transport bound")
+    require(entry["transport_length"] == transport,
+            f"{where}: transport_length {entry['transport_length']} != 2 + "
+            f"{len(payload)}")
+    require(entry["transport_header"] == f"{transport:04x}",
+            f"{where}: transport_header {entry['transport_header']} != "
+            f"{transport:04x}")
+    require(entry["frame_prefix"] == f"{entry['type']:04x}{transport:04x}",
+            f"{where}: frame_prefix {entry['frame_prefix']} != "
+            f"type||header {entry['type']:04x}{transport:04x}")
+
+    lean = entry["lean"]
+    require(isinstance(lean, dict), f"{where}: lean must be an object")
+    for key in ("length", "transport", "header", "frame_prefix"):
+        require(isinstance(lean.get(key), str) and lean[key],
+                f"{where}: lean must name its {key} theorem")
+    if name != "update_add_htlc":
+        require(isinstance(lean.get("payload"), str) and lean["payload"],
+                f"{where}: a non-update_add_htlc row must name its payload theorem")
+    return name
+
+
+def check_messages(doc: dict[str, Any], seen_ids: set[str]) -> tuple[int, dict[str, int]]:
+    messages = doc["messages"]
+    require(isinstance(messages, dict), "messages must be an object")
+    for key in ("layout", "source", "model_note", "cases"):
+        require(key in messages, f"messages missing {key!r}")
+    require("2 + payload.size" in messages["layout"],
+            "messages.layout must state transport_length = 2 + payload.size")
+    cases = messages["cases"]
+    require(isinstance(cases, list) and cases,
+            "messages.cases must be a non-empty list")
+    counts: dict[str, int] = {}
+    for entry in cases:
+        name = check_message_case(entry, seen_ids)
+        counts[name] = counts.get(name, 0) + 1
+    for name in ("open_channel", "accept_channel", "update_add_htlc"):
+        require(name in counts, f"messages: missing a {name} vector")
+    return len(cases), counts
 
 
 # ---------------------------------------------------------------------------
@@ -972,6 +1164,57 @@ def check_framing_lean_sync(doc: dict[str, Any], theorems: dict[str, str]) -> in
     return checked
 
 
+def check_messages_lean_sync(doc: dict[str, Any],
+                             theorems: dict[str, str]) -> int:
+    checked = 0
+    for entry in doc["messages"]["cases"]:
+        where = f"messages[{entry['id']}]"
+        lean = entry["lean"]
+
+        name = lean["payload"]
+        if name:
+            require(name in theorems, f"lean[{name}]: theorem not declared")
+            block = theorems[name]
+            literals = byte_literals(block)
+            payload = parse_hex(entry["payload"], where)
+            require(payload in literals,
+                    f"lean[{name}]: statement does not mention the "
+                    f"{len(payload)}-byte payload")
+            checked += 1
+
+        name = lean["length"]
+        require(name in theorems, f"lean[{name}]: theorem not declared")
+        require(re.search(rf"=\s*{entry['payload_length']}\b",
+                          theorems[name]),
+                f"lean[{name}]: statement does not conclude payload length "
+                f"{entry['payload_length']}")
+        checked += 1
+
+        name = lean["transport"]
+        require(name in theorems, f"lean[{name}]: theorem not declared")
+        require(str(entry["transport_length"]) in theorems[name],
+                f"lean[{name}]: statement does not mention transport length "
+                f"{entry['transport_length']}")
+        checked += 1
+
+        name = lean["header"]
+        require(name in theorems, f"lean[{name}]: theorem not declared")
+        header = bytes.fromhex(entry["transport_header"])
+        require(header in byte_literals(theorems[name]),
+                f"lean[{name}]: statement does not mention header "
+                f"{entry['transport_header']}")
+        checked += 1
+
+        name = lean["frame_prefix"]
+        require(name in theorems, f"lean[{name}]: theorem not declared")
+        prefix = bytes.fromhex(entry["frame_prefix"])
+        require(prefix in byte_literals(theorems[name]),
+                f"lean[{name}]: statement does not mention frame prefix "
+                f"{entry['frame_prefix']}")
+        checked += 1
+    return checked
+
+
 def check_differential_lean_sync(doc: dict[str, Any],
                                  theorems: dict[str, str]) -> int:
     checked = 0
@@ -1081,6 +1324,26 @@ def check_mutations(doc: dict[str, Any], diff_doc: dict[str, Any] | None,
     control("framing boundary fits flipped",
             lambda: check_framing_boundary(boundary, set()))
 
+    mutated = copy.deepcopy(doc)
+    message = mutated["messages"]["cases"][0]
+    raw = bytearray.fromhex(message["fields"][0]["hex"])
+    raw[-1] ^= 0x01
+    message["fields"][0]["hex"] = raw.hex()
+    control("message field byte changed",
+            lambda: check_message_case(message, set()))
+
+    mutated = copy.deepcopy(doc)
+    message = mutated["messages"]["cases"][0]
+    message["fields"][1]["offset"] += 1
+    control("message field offset changed",
+            lambda: check_message_case(message, set()))
+
+    mutated = copy.deepcopy(doc)
+    message = mutated["messages"]["cases"][0]
+    message["transport_length"] += 1
+    control("message transport length +1",
+            lambda: check_message_case(message, set()))
+
     if diff_doc is not None:
         mutated = copy.deepcopy(diff_doc)
         decode = next(e for e in mutated["fixtures"]["bigsize"]
@@ -1116,6 +1379,12 @@ def check_mutations(doc: dict[str, Any], diff_doc: dict[str, Any] | None,
         control("framing Lean theorem reference removed",
                 lambda: check_framing_lean_sync(doc, mutated_theorems))
 
+        mutated_theorems = dict(theorems)
+        name = doc["messages"]["cases"][0]["lean"]["length"]
+        mutated_theorems.pop(name, None)
+        control("message Lean theorem reference removed",
+                lambda: check_messages_lean_sync(doc, mutated_theorems))
+
     if message_decls is not None:
         mutated_decls = dict(message_decls)
         mutated_decls.pop("unframeTransport_transportFrame", None)
@@ -1149,7 +1418,8 @@ def run(vectors: Path, lean_paths: list[Path] | None, diff_path: Path | None,
         require(isinstance(doc, dict), "top level must be an object")
         require(doc.get("schema") == "lnlean.conformance.v1",
                 f"unexpected schema {doc.get('schema')!r}")
-        for key in ("scope", "sources", "bigsize", "tlv", "framing"):
+        for key in ("scope", "sources", "bigsize", "tlv", "framing",
+                    "messages"):
             require(key in doc, f"top level missing {key!r}")
         require("NOT a full implementation test" in doc["scope"],
                 "scope must state that this is not a full implementation test")
@@ -1164,6 +1434,7 @@ def run(vectors: Path, lean_paths: list[Path] | None, diff_path: Path | None,
         anchors = check_bolt_anchors(doc)
         framing_cases, framing_accept, framing_boundaries = check_framing(
             doc, seen_ids)
+        message_cases, message_counts = check_messages(doc, seen_ids)
 
         diff_bigsize = diff_tlv = diff_wire = 0
         diff_scopes: list[str] = []
@@ -1189,6 +1460,7 @@ def run(vectors: Path, lean_paths: list[Path] | None, diff_path: Path | None,
             theorems = load_lean_theorems(lean_paths)
             lean_checks += check_lean_sync(doc, theorems)
             lean_checks += check_framing_lean_sync(doc, theorems)
+            lean_checks += check_messages_lean_sync(doc, theorems)
             if diff_doc is not None:
                 lean_checks += check_differential_lean_sync(diff_doc, theorems)
             require(DEFAULT_MESSAGE.is_file(),
@@ -1236,6 +1508,12 @@ def run(vectors: Path, lean_paths: list[Path] | None, diff_path: Path | None,
                   f"payload={entry['payload_length']:<7} "
                   f"length={entry['declared_length']:<7} "
                   f"fits={entry['fits']}")
+        for entry in doc["messages"]["cases"]:
+            print(f"  message        {entry['id']:<40} "
+                  f"type={entry['type']:<5} "
+                  f"payload={entry['payload_length']:<5} "
+                  f"transport={entry['transport_length']:<5} "
+                  f"{entry['name']}")
         if diff_doc is not None:
             for group in ("bigsize", "tlv", "wire"):
                 for entry in diff_doc["fixtures"][group]:
@@ -1249,6 +1527,10 @@ def run(vectors: Path, lean_paths: list[Path] | None, diff_path: Path | None,
     print(f"framing: {framing_cases} cases ({framing_accept} accept, "
           f"{framing_cases - framing_accept} reject), "
           f"{framing_boundaries} length boundaries")
+    message_summary = ", ".join(f"{name} {count}"
+                                for name, count in sorted(message_counts.items()))
+    print(f"messages: {message_cases} BOLT 2 payload/field vectors "
+          f"({message_summary})")
     if diff_doc is not None:
         print(f"differential: {diff_bigsize} rust-lightning BigSize, "
               f"{diff_tlv} TLV, {diff_wire} wire fixtures "

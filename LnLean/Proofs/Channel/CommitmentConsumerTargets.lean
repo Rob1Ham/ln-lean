@@ -222,6 +222,41 @@ theorem migrated_of_no_trim (tx : CommitmentTx) (hdust : 0 < tx.dustLimitSat)
       · intro hlt; omega
     · exact hh
 
+/-- **The consumer path in one step.**  On the BOLT 3 survivor normal form the
+sorted rich net list is a permutation of the *same* `consumerOutputs` list a
+legacy consumer reads.  This is the legacy-shaped form of
+`netConsumerOutputs_perm_migratedConsumerOutputs` with the migrated consumer
+list identified with the original one. -/
+theorem netConsumerOutputs_perm_consumerOutputs_of_migrated
+    (tx : CommitmentTx) (hnet : tx.UsesRecordNet) (hm : tx.Migrated)
+    (hdust : 0 < tx.dustLimitSat) :
+    (tx.netConsumerOutputs.map CommitmentTxOutput.toCommitmentOutput).Perm
+      tx.consumerOutputs := by
+  have h := netConsumerOutputs_perm_migratedConsumerOutputs tx hdust
+  rwa [migratedConsumerOutputs_eq_consumerOutputs_of_migrated tx hnet hm hdust]
+    at h
+
+/-- The no-trim corollary of the consumer-path permutation. -/
+theorem netConsumerOutputs_perm_consumerOutputs_of_no_trim
+    (tx : CommitmentTx) (hnet : tx.UsesRecordNet)
+    (hdust : 0 < tx.dustLimitSat)
+    (hl : tx.dustLimitSat ≤ tx.commitment.toLocalSat)
+    (hr : tx.dustLimitSat ≤ tx.commitment.toRemoteSat)
+    (hh : ∀ h ∈ tx.commitment.htlcs,
+      tx.dustLimitSat ≤ tx.netAmountSat h) :
+    (tx.netConsumerOutputs.map CommitmentTxOutput.toCommitmentOutput).Perm
+      tx.consumerOutputs :=
+  netConsumerOutputs_perm_consumerOutputs_of_migrated tx hnet
+    (migrated_of_no_trim tx hdust hl hr hh) hdust
+
+/-- The count a coverage consumer reads is preserved on the normal form. -/
+theorem netConsumerOutputs_length_eq_consumerOutputs_of_migrated
+    (tx : CommitmentTx) (hnet : tx.UsesRecordNet) (hm : tx.Migrated)
+    (hdust : 0 < tx.dustLimitSat) :
+    tx.netConsumerOutputs.length = tx.consumerOutputs.length := by
+  have h := netConsumerOutputs_perm_consumerOutputs_of_migrated tx hnet hm hdust
+  simpa using h.length_eq
+
 /-! ## 3. The `commitment_signed` coverage consumer -/
 
 /-- Coverage of a migrated commitment transaction: the wire carries one HTLC

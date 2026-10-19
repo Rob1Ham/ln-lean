@@ -6,7 +6,7 @@ import LnLean.Channel.Types
 
 ## English claim
 
-This module gives a typed model of the seventeen BOLT 1/2 messages that the
+This module gives a typed model of the eighteen BOLT 1/2 messages that the
 scaffold's peer protocol uses.  Each constructor carries the fields that the
 ordering and length laws need, `msgType` returns the BOLT message type, and
 `wellFormed` is the decoder-acceptance predicate: a message is well formed
@@ -24,8 +24,8 @@ signatures are DER-sized, and its semantic side conditions hold.
 * BOLT 1 §"The `ping` and `pong` Messages" (`01-messaging.md:422-505`):
   types 18 and 19, `num_pong_bytes < 65532`.
 * BOLT 2 §"Channel Establishment v1" (`02-peer-protocol.md:629-1136`):
-  `accept_channel` (33), `funding_created` (34), `funding_signed` (35),
-  `channel_ready` (36).
+  `open_channel` (32), `accept_channel` (33), `funding_created` (34),
+  `funding_signed` (35), `channel_ready` (36).
 * BOLT 2 §"Closing Initiation: `shutdown`" (`02-peer-protocol.md:2136-2192`)
   and §"Legacy Closing Negotiation: `closing_signed`"
   (`02-peer-protocol.md:2411-2520`): types 38 and 39.
@@ -40,26 +40,27 @@ signatures are DER-sized, and its semantic side conditions hold.
 ## rust-lightning anchors (commit fe49009)
 
 * `lightning/src/ln/msgs.rs:111` `Init`; `:131` `ErrorMessage`; `:149`
-  `WarningMessage`; `:166` `Ping`; `:179` `Pong`; `:371` `AcceptChannel`;
+  `WarningMessage`; `:166` `Ping`; `:179` `Pong`; `:289` `OpenChannel`;
+  `:371` `AcceptChannel`;
   `:403` `FundingCreated`; `:420` `FundingSigned`; `:431` `ChannelReady`;
   `:635` `Shutdown`; `:662` `ClosingSigned`; `:738` `UpdateAddHTLC`;
   `:820` `UpdateFulfillHTLC`; `:865` `UpdateFailHTLC`; `:893`
   `CommitmentSigned`; `:908` `RevokeAndACK`; `:939` `ChannelReestablish`.
 * `lightning/src/ln/wire.rs:494` (`Init` type 16), `:498` (`error` 17),
-  `:502` (`warning` 1), `:506` (`ping` 18), `:510` (`pong` 19), `:518`
-  (`accept_channel` 33), `:522` (`funding_created` 34), `:526`
-  (`funding_signed` 35), `:530` (`channel_ready` 36), `:534` (`shutdown`
-  38), `:538` (`closing_signed` 39), `:615` (`update_add_htlc` 128), `:619`
-  (`update_fulfill_htlc` 130), `:623` (`update_fail_htlc` 131), `:631`
-  (`commitment_signed` 132), `:635` (`revoke_and_ack` 133), `:643`
+  `:502` (`warning` 1), `:506` (`ping` 18), `:510` (`pong` 19), `:514`
+  (`open_channel` 32), `:518` (`accept_channel` 33), `:522` (`funding_created`
+  34), `:526` (`funding_signed` 35), `:530` (`channel_ready` 36), `:534`
+  (`shutdown` 38), `:538` (`closing_signed` 39), `:615` (`update_add_htlc`
+  128), `:619` (`update_fulfill_htlc` 130), `:623` (`update_fail_htlc` 131),
+  `:631` (`commitment_signed` 132), `:635` (`revoke_and_ack` 133), `:643`
   (`channel_reestablish` 136).
 
 ## What is NOT modelled
 
-* `open_channel` / `open_channel2` are deliberately absent from `Msg`; the
-  handshake model starts from `init` and takes the arrival of the opening
-  message as the environment transition that enables `accept_channel`
-  (`docs/ARCHITECTURE.md` lists the scaffold's two-party scope).
+* `open_channel2` is deliberately absent from `Msg`; the model covers the v1
+  `open_channel` (type 32) record below.  `Handshake.OpenChannel` remains the
+  funding-relevant projection, and `OpenChannelWire.toHandshakeOpenChannel`
+  is the explicit bridge between the wire record and that projection.
 * TLV extension streams are not parsed.  Optional fields are represented by
   `Option` and their TLV overhead is included only where it affects lengths.
 * Wire byte serialization is not bit-exact (charter §2).  The DER signature
@@ -83,6 +84,58 @@ modelled. -/
 structure InitMsg where
   globalfeatures : ByteArray := ByteArray.empty
   features : ByteArray := ByteArray.empty
+deriving Repr, BEq
+
+/-- BOLT 2 `open_channel` (type 32).
+
+`chain_hash` is omitted: it is a network-wide connection parameter and every
+other message in this model omits it.  `shutdown_scriptpubkey` is modelled as
+the standard 34-byte P2WSH shutdown script (`OP_0 <32-byte SHA-256>`), without
+the BOLT 2 TLV wrapping; the module-level "What is NOT modelled" section
+records the same wire-vs-model boundary for other variable fields.
+
+`LnLean.Protocol.Handshake.OpenChannel` is the funding-relevant projection of
+this record.  It is deliberately a *separate* structure: this module owns the
+wire shape, while `Handshake.lean` owns the funding construction, and
+`OpenChannelWire.toHandshakeOpenChannel` proves the projection rather than
+duplicating the record. -/
+structure OpenChannelWire where
+  /-- BOLT 2 `temporary_channel_id`. -/
+  temporaryChannelId : ChannelId
+  /-- BOLT 2 `funding_satoshis`, the L1 output value. -/
+  fundingSatoshis : LnLean.Bitcoin.BtcAmount
+  /-- BOLT 2 `push_msat`, the opener's initial gift. -/
+  pushMsat : Msat
+  /-- BOLT 2 `dust_limit_satoshis`. -/
+  dustLimitSatoshis : Nat
+  /-- BOLT 2 `max_htlc_value_in_flight_msat`. -/
+  maxHtlcValueInFlightMsat : Nat
+  /-- BOLT 2 `channel_reserve_satoshis`. -/
+  channelReserveSatoshis : Nat
+  /-- BOLT 2 `htlc_minimum_msat`. -/
+  htlcMinimumMsat : Nat
+  /-- BOLT 2 `feerate_per_kw`. -/
+  feeratePerKw : Nat
+  /-- BOLT 2 `to_self_delay`. -/
+  toSelfDelay : Nat
+  /-- BOLT 2 `max_accepted_htlcs`. -/
+  maxAcceptedHtlcs : Nat
+  /-- BOLT 2 `funding_pubkey`, the opener's funding key. -/
+  fundingPubKey : PubKey
+  /-- BOLT 2 `revocation_basepoint`. -/
+  revocationBasepoint : PubKey
+  /-- BOLT 2 `payment_basepoint`. -/
+  paymentBasepoint : PubKey
+  /-- BOLT 2 `delayed_payment_basepoint`. -/
+  delayedPaymentBasepoint : PubKey
+  /-- BOLT 2 `htlc_basepoint`. -/
+  htlcBasepoint : PubKey
+  /-- BOLT 2 `first_per_commitment_point`. -/
+  firstPerCommitmentPoint : PubKey
+  /-- BOLT 2 `channel_flags` (the `announce_channel` bit is bit 0). -/
+  channelFlags : UInt8
+  /-- BOLT 2 `shutdown_scriptpubkey` (standard 34-byte P2WSH program). -/
+  shutdownScriptpubkey : ByteArray
 deriving Repr, BEq
 
 /-- BOLT 2 `accept_channel` (type 33).  Field names follow BOLT 2 verbatim
@@ -216,6 +269,7 @@ deriving Repr, BEq
 /-- The modelled wire message. -/
 inductive Msg where
   | init (m : InitMsg)
+  | openChannel (m : OpenChannelWire)
   | acceptChannel (m : AcceptChannel)
   | fundingCreated (m : FundingCreated)
   | fundingSigned (m : FundingSigned)
@@ -237,6 +291,7 @@ deriving Repr, BEq
 /-- Constructor tag of a message, forgetting payload data. -/
 inductive MsgKind where
   | init
+  | openChannel
   | acceptChannel
   | fundingCreated
   | fundingSigned
@@ -260,6 +315,7 @@ namespace Msg
 /-- The constructor tag of a message. -/
 def kind : Msg → MsgKind
   | .init _ => .init
+  | .openChannel _ => .openChannel
   | .acceptChannel _ => .acceptChannel
   | .fundingCreated _ => .fundingCreated
   | .fundingSigned _ => .fundingSigned
@@ -283,6 +339,7 @@ end Msg
 constants from `lightning/src/ln/wire.rs`. -/
 def wireType : MsgKind → Nat
   | .init => 16
+  | .openChannel => 32
   | .acceptChannel => 33
   | .fundingCreated => 34
   | .fundingSigned => 35
@@ -311,6 +368,7 @@ def kindOfType? : Nat → Option MsgKind
   | 17 => some .error
   | 18 => some .ping
   | 19 => some .pong
+  | 32 => some .openChannel
   | 33 => some .acceptChannel
   | 34 => some .fundingCreated
   | 35 => some .fundingSigned
@@ -337,9 +395,26 @@ def sigListLen (ss : List EcdsaSig) : Nat :=
 
 /-- Computed payload length in bytes, excluding the two-byte type field.
 Every constant is the sum of the fixed-width fields of the corresponding
-BOLT message section; variable fields use their actual byte length. -/
+BOLT message section; variable fields use their actual byte length.
+
+The `open_channel` model payload is **321** bytes.  It is the sum of the
+modelled fixed fields plus the standard 34-byte `shutdown_scriptpubkey`:
+
+`32 + 6*8 + 4 + 2 + 2 + 6*33 + 1 + 34 = 321`,
+
+that is: `temporary_channel_id`, six 8-byte value fields (`funding_satoshis`,
+`push_msat`, `dust_limit_satoshis`, `max_htlc_value_in_flight_msat`,
+`channel_reserve_satoshis`, `htlc_minimum_msat`), `feerate_per_kw`,
+`to_self_delay`, `max_accepted_htlcs`, six 33-byte points, `channel_flags`, and
+the shutdown script.  `chain_hash` (32 bytes) and the TLV type/length header
+(2 bytes for the standard script) are omitted, matching the model's
+no-chain-hash/no-TLV convention; the corresponding BOLT 2 wire payloads are
+319 (chain_hash, no shutdown TLV), 323 (shutdown TLV, no chain_hash), and 355
+(full wire).  This is a model-level payload length, not a byte-serialization
+theorem. -/
 def msgLength : Msg → Nat
   | .init m => 4 + m.globalfeatures.size + m.features.size
+  | .openChannel _ => 321
   | .acceptChannel _ => 270
   | .fundingCreated m => 66 + sigLen m.signature
   | .fundingSigned m => 32 + sigLen m.signature
@@ -364,6 +439,7 @@ def msgLength : Msg → Nat
 `pong` are connection-level messages and carry none. -/
 def channelId? : Msg → Option ChannelId
   | .init _ => none
+  | .openChannel m => some m.temporaryChannelId
   | .acceptChannel m => some m.temporaryChannelId
   | .fundingCreated m => some m.temporaryChannelId
   | .fundingSigned m => some m.channelId
@@ -383,6 +459,9 @@ def channelId? : Msg → Option ChannelId
 
 /-- All public keys carried by a message. -/
 def pubKeys : Msg → List PubKey
+  | .openChannel m =>
+      [m.fundingPubKey, m.revocationBasepoint, m.paymentBasepoint,
+       m.delayedPaymentBasepoint, m.htlcBasepoint, m.firstPerCommitmentPoint]
   | .acceptChannel m =>
       [m.fundingPubKey, m.revocationBasepoint, m.paymentBasepoint,
        m.delayedPaymentBasepoint, m.htlcBasepoint, m.firstPerCommitmentPoint]
@@ -448,6 +527,17 @@ def wellFormed (m : Msg) : Prop :=
 
 @[simp] theorem msgLength_acceptChannel (m : AcceptChannel) :
     msgLength (.acceptChannel m) = 270 := rfl
+
+@[simp] theorem msgLength_openChannel (m : OpenChannelWire) :
+    msgLength (.openChannel m) = 321 := rfl
+
+@[simp] theorem channelId?_openChannel (m : OpenChannelWire) :
+    channelId? (.openChannel m) = some m.temporaryChannelId := rfl
+
+@[simp] theorem pubKeys_openChannel (m : OpenChannelWire) :
+    pubKeys (.openChannel m) =
+      [m.fundingPubKey, m.revocationBasepoint, m.paymentBasepoint,
+       m.delayedPaymentBasepoint, m.htlcBasepoint, m.firstPerCommitmentPoint] := rfl
 
 theorem msgLength_updateAddHtlc (m : UpdateAddHtlc)
     (h : m.onionRoutingPacket.size = 1366) :

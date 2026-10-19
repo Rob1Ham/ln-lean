@@ -1,5 +1,16 @@
 # Public `btc-lean` reference and the L1 script seam (L01 audit)
 
+> **Status after the V01 public-core bump (2026-10-18, branch
+> `repair/pubbump`).** `vendor/btc-lean-core` is now a byte-identical copy of
+> public `spec/core` at `4f5c4f8` (149 files, 146 `.lean`; see
+> `docs/L1-PIN.md` and `refs/PINNED.md`). The audit below was written against
+> the retired `f950806` snapshot and is kept as the pre-bump record: the
+> "87-path diff" in §2, the "can the vendor be bumped?" answer in §4, and §5
+> items 3 and 5 describe the state **before** the bump. Post-bump measurements:
+> `diff -r -x .lake vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core`
+> is empty, `vendor/VENDOR-SHA256` has 149 entries, and a full `lake build` is
+> RC 0 (170 jobs).
+
 **Audit date:** 2026-10-18
 **Auditor:** L01 (public-reference lane), read-only with respect to Lean and
 `vendor/`.
@@ -211,7 +222,7 @@ recommended next smallest step is an additive
 signature checks), with the checker and sighash as explicit hypotheses. That
 is a new proof lane, not part of L01.
 
-## 4. Can the vendor be bumped safely now?
+## 4. Can the vendor be bumped safely now? (pre-bump assessment, executed in V01)
 
 **No, not in this repair.** The facts:
 
@@ -244,18 +255,23 @@ new URL/commit/date in `refs/PINNED.md` and `docs/L1-PIN.md`.
    spendability. The Phase-C2 bridges are conditional on structure fields
    (`FundingSpendBridge`, `HTLCSpendBridge`, `PenaltyL1Bridge`); see
    `LnLean/Proofs/PhaseC2/{FundingBridge,HTLCBridge,PenaltyBridge}.lean`.
-3. The public `spec/core` is not imported into this build, and no proof in
-   this tree is checked against it.
+3. *(Pre-bump; superseded by V01.)* The public `spec/core` is not imported
+   into this build, and no proof in this tree is checked against it. After the
+   V01 bump the build input is a byte-identical copy of public `spec/core` at
+   `4f5c4f8`, but only four `Bitcoin.Data.*`/`RuleAttr` modules are in the
+   import closure — the interpreter, parser, sighash, and wallet modules are
+   still not imported, and no LN theorem is proved against them.
 4. Even after importing the interpreter, the remaining obligations are: the
    signature checker and BIP143 sighash instantiation, the consensus flag
    word, the SHA-256 witness-program hash bridge, and a statement-fidelity
    review against Core. Taproot script-path spends stay `unjudged`.
-5. The vendor snapshot itself is trusted as the L1 model (`f950806`,
-   digest-verified). Its interpreter cites Core `c50817fe`, whereas public
-   cites `cce32b168`; that pin discrepancy is a traceability caveat for the
-   eventual bump.
+5. *(Pre-bump; resolved in V01.)* The vendor snapshot itself is trusted as the
+   L1 model (`f950806`, digest-verified). Its interpreter cited Core
+   `c50817fe`, whereas public cites `cce32b168`. The V01 bump replaces the
+   snapshot with public `spec/core` at `4f5c4f8`, whose lakefile header cites
+   `cce32b168`, so the vendor and public Core pin now agree.
 
-## 6. Evidence commands
+## 6. Evidence commands (pre-bump readings; diff is 0 after V01)
 
 ```sh
 cd /home/ubuntu/ln-lean-repair
@@ -266,9 +282,9 @@ git -C /home/ubuntu/btc-lean-public rev-parse HEAD
 git -C /home/ubuntu/btc-lean-public log -1 --format='%H%n%ci%n%s'
 git -C /home/ubuntu/btc-lean-public cat-file -e f95080638ae571a3664f4f41b9b6f6b4cfa7c5eb  # must fail
 
-# diff
-diff -rq vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core | wc -l   # 87
-diff -rq vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core | grep -c '^Files '  # 80
+# diff (pre-bump: 87 lines / 80 modified files; post-V01: 0)
+diff -rq -x .lake vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core | wc -l   # 87 (0 after V01)
+diff -rq -x .lake vendor/btc-lean-core /home/ubuntu/btc-lean-public/spec/core | grep -c '^Files '  # 80 (0 after V01)
 
 # byte identity of the imported closure
 for f in Bitcoin/Data/Basic.lean Bitcoin/Data/Script.lean Bitcoin/Data/Tx.lean; do
