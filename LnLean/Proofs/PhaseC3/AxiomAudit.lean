@@ -100,6 +100,13 @@ import LnLean.Proofs.Protocol.TransportAuthTargets
 import LnLean.Proofs.Crypto.PopProtocolTargets
 import LnLean.Proofs.Channel.CoverageWitnessTargets
 import LnLean.Proofs.Routing.NodeIdentityTargets
+import LnLean.Proofs.Routing.NodeIdentityChainTargets
+import LnLean.Proofs.Protocol.NoiseTransportTargets
+import LnLean.Proofs.Channel.CoverageSourceTargets
+import LnLean.Proofs.Security.ChainFinalityTargets
+import LnLean.Proofs.Payment.InvoiceWireTargets
+import LnLean.Proofs.Channel.HtlcAggregateTargets
+import LnLean.Proofs.Model.NonVacuityTargets
 
 set_option autoImplicit false
 
@@ -447,6 +454,91 @@ set_option autoImplicit false
 #print axioms LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_header
 #print axioms LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_frame_prefix
 
+#print axioms LnLean.Proofs.Security.ChainFinalityTargets.bounded_depth_finality
+#print axioms LnLean.Proofs.Security.ChainFinalityTargets.confirmed_tx_not_reorged
+#print axioms LnLean.Proofs.Security.ChainFinalityTargets.unique_tip_finality
+#print axioms LnLean.Proofs.Security.ChainFinalityTargets.depth_bound_necessary
+#print axioms LnLean.Proofs.Security.ChainFinalityTargets.deep_reorg_evicts
+#print axioms LnLean.Proofs.Security.ChainFinalityTargets.chain_finality_and_retention
+#print axioms LnLean.Proofs.Routing.NodeIdentityChainTargets.RotationCertificate.signed_implies_link
+#print axioms LnLean.Proofs.Routing.NodeIdentityChainTargets.RotationChain.authenticated_comp
+#print axioms LnLean.Proofs.Routing.NodeIdentityChainTargets.RotationChain.authenticated_hop_links
+#print axioms LnLean.Proofs.Routing.NodeIdentityChainTargets.RotationChain.acyclic_start_not_mem_tail
+#print axioms LnLean.Proofs.Routing.NodeIdentityChainTargets.distinct_hops_not_acyclic
+#print axioms LnLean.Proofs.Routing.NodeIdentityChainTargets.opaque_link_not_authenticated
+#print axioms LnLean.Proofs.Routing.NodeIdentityChainTargets.ResignedChannel.wireMember
+#print axioms LnLean.Proofs.Routing.NodeIdentityChainTargets.SignedResignation.admitted
+#print axioms LnLean.Proofs.Routing.NodeIdentityChainTargets.old_signature_does_not_authenticate_new_keys
+#print axioms LnLean.Proofs.Routing.NodeIdentityChainTargets.signature_preservation_not_universal
+#print axioms LnLean.Proofs.Routing.NodeIdentityChainTargets.NodeRateState.replay_rejected
+#print axioms LnLean.Proofs.Routing.NodeIdentityChainTargets.rateFold_replay_rejected
+#print axioms LnLean.Proofs.Routing.NodeIdentityChainTargets.nonvacuity_witness
+#print axioms LnLean.Proofs.Protocol.NoiseTransportTargets.accepted_frame_bound_to_peer
+#print axioms LnLean.Proofs.Protocol.NoiseTransportTargets.sessionKeyBinding_iff_peerStatic_eq
+#print axioms LnLean.Proofs.Protocol.NoiseTransportTargets.accepted_frame_yields_sessionKeyBinding
+#print axioms LnLean.Proofs.Protocol.NoiseTransportTargets.accepted_frame_attributed_delivery
+#print axioms LnLean.Proofs.Protocol.NoiseTransportTargets.accepted_frame_reaches_fundingCreated
+#print axioms LnLean.Proofs.Protocol.NoiseTransportTargets.replay_rejected_with_freshness
+#print axioms LnLean.Proofs.Protocol.NoiseTransportTargets.replay_accepted_without_nonce_freshness
+#print axioms LnLean.Proofs.Protocol.NoiseTransportTargets.key_substitution_without_peer_binding
+#print axioms LnLean.Proofs.Protocol.NoiseTransportTargets.acceptance_not_attribution
+#print axioms LnLean.Proofs.Protocol.NoiseTransportTargets.noise_does_not_authenticate_payload
+#print axioms LnLean.Proofs.Protocol.NoiseTransportTargets.no_wire_session_binding_function
+#print axioms LnLean.Proofs.Protocol.NoiseTransportTargets.noise_transport_nonvacuous
+#print axioms LnLean.Proofs.Protocol.NoiseTransportTargets.noise_transport_summary
+#print axioms LnLean.Proofs.Channel.CoverageSourceTargets.decodeSource_fullRecord_exact
+#print axioms LnLean.Proofs.Channel.CoverageSourceTargets.decodeSource_outOfBand_canonical
+#print axioms LnLean.Proofs.Channel.CoverageSourceTargets.decodeSource_extensionOfFull_canonical
+#print axioms LnLean.Proofs.Channel.CoverageSourceTargets.extension_plus_wire_determines_coverage
+#print axioms LnLean.Proofs.Channel.CoverageSourceTargets.no_wire_determined_source
+#print axioms LnLean.Proofs.Channel.CoverageSourceTargets.no_wire_source_selector
+#print axioms LnLean.Proofs.Channel.CoverageSourceTargets.wire_admits_distinct_out_of_band_witnesses
+#print axioms LnLean.Proofs.Channel.CoverageSourceTargets.wireCompatible_not_out_of_band_binding
+#print axioms LnLean.Proofs.Channel.CoverageSourceTargets.no_wire_witness_authenticator
+#print axioms LnLean.Proofs.Channel.CoverageSourceTargets.coverage_source_summary
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.parse_print_paymentHash
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.wire_paymentHash_binding
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.preimage_unique_of_injective
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.preimage_determines_hash
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.paymentHash_eq_iff_bytes
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.signature_not_payment
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.signatureOnly_verifies
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.signatureOnly_no_preimage
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.signature_only_separates_verify_from_payment
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.paymentSecret_eq_iff_bytes
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.parse_print_paymentSecret
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.wire_paymentSecret_binding
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.toInvoice_valid
+#print axioms LnLean.Proofs.Channel.HtlcAggregate.Aggregate.aggregate_coverage_projection
+#print axioms LnLean.Proofs.Channel.HtlcAggregate.Aggregate.coverageValue_eq_sum
+#print axioms LnLean.Proofs.Channel.HtlcAggregate.no_double_spend_of_noAliasing
+#print axioms LnLean.Proofs.Channel.HtlcAggregate.same_spend_distinct_records_imp_aliasing
+#print axioms LnLean.Proofs.Channel.HtlcAggregate.aliasing_double_spend_witness
+#print axioms LnLean.Proofs.Channel.HtlcAggregate.AggregateTx.weight_eq
+#print axioms LnLean.Proofs.Channel.HtlcAggregate.AggregateTx.not_funded_of_output_add_fee_gt
+#print axioms LnLean.Proofs.Channel.HtlcAggregate.no_legacy_only_aggregate_coverage_decoder
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.parseFields_printFields
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.parse_print
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.print_injective
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.witness_parse
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.malformed_parse_none
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.duplicateHash_parse_none
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.decodeHop_encodeHop
+#print axioms LnLean.Proofs.Payment.InvoiceWireTargets.encodeHop_size
+#print axioms LnLean.Proofs.Model.NonVacuityTargets.witnessRegistry_sound
+#print axioms LnLean.Proofs.Model.NonVacuityTargets.witnessRegistry_length
+#print axioms LnLean.Proofs.Model.NonVacuityTargets.witnessRegistry_ids_nodup
+#print axioms LnLean.Proofs.Model.NonVacuityTargets.withVendorEcdsa_accepts_nothing
+#print axioms LnLean.Proofs.Model.NonVacuityTargets.withVendorEcdsa_funding_uninhabited
+#print axioms LnLean.Proofs.Model.NonVacuityTargets.vacuous_nonvacuous_separation
+#print axioms LnLean.Proofs.Model.NonVacuityTargets.witness_not_universal
+#print axioms LnLean.Proofs.Model.NonVacuityTargets.witnessRegistry_ne_nil
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_length
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_transport
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_header
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_frame_prefix
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_payload
+
 /-! ## 15. Registry
 
   The registry is a plain list of fully-qualified names.  Keeping it in the
@@ -777,8 +869,92 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_length,
     `LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_transport,
     `LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_header,
-    `LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_frame_prefix
+    `LnLean.Proofs.Conformance.Diff.diff_msg_open_channel_frame_prefix,
+    `LnLean.Proofs.Security.ChainFinalityTargets.bounded_depth_finality,
+    `LnLean.Proofs.Security.ChainFinalityTargets.confirmed_tx_not_reorged,
+    `LnLean.Proofs.Security.ChainFinalityTargets.unique_tip_finality,
+    `LnLean.Proofs.Security.ChainFinalityTargets.depth_bound_necessary,
+    `LnLean.Proofs.Security.ChainFinalityTargets.deep_reorg_evicts,
+    `LnLean.Proofs.Security.ChainFinalityTargets.chain_finality_and_retention,
+    `LnLean.Proofs.Routing.NodeIdentityChainTargets.RotationCertificate.signed_implies_link,
+    `LnLean.Proofs.Routing.NodeIdentityChainTargets.RotationChain.authenticated_comp,
+    `LnLean.Proofs.Routing.NodeIdentityChainTargets.RotationChain.authenticated_hop_links,
+    `LnLean.Proofs.Routing.NodeIdentityChainTargets.RotationChain.acyclic_start_not_mem_tail,
+    `LnLean.Proofs.Routing.NodeIdentityChainTargets.distinct_hops_not_acyclic,
+    `LnLean.Proofs.Routing.NodeIdentityChainTargets.opaque_link_not_authenticated,
+    `LnLean.Proofs.Routing.NodeIdentityChainTargets.ResignedChannel.wireMember,
+    `LnLean.Proofs.Routing.NodeIdentityChainTargets.SignedResignation.admitted,
+    `LnLean.Proofs.Routing.NodeIdentityChainTargets.old_signature_does_not_authenticate_new_keys,
+    `LnLean.Proofs.Routing.NodeIdentityChainTargets.signature_preservation_not_universal,
+    `LnLean.Proofs.Routing.NodeIdentityChainTargets.NodeRateState.replay_rejected,
+    `LnLean.Proofs.Routing.NodeIdentityChainTargets.rateFold_replay_rejected,
+    `LnLean.Proofs.Routing.NodeIdentityChainTargets.nonvacuity_witness,
+    `LnLean.Proofs.Protocol.NoiseTransportTargets.accepted_frame_bound_to_peer,
+    `LnLean.Proofs.Protocol.NoiseTransportTargets.sessionKeyBinding_iff_peerStatic_eq,
+    `LnLean.Proofs.Protocol.NoiseTransportTargets.accepted_frame_yields_sessionKeyBinding,
+    `LnLean.Proofs.Protocol.NoiseTransportTargets.accepted_frame_attributed_delivery,
+    `LnLean.Proofs.Protocol.NoiseTransportTargets.accepted_frame_reaches_fundingCreated,
+    `LnLean.Proofs.Protocol.NoiseTransportTargets.replay_rejected_with_freshness,
+    `LnLean.Proofs.Protocol.NoiseTransportTargets.replay_accepted_without_nonce_freshness,
+    `LnLean.Proofs.Protocol.NoiseTransportTargets.key_substitution_without_peer_binding,
+    `LnLean.Proofs.Protocol.NoiseTransportTargets.acceptance_not_attribution,
+    `LnLean.Proofs.Protocol.NoiseTransportTargets.noise_does_not_authenticate_payload,
+    `LnLean.Proofs.Protocol.NoiseTransportTargets.no_wire_session_binding_function,
+    `LnLean.Proofs.Protocol.NoiseTransportTargets.noise_transport_nonvacuous,
+    `LnLean.Proofs.Protocol.NoiseTransportTargets.noise_transport_summary,
+    `LnLean.Proofs.Channel.CoverageSourceTargets.decodeSource_fullRecord_exact,
+    `LnLean.Proofs.Channel.CoverageSourceTargets.decodeSource_outOfBand_canonical,
+    `LnLean.Proofs.Channel.CoverageSourceTargets.decodeSource_extensionOfFull_canonical,
+    `LnLean.Proofs.Channel.CoverageSourceTargets.extension_plus_wire_determines_coverage,
+    `LnLean.Proofs.Channel.CoverageSourceTargets.no_wire_determined_source,
+    `LnLean.Proofs.Channel.CoverageSourceTargets.no_wire_source_selector,
+    `LnLean.Proofs.Channel.CoverageSourceTargets.wire_admits_distinct_out_of_band_witnesses,
+    `LnLean.Proofs.Channel.CoverageSourceTargets.wireCompatible_not_out_of_band_binding,
+    `LnLean.Proofs.Channel.CoverageSourceTargets.no_wire_witness_authenticator,
+    `LnLean.Proofs.Channel.CoverageSourceTargets.coverage_source_summary,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.parse_print_paymentHash,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.wire_paymentHash_binding,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.preimage_unique_of_injective,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.preimage_determines_hash,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.paymentHash_eq_iff_bytes,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.signature_not_payment,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.signatureOnly_verifies,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.signatureOnly_no_preimage,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.signature_only_separates_verify_from_payment,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.paymentSecret_eq_iff_bytes,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.parse_print_paymentSecret,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.wire_paymentSecret_binding,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.toInvoice_valid,
+    `LnLean.Proofs.Channel.HtlcAggregate.Aggregate.aggregate_coverage_projection,
+    `LnLean.Proofs.Channel.HtlcAggregate.Aggregate.coverageValue_eq_sum,
+    `LnLean.Proofs.Channel.HtlcAggregate.no_double_spend_of_noAliasing,
+    `LnLean.Proofs.Channel.HtlcAggregate.same_spend_distinct_records_imp_aliasing,
+    `LnLean.Proofs.Channel.HtlcAggregate.aliasing_double_spend_witness,
+    `LnLean.Proofs.Channel.HtlcAggregate.AggregateTx.weight_eq,
+    `LnLean.Proofs.Channel.HtlcAggregate.AggregateTx.not_funded_of_output_add_fee_gt,
+    `LnLean.Proofs.Channel.HtlcAggregate.no_legacy_only_aggregate_coverage_decoder,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.parseFields_printFields,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.parse_print,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.print_injective,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.witness_parse,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.malformed_parse_none,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.duplicateHash_parse_none,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.decodeHop_encodeHop,
+    `LnLean.Proofs.Payment.InvoiceWireTargets.encodeHop_size,
+    `LnLean.Proofs.Model.NonVacuityTargets.witnessRegistry_sound,
+    `LnLean.Proofs.Model.NonVacuityTargets.witnessRegistry_length,
+    `LnLean.Proofs.Model.NonVacuityTargets.witnessRegistry_ids_nodup,
+    `LnLean.Proofs.Model.NonVacuityTargets.withVendorEcdsa_accepts_nothing,
+    `LnLean.Proofs.Model.NonVacuityTargets.withVendorEcdsa_funding_uninhabited,
+    `LnLean.Proofs.Model.NonVacuityTargets.vacuous_nonvacuous_separation,
+    `LnLean.Proofs.Model.NonVacuityTargets.witness_not_universal,
+    `LnLean.Proofs.Model.NonVacuityTargets.witnessRegistry_ne_nil,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_length,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_transport,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_header,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_frame_prefix,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_payload,
     ]
 
 set_option maxRecDepth 6000 in
-theorem auditedTheorems_length : auditedTheorems.length = 323 := rfl
+theorem auditedTheorems_length : auditedTheorems.length = 407 := rfl

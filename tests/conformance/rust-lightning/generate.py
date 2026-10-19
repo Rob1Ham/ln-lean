@@ -69,6 +69,7 @@ LIVE_TESTS = [
     "util::ser_macros::tests::retired_tlvs_skipped_on_read",
     "ln::msgs::tests::encoding_channel_ready",
     "ln::msgs::tests::encoding_open_channel",
+    "ln::msgs::tests::encoding_accept_channel",
 ]
 LIVE_NOTE = (
     "The committed rows were extracted from the pinned source/unit-test "
@@ -76,9 +77,10 @@ LIVE_NOTE = (
     "`generate.py --live --fetch` ran the pinned unit tests and the public-API "
     "probe under `cargo --offline --locked` with the committed "
     "`pinned/Cargo.lock`; `live-transcript.json` records the comparison. "
-    "The BOLT 2 channel_ready and open_channel payloads are encoded live "
-    "through the pinned `Writeable` impl; the wire header arithmetic remains a "
-    "pinned-source check and only `LN_MAX_MSG_LEN` is probed live."
+    "The BOLT 2 channel_ready, open_channel, and accept_channel payloads are "
+    "encoded live through the pinned `Writeable` impl; the wire header "
+    "arithmetic remains a pinned-source check and only `LN_MAX_MSG_LEN` is "
+    "probed live."
 )
 OFFLINE_NOTE = (
     "The committed rows were extracted from the pinned source/unit-test "
@@ -118,10 +120,11 @@ PROVENANCE = [
     {
         "path": "lightning/src/ln/msgs.rs",
         "sha256": "75bc3698ab6e5595dcb02de23dceb52e37a25cd31621947387054fab2461a4f8",
-        "lines": "431-443, 3239-3243, 5098-5188, 5672-5682",
-        "use": "BOLT 2 channel_ready (type 36) and open_channel (type 32) field "
-               "order/Writeable encodings and the encoding_channel_ready / "
-               "encoding_open_channel unit-test target values",
+        "lines": "431-443, 3239-3243, 5098-5188, 5399-5464, 5672-5682",
+        "use": "BOLT 2 channel_ready (type 36), open_channel (type 32), and "
+               "accept_channel (type 33) field order/Writeable encodings and "
+               "the encoding_channel_ready / encoding_open_channel / "
+               "encoding_accept_channel unit-test target values",
     },
 ]
 
@@ -404,6 +407,117 @@ def extract_open_channel(source: Path) -> dict[str, Any]:
     }
 
 
+# BOLT 2 `accept_channel` fixed-width field layout, matching
+# `impl Writeable for AcceptChannel` in the pinned `lightning/src/ln/msgs.rs`.
+ACCEPT_CHANNEL_FIELD_LAYOUT = [
+    ("temporary_channel_id", "bytes", 32),
+    ("dust_limit_satoshis", "u64", 8),
+    ("max_htlc_value_in_flight_msat", "u64", 8),
+    ("channel_reserve_satoshis", "u64", 8),
+    ("htlc_minimum_msat", "u64", 8),
+    ("minimum_depth", "u32", 4),
+    ("to_self_delay", "u16", 2),
+    ("max_accepted_htlcs", "u16", 2),
+    ("funding_pubkey", "point", 33),
+    ("revocation_basepoint", "point", 33),
+    ("payment_basepoint", "point", 33),
+    ("delayed_payment_basepoint", "point", 33),
+    ("htlc_basepoint", "point", 33),
+    ("first_per_commitment_point", "point", 33),
+]
+
+ACCEPT_CHANNEL_CONSTRUCTION_KEYS = [
+    "temporary_channel_id", "dust_limit_satoshis",
+    "max_htlc_value_in_flight_msat", "channel_reserve_satoshis",
+    "htlc_minimum_msat", "minimum_depth", "to_self_delay",
+    "max_accepted_htlcs", "funding_pubkey", "revocation_basepoint",
+    "payment_basepoint", "delayed_payment_basepoint", "htlc_basepoint",
+    "first_per_commitment_point",
+]
+
+
+def extract_accept_channel(source: Path) -> dict[str, Any]:
+    """Re-extract the pinned BOLT 2 `accept_channel` base encoding target.
+
+    The pinned `ln::msgs::tests::do_encoding_accept_channel(shutdown=false)`
+    helper constructs a public `AcceptChannel` with an all-`0x02`
+    `temporary_channel_id`, the pinned numeric fields, six compressed points,
+    no `shutdown_scriptpubkey`, and no `channel_type` TLV.  The target is the
+    270-byte payload: 32-byte id, 40 bytes of numeric fields, and 198 bytes of
+    compressed points.
+    """
+    text = (source / "lightning/src/ln/msgs.rs").read_text(encoding="utf-8")
+    body = function_body(text, "do_encoding_accept_channel")
+    require("ChannelId::from_bytes([2; 32])" in body,
+            "accept_channel test no longer uses an all-0x02 channel id")
+    require("channel_type: None" in body,
+            "accept_channel test no longer omits the channel_type TLV")
+    require("shutdown_scriptpubkey: if shutdown" in body,
+            "accept_channel test shutdown branch changed")
+
+    literals = re.findall(
+        r'<Vec<u8>>::from_hex\(\s*"([0-9a-f]+)"\s*\)', body)
+    targets = [literal for literal in literals if len(literal) == 540]
+    require(len(targets) == 1,
+            f"expected one 270-byte accept_channel target literal, got "
+            f"{len(targets)}")
+    payload = targets[0]
+
+    impl_match = re.search(
+        r"impl Writeable for AcceptChannel \{(.*?)\n\}", text, re.DOTALL)
+    require(impl_match is not None,
+            "impl Writeable for AcceptChannel not found")
+    impl_body = impl_match.group(1)
+    write_order = [name for name, _kind, _width in ACCEPT_CHANNEL_FIELD_LAYOUT]
+    positions = []
+    for name in write_order:
+        position = impl_body.find(f"{name}.write")
+        require(position >= 0,
+                f"accept_channel Writeable does not write field {name}")
+        positions.append(position)
+    require(positions == sorted(positions),
+            "accept_channel Writeable field order changed")
+
+    fields: list[dict[str, Any]] = []
+    construction: dict[str, Any] = {}
+    offset = 0
+    for name, kind, width in ACCEPT_CHANNEL_FIELD_LAYOUT:
+        raw = payload[offset * 2:(offset + width) * 2]
+        require(len(raw) == width * 2,
+                f"accept_channel field {name} runs past the target payload")
+        field: dict[str, Any] = {
+            "name": name,
+            "kind": kind,
+            "offset": offset,
+            "length": width,
+            "hex": raw,
+        }
+        if kind in ("u8", "u16", "u32", "u64"):
+            value = int(raw, 16)
+            require(str(value) in body,
+                    f"accept_channel field {name} value {value} is not a "
+                    f"pinned test literal")
+            field["value"] = value
+            construction[name] = value
+        else:
+            if kind == "point":
+                require(raw[:2] in ("02", "03"),
+                        f"accept_channel field {name} is not a compressed point")
+            construction[name] = raw
+        fields.append(field)
+        offset += width
+    require(offset == 270,
+            f"accept_channel layout covers {offset} bytes, expected 270")
+
+    construction["shutdown_scriptpubkey"] = None
+    construction["channel_type"] = None
+    return {
+        "payload": payload,
+        "construction": construction,
+        "fields": fields,
+    }
+
+
 def offline_generation() -> dict[str, Any]:
     return {
         "script": "tests/conformance/rust-lightning/generate.py",
@@ -468,6 +582,7 @@ def derived(doc: dict[str, Any], source: Path,
     message_sources = {
         "channel_ready": extract_messages(source),
         "open_channel": extract_open_channel(source),
+        "accept_channel": extract_accept_channel(source),
     }
 
     fixtures = doc["fixtures"]
@@ -659,6 +774,9 @@ def probe_commands(doc: dict[str, Any]) -> list[str]:
         elif row["name"] == "open_channel":
             values = [construction[key] for key in OPEN_CHANNEL_CONSTRUCTION_KEYS]
             commands.append("\t".join(["O", row["id"]] + [str(v) for v in values]))
+        elif row["name"] == "accept_channel":
+            values = [construction[key] for key in ACCEPT_CHANNEL_CONSTRUCTION_KEYS]
+            commands.append("\t".join(["A", row["id"]] + [str(v) for v in values]))
         else:
             raise FixtureError(f"unsupported message probe row {row['name']!r}")
     commands.append("M")
@@ -819,9 +937,11 @@ def live_run(source: Path, fixture_doc: dict[str, Any], timeout: int,
         transcript_path.parent.mkdir(parents=True, exist_ok=True)
         write_doc(transcript, transcript_path)
         digest = sha256_file(transcript_path)
+        message_names = ", ".join(
+            row["name"] for row in fixture_doc["fixtures"]["messages"])
         print(f"live: {counts['bigsize']} BigSize and {counts['tlv']} TLV fixtures "
               f"agree with rust-lightning; {counts['messages']} BOLT 2 message "
-              f"payload(s) encoded live (channel_ready, open_channel); wire: "
+              f"payload(s) encoded live ({message_names}); wire: "
               f"{counts['wire']} checked against live "
               f"LN_MAX_MSG_LEN={results['LN_MAX_MSG_LEN'][0]}")
         print(f"live transcript: {transcript_path} ({digest})")

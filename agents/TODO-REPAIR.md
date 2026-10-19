@@ -377,6 +377,45 @@ The catalog is no longer the work queue. Open issues are tracked in
 `docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`.
 Human-gated release decisions remain outside agent lanes.
 
+### Proof-wave 11 — identity chains, Noise binding, coverage sources, finality, invoices, aggregate HTLCs, non-vacuity
+
+Wave 11 launched from `4037264` with eight disjoint lanes and integrated
+seven new proof modules plus the live `accept_channel` conformance row. The
+catalog gained `LN-CH-007`, `LN-PM-007`, and `LN-SEC-007`, and seven existing
+rows were strengthened.
+
+- [x] `S11-RT-NODE-CHAIN` — signed rotation certificates, transitive
+  authenticated chains, explicit re-signing with wire-membership preservation,
+  old-signature counterexamples, and per-node timestamp/sequence rate limits.
+- [x] `S11-L1-NOISE-AUTH` — Noise_XK-shaped handshake/session model, AEAD
+  acceptance/provenance, nonce freshness/replay, derived `SessionKeyBinding`,
+  and concrete attributed delivery; computational security remains explicit.
+- [x] `S11-CONF-MESSAGES` — live `accept_channel` type-33 payload through the
+  pinned public rust-lightning `Writeable` encoder; 190 Lean references and
+  18/18 mutation controls.
+- [x] `S11-PR-COVERAGE-SOURCE` — full-record, out-of-band, and
+  protocol-extension sources; exactness, separation, and legacy-wire
+  insufficiency.
+- [x] `S11-L1-FINALITY` — finite block graph, bounded-depth finality,
+  unique-tip family form, sharp deep-reorg counterexample, and bridge to the
+  existing reorg/retention layer.
+- [x] `S11-PAY-INVOICE` — pre-bech32 BOLT 11 field-list codec, parse/print
+  round-trip and injectivity, duplicate/malformed rejection, payment-hash and
+  secret binding, and signature-vs-payment separation.
+- [x] `S11-HTLC-AGGREGATE` — aggregate HTLC coverage, no-double-spend
+  separation, aliasing counterexample, and exact fee/weight accounting.
+- [x] `S11-MODEL-NONVACUITY` — 30-entry witness registry, `withVendorEcdsa`
+  vacuity result, and carrier/relation inhabitance separation.
+- [x] Parent integration: seven root-imported modules, three new catalog rows,
+  seven rows strengthened from 198 to 277 targets, audit extended to 407
+  theorems, generated indexes/docs refreshed, full gate green, and a non-force
+  checkpoint prepared.
+
+Wave-11 gate: **build 312 jobs, strict catalog 51/51 proved / 277 targets /
+11743 declarations, `check.sh` `files=273 obligations=82 sorry_in_proofs=0`,
+407 audited theorems, 311 anchors, 149 vendor files, conformance 190 refs and
+18/18 controls, and zero actual `sorry`/forbidden constructs.**
+
 ## Commands
 
 ```sh

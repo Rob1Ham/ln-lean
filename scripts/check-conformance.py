@@ -17,9 +17,11 @@ This checker is deliberately small and dependency-free.  It does nine things:
    (``open_channel`` type 32, ``accept_channel`` type 33, ``update_add_htlc``
    type 128, ``commitment_signed`` type 132) and checks the payload length,
    transport length, and transport header.
-5. Replays the pinned BOLT 2 ``channel_ready`` (type 36) differential fixture
-   extracted from the pinned rust-lightning ``encoding_channel_ready`` unit test,
-   including its live-encoded payload in the transcript.
+5. Replays the pinned BOLT 2 ``channel_ready`` (type 36), ``open_channel``
+   (type 32), and ``accept_channel`` (type 33) differential fixtures extracted
+   from the pinned rust-lightning ``encoding_channel_ready`` /
+   ``encoding_open_channel`` / ``encoding_accept_channel`` unit tests, including
+   their live-encoded payloads in the transcript.
 6. Replays pinned rust-lightning differential fixtures from
    ``tests/conformance/rust-lightning/fixtures.json`` (committed JSON only; no
    network or Rust toolchain).
@@ -77,6 +79,7 @@ LIVE_TEST_NAMES = [
     "util::ser_macros::tests::retired_tlvs_skipped_on_read",
     "ln::msgs::tests::encoding_channel_ready",
     "ln::msgs::tests::encoding_open_channel",
+    "ln::msgs::tests::encoding_accept_channel",
 ]
 
 UINT64_MAX = 2**64 - 1
@@ -467,11 +470,12 @@ MESSAGE_TYPES = {
     "commitment_signed": 132,
 }
 
-# The live differential message rows cover BOLT 2 `channel_ready` and
-# `open_channel`, whose public rust-lightning structs/encodings are exercised
-# by the pinned `encoding_channel_ready` / `encoding_open_channel` unit tests
-# and the offline probe.
-DIFF_MESSAGE_TYPES = {"channel_ready": 36, "open_channel": 32}
+# The live differential message rows cover BOLT 2 `channel_ready`,
+# `open_channel`, and `accept_channel`, whose public rust-lightning
+# structs/encodings are exercised by the pinned `encoding_channel_ready` /
+# `encoding_open_channel` / `encoding_accept_channel` unit tests and the
+# offline probe.
+DIFF_MESSAGE_TYPES = {"channel_ready": 36, "open_channel": 32, "accept_channel": 33}
 
 DIFF_MESSAGE_CONSTRUCTION_KEYS = {
     "channel_ready": [
@@ -484,6 +488,15 @@ DIFF_MESSAGE_CONSTRUCTION_KEYS = {
         "to_self_delay", "max_accepted_htlcs", "channel_flags",
         "funding_pubkey", "revocation_basepoint", "payment_basepoint",
         "delayed_payment_basepoint", "htlc_basepoint",
+        "first_per_commitment_point", "shutdown_scriptpubkey",
+        "channel_type",
+    ],
+    "accept_channel": [
+        "temporary_channel_id", "dust_limit_satoshis",
+        "max_htlc_value_in_flight_msat", "channel_reserve_satoshis",
+        "htlc_minimum_msat", "minimum_depth", "to_self_delay",
+        "max_accepted_htlcs", "funding_pubkey", "revocation_basepoint",
+        "payment_basepoint", "delayed_payment_basepoint", "htlc_basepoint",
         "first_per_commitment_point", "shutdown_scriptpubkey",
         "channel_type",
     ],
@@ -835,11 +848,11 @@ def check_diff_message(entry: dict[str, Any], seen_ids: set[str]) -> str:
     require(sorted(construction) == sorted(expected_construction),
             f"{where}: construction keys {sorted(construction)} != "
             f"expected {sorted(expected_construction)}")
-    if name == "open_channel":
+    if name in ("open_channel", "accept_channel"):
         require(construction["shutdown_scriptpubkey"] is None,
-                f"{where}: only the no-TLV open_channel row is supported")
+                f"{where}: only the no-TLV {name} row is supported")
         require(construction["channel_type"] is None,
-                f"{where}: only the no-TLV open_channel row is supported")
+                f"{where}: only the no-TLV {name} row is supported")
 
     fields = entry["fields"]
     require(isinstance(fields, list) and fields,
@@ -1561,6 +1574,24 @@ def check_mutations(doc: dict[str, Any], diff_doc: dict[str, Any] | None,
                 lambda: check_diff_message(open_channel, set()))
 
         mutated = copy.deepcopy(diff_doc)
+        accept_channel = next(
+            e for e in mutated["fixtures"]["messages"]
+            if e["name"] == "accept_channel")
+        payload = bytearray.fromhex(accept_channel["payload"])
+        payload[-1] ^= 0x01
+        accept_channel["payload"] = payload.hex()
+        control("differential accept_channel payload byte changed",
+                lambda: check_diff_message(accept_channel, set()))
+
+        mutated = copy.deepcopy(diff_doc)
+        accept_channel = next(
+            e for e in mutated["fixtures"]["messages"]
+            if e["name"] == "accept_channel")
+        accept_channel["construction"]["minimum_depth"] += 1
+        control("differential accept_channel construction value changed",
+                lambda: check_diff_message(accept_channel, set()))
+
+        mutated = copy.deepcopy(diff_doc)
         mutated["generation"]["live_cargo_test"] = True
         mutated["generation"]["mode"] = "live-cargo-test"
         mutated["generation"]["live_transcript_sha256"] = "0" * 64
@@ -1745,11 +1776,13 @@ def run(vectors: Path, lean_paths: list[Path] | None, diff_path: Path | None,
                 "wire": len(diff_doc["fixtures"]["wire"]),
                 "messages": len(diff_doc["fixtures"]["messages"]),
             }
+            message_names = ", ".join(
+                entry["name"] for entry in diff_doc["fixtures"]["messages"])
             print(f"live evidence: {counts['bigsize']} BigSize + "
                   f"{counts['tlv']} TLV compared against rust-lightning, "
                   f"{counts['wire']} wire via live LN_MAX_MSG_LEN, "
                   f"{counts['messages']} BOLT 2 message payload(s) "
-                  f"(channel_ready, open_channel) encoded live; transcript "
+                  f"({message_names}) encoded live; transcript "
                   f"sha256 "
                   f"{generation.get('live_transcript_sha256', '')[:12]}")
         if provenance_count is not None:

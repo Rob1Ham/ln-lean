@@ -48,7 +48,7 @@ from dataclasses import dataclass, field
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "LnLean" / "Proofs" / "Obligations.lean"
 SOURCE_ROOT = ROOT / "LnLean"
-EXPECTED_ROWS = 48
+EXPECTED_ROWS = 51
 
 # ---------------------------------------------------------------------------
 # Comment / string stripping

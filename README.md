@@ -10,15 +10,15 @@ full-verification gaps — L1 script execution, computational cryptography,
 wire completeness, conformance, and public release packaging — are tracked in
 [`docs/OPEN-ISSUES.md`](docs/OPEN-ISSUES.md).
 
-At the proof-wave 10 gate, the integrated `repair/integrated` tree has:
+At the proof-wave 11 gate, the integrated `repair/integrated` tree has:
 
-* **266 Lean files** under `LnLean/` — 38 executable model modules and 228
+* **273 Lean files** under `LnLean/` — 38 executable model modules and 235
   proof modules;
-* **264 root imports** in `LnLean.lean` (the `Proofs.All` and `Proofs.PhaseC2`
+* **271 root imports** in `LnLean.lean` (the `Proofs.All` and `Proofs.PhaseC2`
   aggregators are intentionally not root-imported);
-* **48 catalog obligations: 48 `proved`, 0 `statement-only`**;
+* **51 catalog obligations: 51 `proved`, 0 `statement-only`**;
 * **0 actual `sorry` sites** in the proof tree;
-* a full build of **305 jobs, RC 0**;
+* a full build of **312 jobs, RC 0**;
 
 A `proved` row means the named declaration exists and is sorry-free. It does
 not mean the English sentence is unconditionally true: several rows keep
@@ -30,23 +30,23 @@ the lane reports under `agents/reports/`.
 
 | Metric | Value |
 |---|---:|
-| Catalog rows | 48 |
-| `proved` | 48 |
-| Catalog targets | 198 |
+| Catalog rows | 51 |
+| `proved` | 51 |
+| Catalog targets | 277 |
 | `statement-only` | 0 |
 | Unresolved/planned targets | 0 |
 | Actual `sorry` terms | 0 |
-| Lean files | 266 |
-| Root imports | 264 |
-| Full build | 305 jobs, RC 0 |
-| Audited headline theorems | 323 |
-| Conformance vectors | 61 base + 16 framing + 9 boundaries; 33 differential fixtures; live 26 BigSize + 3 TLV + 4 wire + 2 BOLT 2 payloads (`channel_ready`, `open_channel`); 185 Lean refs; 16/16 mutation controls |
+| Lean files | 273 |
+| Root imports | 271 |
+| Full build | 312 jobs, RC 0 |
+| Audited headline theorems | 407 |
+| Conformance vectors | 61 base + 16 framing + 9 boundaries; 33 differential fixtures; live 26 BigSize + 3 TLV + 4 wire + 3 BOLT 2 payloads (`channel_ready`, `open_channel`, `accept_channel`); 190 Lean refs; 18/18 mutation controls |
 
 The strict catalog audit is now green:
 
 ```text
-rows=48 proved=48 statementOnly=0 targets=198 unresolved=0
-proved_failures=0 duplicate_ids=0 candidates=0 declarations=10968
+rows=51 proved=51 statementOnly=0 targets=277 unresolved=0
+proved_failures=0 duplicate_ids=0 candidates=0 declarations=11743
 ```
 
 The remaining work is no longer catalog promotion. It is the harder bridge from
@@ -67,7 +67,7 @@ LnLean/Protocol/            handshake, peer, features, errors
 LnLean/Routing/             graph, gossip, onion, route construction
 LnLean/Payment/             invoices, MPP, keysend, liquidity
 LnLean/Security/            threat model and invariant catalog
-LnLean/Proofs/              228 proof modules: obligation modules, theorem
+LnLean/Proofs/              235 proof modules: obligation modules, theorem
                             statements, WaveD (33), WaveE (15),
                             ModelHardening (15), PhaseC2 (17), PhaseC3 (12),
                             and the proof-wave 3/4/5/6/7/8/9/10 target modules

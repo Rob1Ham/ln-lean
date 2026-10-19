@@ -53,10 +53,12 @@ import LnLean.Proofs.Channel.CommitmentIntegrationTargets
 import LnLean.Proofs.Channel.CommitmentOrderTargets
 import LnLean.Proofs.Channel.CommitmentTxProps
 import LnLean.Proofs.Channel.CommitmentTypesTargets
+import LnLean.Proofs.Channel.CoverageSourceTargets
 import LnLean.Proofs.Channel.CoverageWitnessTargets
 import LnLean.Proofs.Channel.FeeProps
 import LnLean.Proofs.Channel.FeeTargets
 import LnLean.Proofs.Channel.HTLCProps
+import LnLean.Proofs.Channel.HtlcAggregateTargets
 import LnLean.Proofs.Channel.HtlcGlobalIdTargets
 import LnLean.Proofs.Channel.HtlcPreimageTargets
 import LnLean.Proofs.Channel.PenaltyProps
@@ -81,6 +83,7 @@ import LnLean.Proofs.Crypto.SchnorrProps
 import LnLean.Proofs.Crypto.Sha256Props
 import LnLean.Proofs.CryptoTargets
 import LnLean.Proofs.Liveness
+import LnLean.Proofs.Model.NonVacuityTargets
 import LnLean.Proofs.ModelHardening.F01
 import LnLean.Proofs.ModelHardening.F02
 import LnLean.Proofs.ModelHardening.F03
@@ -98,6 +101,7 @@ import LnLean.Proofs.ModelHardening.F15
 import LnLean.Proofs.ModelHardening.F16
 import LnLean.Proofs.Obligations
 import LnLean.Proofs.Payment.InvoiceProps
+import LnLean.Proofs.Payment.InvoiceWireTargets
 import LnLean.Proofs.Payment.KeysendProps
 import LnLean.Proofs.Payment.LiquidityProps
 import LnLean.Proofs.Payment.MPPProps
@@ -134,6 +138,7 @@ import LnLean.Proofs.Protocol.ChannelReestablishProps
 import LnLean.Proofs.Protocol.ErrorProps
 import LnLean.Proofs.Protocol.FeaturesProps
 import LnLean.Proofs.Protocol.HandshakeProps
+import LnLean.Proofs.Protocol.NoiseTransportTargets
 import LnLean.Proofs.Protocol.OpenChannelRoutingTargets
 import LnLean.Proofs.Protocol.OpenChannelWireTargets
 import LnLean.Proofs.Protocol.TransportAuthTargets
@@ -150,9 +155,11 @@ import LnLean.Proofs.Routing.GossipStoreEpochTargets
 import LnLean.Proofs.Routing.GossipTargets
 import LnLean.Proofs.Routing.GraphProps
 import LnLean.Proofs.Routing.NodeCanonicalTargets
+import LnLean.Proofs.Routing.NodeIdentityChainTargets
 import LnLean.Proofs.Routing.NodeIdentityTargets
 import LnLean.Proofs.Routing.OnionProps
 import LnLean.Proofs.Routing.RouteBlindingProps
+import LnLean.Proofs.Security.ChainFinalityTargets
 import LnLean.Proofs.Security.ReorgTargets
 import LnLean.Proofs.Security.SecurityGameTargets
 import LnLean.Proofs.Security.ThreatModelProps

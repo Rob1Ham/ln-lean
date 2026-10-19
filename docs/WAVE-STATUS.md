@@ -2,12 +2,12 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `db52cc9` (`[WAVE10] integrate domain, transport-auth, PoP,
-coverage, node-identity, and live-message lanes`); status commits may advance
-the tip. Base `9359475` (wave-9 integration); wave 10 launched from `9158592`.
-**Catalog:** 48 proved / 0 statementOnly / 0 unresolved / 198 targets.
-**Wave 10:** integrated; six lanes complete, reports under
-`agents/reports/swarm10/`; lane plan `agents/swarm/WAVE-10.md`.
+**Gate HEAD:** wave-11 code commit; status commits may advance the tip. Base
+`9359475` (wave-9 integration); wave 10 launched from `9158592`; wave 11
+launched from `4037264`.
+**Catalog:** 51 proved / 0 statementOnly / 0 unresolved / 277 targets.
+**Wave 11:** integrated; eight lanes complete, reports under
+`agents/reports/swarm11/`; lane plan `agents/swarm/WAVE-11.md`.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 
 This file describes the repair branch. Older wave tables are retained as
@@ -18,26 +18,45 @@ history; they are not a claim about the current tree. Current open work is in
 
 | Metric | Value |
 |---|---|
-| Lean files under `LnLean/` | **266** |
-| Root imports in `LnLean.lean` | **264** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
-| Full build | **RC 0**, `Build completed successfully (305 jobs)` |
+| Lean files under `LnLean/` | **273** |
+| Root imports in `LnLean.lean` | **271** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
+| Full build | **RC 0**, `Build completed successfully (312 jobs)` |
 | Actual `sorry` lines | **0** (`grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` → no matches, grep RC 1) |
 | Proof files with the word `sorry` in prose | comments only, not proof terms |
-| Catalog rows | **48** |
-| Catalog `proved` | **48** |
+| Catalog rows | **51** |
+| Catalog `proved` | **51** |
 | Catalog `statementOnly` | **0** |
-| Catalog targets | **198** |
+| Catalog targets | **277** |
 | Unresolved/planned targets | **0** |
 | Vendor snapshot | **OK**, 149 files from public `btc-lean` `4f5c4f8`; `fetch-vendor.sh --from-git` tested |
 | Anchors | **311 checked, 0 bad**, 2 unanchored rows |
-| Generated obligation index | 228 proof files, 81 markers, 8681 declarations, 0 `sorry` sites |
-| Axiom audit | 323 theorems; only `propext`, `Quot.sound`, `Classical.choice` |
-| Conformance | 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 185 Lean references, 16/16 mutation controls, 3 declared model gaps; live 26 BigSize + 3 TLV + 4 wire + 2 BOLT 2 messages; 6 finite BOLT 2 message vectors |
+| Generated obligation index | 235 proof files, 81 markers, 9382 declarations, 0 `sorry` sites |
+| Axiom audit | 407 theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Conformance | 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 190 Lean references, 18/18 mutation controls, 3 declared model gaps; live 26 BigSize + 3 TLV + 4 wire + 3 BOLT 2 messages; 6 finite BOLT 2 message vectors |
 | Public L1 pin | `Rob1Ham/btc-lean` `main@4f5c4f8` |
 | Build dependency | `vendor/btc-lean-core` `4f5c4f8` (public `spec/core` copy) |
 
 The exact `sorry` result is **zero matching lines**. Prose mentions of
 `sorry` in documentation are not `sorry` terms.
+
+## Proof-wave 11 gate
+
+- `lake build` — **RC 0**, 312 jobs.
+- `check-catalog.py --audit` — **RC 0**, 51 proved, 0 statement-only,
+  277 targets, 0 unresolved, 0 proved failures, 0 candidates, 11,743
+  declarations.
+- `check.sh` — **RC 0**: `files=273 obligations=82 sorry_in_proofs=0`,
+  `check: OK`.
+- `check-final.py` — **RC 0**: 273 Lean files, 271 root imports, D=33 E=15
+  F=15.
+- `check-conformance.py` — **RC 0**: 190 Lean references, 18/18 mutation
+  controls, 6 finite BOLT 2 message vectors, live transcript `2677d760420f…`
+  with 26 BigSize + 3 TLV + 4 wire + 3 live BOLT 2 payloads
+  (`channel_ready`, `open_channel`, `accept_channel`).
+- `verify-vendor.sh` — **RC 0**, 149 files (public `4f5c4f8` snapshot).
+- `verify-anchors.py` — **RC 0**, 311 anchors, 0 bad, 2 unanchored rows.
+- `AxiomAudit` — **RC 0**, 407 audited theorems with the permitted classical
+  axioms only.
 
 ## Proof-wave 10 gate
 
