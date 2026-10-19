@@ -2,11 +2,12 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `9bafdab` (`[WAVE8] integrate residual proof lanes and root imports`).
-Status commits may advance the branch tip. Proof-wave 7 code was `b48d041`;
-wave 8 launched from `50d78ed`.
+**Gate HEAD:** `b15744b` (`[MERGE] integrate remote wave 8 residual tree with
+45-module wave H`; remote base `e3e0aa8`). Status commits may advance the
+branch tip. Proof-wave 7 code was `b48d041`; wave 8 launched from `50d78ed`.
 **Catalog:** 48 proved / 0 statementOnly / 0 unresolved / 100 targets.
-**Wave 9:** running from `10d18a1`; lane plan `agents/swarm/WAVE-9.md`.
+**Wave 9:** running from `50e8b5c` on top of the wave-H merge `b15744b`; lane
+plan `agents/swarm/WAVE-9.md`.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 
 This file describes the repair branch. Older wave tables are retained as
@@ -17,9 +18,9 @@ history; they are not a claim about the current tree. Current open work is in
 
 | Metric | Value |
 |---|---|
-| Lean files under `LnLean/` | **211** |
-| Root imports in `LnLean.lean` | **209** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
-| Full build | **RC 0**, `Build completed successfully (250 jobs)` |
+| Lean files under `LnLean/` | **256** |
+| Root imports in `LnLean.lean` | **254** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
+| Full build | **RC 0**, `Build completed successfully (295 jobs)` |
 | Actual `sorry` lines | **0** (`grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` → no matches, grep RC 1) |
 | Proof files with the word `sorry` in prose | comments only, not proof terms |
 | Catalog rows | **48** |
@@ -28,9 +29,9 @@ history; they are not a claim about the current tree. Current open work is in
 | Catalog targets | **100** |
 | Unresolved/planned targets | **0** |
 | Vendor snapshot | **OK**, 149 files from public `btc-lean` `4f5c4f8`; `fetch-vendor.sh --from-git` tested |
-| Anchors | **306 checked, 0 bad**, 2 unanchored rows |
-| Generated obligation index | 173 proof files, 81 markers, 6132 declarations, 0 `sorry` sites |
-| Axiom audit | 215 theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Anchors | **309 checked, 0 bad**, 2 unanchored rows |
+| Generated obligation index | 218 proof files, 81 markers, 8228 declarations, 0 `sorry` sites |
+| Axiom audit | 227 theorems; only `propext`, `Quot.sound`, `Classical.choice` |
 | Conformance | 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 175 Lean references, 13/13 mutation controls, 3 declared model gaps; live 26 BigSize + 3 TLV + 4 wire; 6 BOLT 2 message vectors |
 | Public L1 pin | `Rob1Ham/btc-lean` `main@4f5c4f8` |
 | Build dependency | `vendor/btc-lean-core` `4f5c4f8` (public `spec/core` copy) |
@@ -40,15 +41,15 @@ The exact `sorry` result is **zero matching lines**. Prose mentions of
 
 ## Proof-wave 8 gate
 
-- `lake build` — **RC 0**, 250 jobs.
+- `lake build` — **RC 0**, 295 jobs.
 - `check-catalog.py --audit` — **RC 0**, 48 proved, 0 statement-only,
-  100 targets, 0 unresolved, 0 proved failures, 0 candidates, 8181
+  100 targets, 0 unresolved, 0 proved failures, 0 candidates, 10484
   declarations.
 - `check-catalog.py --allow-planned` — **RC 0**, same counts with
   `planned=0`.
-- `check.sh` — **RC 0**: `files=211 obligations=82 sorry_in_proofs=0`,
+- `check.sh` — **RC 0**: `files=256 obligations=82 sorry_in_proofs=0`,
   `check: OK`.
-- `check-final.py` — **RC 0**: 211 Lean files, 209 root imports, D=33 E=15
+- `check-final.py` — **RC 0**: 256 Lean files, 254 root imports, D=33 E=15
   F=15.
 - `check-conformance.py` — **RC 0**: 61 base + 16 framing + 9 boundary
   checks, 33 differential fixtures, 175 Lean references, 13/13 mutation
@@ -56,8 +57,8 @@ The exact `sorry` result is **zero matching lines**. Prose mentions of
   verified, live transcript `3dd7a98f…` with 26 BigSize + 3 TLV + 4 wire
   live rows.
 - `verify-vendor.sh` — **RC 0**, 149 files (public `4f5c4f8` snapshot).
-- `verify-anchors.py` — **RC 0**, 306 anchors, 0 bad, 2 unanchored rows.
-- `AxiomAudit` — **RC 0**, 215 audited theorems with the permitted classical
+- `verify-anchors.py` — **RC 0**, 309 anchors, 0 bad, 2 unanchored rows.
+- `AxiomAudit` — **RC 0**, 227 audited theorems with the permitted classical
   axioms only.
 
 **Proof-wave 8 gate: PASS.** Push is non-force to
@@ -100,6 +101,25 @@ audit to 194 headline theorems, and closed `CH-01`, `RT-01`, `CONF-02`,
 `MODEL-02`, and `MODEL-03`. The remaining open issues are in
 `docs/OPEN-ISSUES.md`.
 
+## Wave H 48-lane integration
+
+The independent Wave H branch was merged into the remote wave-8 residual tree.
+It adds **45 proof modules** under `LnLean/Proofs/WaveH/` and keeps the remote
+public-core bump, protocol/routing changes, and 100-target catalog. The merged
+gate is **295 Lake jobs, RC 0**, with **256 Lean files**, **254 root imports**,
+**227 audited theorems**, **309 anchors**, **149 vendor files**, and zero actual
+`sorry`.
+
+Wave H closes `L1-04` (H33: `1116 + 172*k` witness weight vs `1124 + 172*k`
+fee basis; the 8 WU is `count_tx_out`) and `L1-05` (H34: 71-byte script
+injectivity counterexample plus a domain-separated commitment). H07/H08/H09
+independently confirm the HTLC preimage/scriptCode path and `PR-05`. H13–H22
+fix the **319-byte** `open_channel` payload and add the accept/PoP contract.
+H39–H45 add epoch gossip, schedule/fairness liveness, reduction arithmetic,
+and conditional reorg preservation. H46–H48 provide vendor/clean-checkout and
+release artifacts. H20 was adapted to the remote `HandshakeState` change that
+removed `DecidableEq`.
+
 ## Historical waves
 
 | Wave | Scope | Result |
@@ -113,6 +133,7 @@ audit to 194 headline theorems, and closed `CH-01`, `RT-01`, `CONF-02`,
 | Proof-wave 6 (8 lanes) | BIP 143/revocation, five-field commitment, bit-exact wire, conditional view binding, dance, canonical gossip, transport promotion | **7 files; 73 targets; 218-job gate** |
 | Proof-wave 7 (8 lanes) | Sequence context, preimage equality, consumer migration, guarded fold, raw gossip, live conformance, open_channel auth, key model | **7 files; 79 targets; 233-job gate** |
 | Proof-wave 8 (8 lanes) | `TxValidation.Full` transfer, HTLC preimage, type-32 `open_channel`, accept payload, consumer adapter, conditional ECDSA bridge, BOLT 2 encodings, store epochs | **7 files; 100 targets; 250-job gate** |
+| Wave H 48-lane integration | 45 independent modules: per-input checker/composition, HTLC preimage/scriptCode, 319-byte `open_channel`, accept/PoP, commitment sites, anchor/script-commitment, epoch gossip, liveness, reduction arithmetic, reorg, release artifacts | **45 files; 100 targets; 227 audited; 295-job merged gate** |
 
 ## Reproduce
 

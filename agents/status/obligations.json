@@ -1,8 +1,8 @@
 {
-  "files": 173,
+  "files": 218,
   "obligations": 81,
   "catalog_obligations": 48,
-  "declarations": 6132,
+  "declarations": 8228,
   "sorries": 0,
   "by_domain": {
     "Bitcoin": 3,
@@ -14,11 +14,11 @@
     "WaveE": 14
   },
   "by_kind": {
-    "abbrev": 47,
-    "def": 1297,
-    "inductive": 43,
-    "structure": 134,
-    "theorem": 4611
+    "abbrev": 58,
+    "def": 1711,
+    "inductive": 54,
+    "structure": 168,
+    "theorem": 6237
   },
   "duplicate_ids": [],
   "catalog_duplicate_ids": [],

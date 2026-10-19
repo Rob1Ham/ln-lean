@@ -2,9 +2,9 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `9bafdab` (`[WAVE8] integrate residual proof lanes and root
-imports`). Status commits may advance the branch tip. Proof-wave 7 code was
-`b48d041`; wave 8 launched from `50d78ed`.
+**Gate HEAD:** `b15744b` (`[MERGE] integrate remote wave 8 residual tree with
+45-module wave H`; remote base `e3e0aa8`). Status commits may advance the
+branch tip. Proof-wave 7 code was `b48d041`; wave 8 launched from `50d78ed`.
 **Catalog state:** **48 `proved` / 0 `statementOnly` / 0 unresolved / 100
 targets**.
 **Remote refs:** push is non-force to `origin/repair/integrated`. `origin/main`
@@ -43,7 +43,9 @@ and six proof modules), strengthened six rows to 79 resolved targets, and
 closed the consumer, raw-gossip, live-conformance, and fold questions, again
 without changing the 48-row count. Proof-wave 8 added seven more proof modules,
 strengthened seven rows from 79 to 100 resolved targets, and kept the 48-row
-count.
+count. The independent Wave H 48-lane integration adds 45 further proof
+modules on top of that base, taking the merged tree to **256 Lean files** and
+**227 audited headline theorems** without changing the 48-row catalog.
 
 * `LnLean/Proofs/Bitcoin/FundingScriptTargets.lean`
 * `LnLean/Proofs/Bitcoin/ToLocalScriptTargets.lean`
@@ -99,21 +101,21 @@ are retained.
 
 | Check | Command | Result |
 |---|---|---|
-| Full build | `LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (250 jobs).` |
+| Full build | `LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (295 jobs).` |
 | Actual `sorry` | `grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` | **0 matches** (grep RC 1: no lines) |
 | Policy checker | `./scripts/check.sh` | **RC 0**, `files=211 obligations=82 sorry_in_proofs=0`, `check: OK` |
-| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 211 Lean files, 209 root imports |
+| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 256 Lean files, 254 root imports |
 | Vendor integrity | `./scripts/verify-vendor.sh` | **RC 0**, `OK (149 files)` |
-| Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=306 bad=0 unanchored_rows=2` |
+| Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=309 bad=0 unanchored_rows=2` |
 | Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 48 proved, 0 statement-only, 100 targets, 0 unresolved, 0 proved failures, 0 candidates |
 | Catalog, planned-aware | `python3 scripts/check-catalog.py --allow-planned` | **RC 0**, `rows=48 proved=48 statementOnly=0 planned=0 proved_failures=0` |
-| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 215 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
-| Generated index | `python3 scripts/collect-obligations.py` | `173` proof files, `81` markers, `48` catalog rows, `6132` declarations, `0` `sorry` sites |
+| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 227 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Generated index | `python3 scripts/collect-obligations.py` | `218` proof files, `81` markers, `48` catalog rows, `8228` declarations, `0` `sorry` sites |
 | Conformance | `python3 scripts/check-conformance.py` | **RC 0**, 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 175 Lean theorem references, 13/13 mutation controls, 6 BOLT 2 message vectors, live 26 BigSize + 3 TLV + 4 wire |
 
-Tree size: **211 Lean files** under `LnLean/`, **209** root imports in
+Tree size: **256 Lean files** under `LnLean/`, **254** root imports in
 `LnLean.lean`; `LnLean.Proofs.All` and the `LnLean.Proofs.PhaseC2` aggregator
-are not root-imported. The full build covers 250 Lake jobs.
+are not root-imported. The full build covers 295 Lake jobs.
 
 The `sorry` grep result is exact: **there are no lines consisting only of
 `sorry` (modulo whitespace) in any `LnLean/**/*.lean` file.** Prose mentions of
@@ -369,3 +371,34 @@ the 48-row catalog gate:
   sequence-level canonical-store square, with two divergence witnesses showing
   both admission hypotheses are necessary. Node-announcement canonicalisation
   remains open.
+
+
+## Wave H 48-lane integration
+
+The Wave H branch adds **45 independent proof modules** under
+`LnLean/Proofs/WaveH/`, integrated after the public-core bump and the remote
+Wave 8 residual lanes. The merged tree keeps all remote changes and adds:
+
+* H01/H04/H06/H30/H31/H32 — unconditional per-input
+  `txCheckerFor (some amount) = realCheckerOf`, the concrete one-input P2WSH
+  `scriptLaneTx`/`txVerdictFull` composition, exact `csv < 32768` and
+  `MINIMALDATA` boundaries, and the funding/revocation checker instances;
+* H07/H08/H09/H11/H12/H37 — HTLC BIP 143 preimage/digest equality, four BOLT 3
+  witness scripts with exact scriptCode synthesis, serialization-domain and
+  framing boundaries;
+* H13–H22 — the **319-byte** BOLT 2 type-32 `open_channel` mandatory payload
+  (correcting the earlier 313-byte sketch), the 270-byte `accept_channel`
+  payload, and the additive stored-accept/PoP contract;
+* H23–H28 — commitment consumer/view adapters, downstream accounting, and the
+  construction-site coverage-loss counterexample;
+* H33/H34 — `L1-04` closed with the `1116 + 172*k` witness weight vs
+  `1124 + 172*k` fee basis (the 8 WU is `count_tx_out`), and `L1-05` closed
+  with the 71-byte script-injectivity counterexample plus a domain-separated
+  commitment;
+* H39–H45 — epoch-gossip sequence projection and supersession, the concrete
+  schedule/fairness liveness model, lossless reduction arithmetic and
+  separations, and conditional reorg preservation.
+
+H20 was adapted to the remote `HandshakeState` change that removed
+`DecidableEq` (the added `acceptChannel?` field); its concrete witness
+transitions are now proved by definitional equality rather than `decide`.

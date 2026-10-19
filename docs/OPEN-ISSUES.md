@@ -3,13 +3,15 @@
 **Status:** living roadmap after the proof-wave 9 launch; wave 9 is running
 from `10d18a1` on `repair/integrated`.
 **Branch:** `repair/integrated`.
-**Base commit:** `10d18a1` (wave 9 launch); wave 8 final code is `68f283c`;
-wave 8 launch is `50d78ed`; proof-wave 7 code is `b48d041`; wave 7 launch is
-`3180581`; proof-wave 6 code is `0a3a5fb` (proof-wave 5 code is `6389baa`;
-proof-wave 4 code at `26ced90`).
+**Base commit:** `b15744b` (Wave H merge of remote `e3e0aa8`) plus the
+wave-9 launch `50e8b5c`; wave 9 is running on top of both. Wave 8 launch is
+`50d78ed`; proof-wave 7 code is `b48d041`; wave 7 launch is `3180581`;
+proof-wave 6 code is `0a3a5fb` (proof-wave 5 code is `6389baa`; proof-wave 4
+code at `26ced90`).
 **Catalog gate:** 48/48 rows `proved`, 0 `statement-only`, 0 unresolved,
 100 targets.
-**Full build:** 250 jobs, RC 0.
+**Full build:** 295 jobs, RC 0, 256 Lean files, 254 root imports, 227 audited
+theorems.
 **Rule:** this file is updated by every wave. Closed issues keep their id and
 get a `closed` row; new gaps get a new id in the same wave that discovers them.
 
@@ -24,7 +26,7 @@ by rewording it; add the missing model or keep the scope note.
 |---|---|---|
 | **P0** | Blocks a public release or a reproducible build | `OPS-02`, `OPS-03` |
 | **P0** | Blocks any claim of spendable L1 scripts | `L1-01`, `L1-02`, `L1-07` |
-| **P1** | Major model/verification gap; codeable in a wave | `L1-03`, `L1-04`, `L1-05`, `PR-01`, `PR-02`, `RT-02` |
+| **P1** | Major model/verification gap; codeable in a wave | `L1-03`, `PR-01`, `PR-02`, `RT-02` |
 | **P2** | Longer-term research / conformance / network assumptions | `CR-01`, `L1-06`, `NET-01`, `CONF-01`, `MODEL-01`, `SEC-01` |
 
 ## Open issues
@@ -38,8 +40,8 @@ by rewording it; add the missing model or keep the scope note.
 | `L1-01` | P0 | open (concrete conditional EC bridge) | P2WSH / `OP_CHECKMULTISIG` spendability is not bridged to the vendored interpreter | `SpendTargets.lean` defines the explicit stack model; `InterpreterBridgeTargets` imports the vendored `Bitcoin.Interpreter.Defs` evaluator, proves the model serializer equal to the vendor `serializeOpcodes`, parses the wire list back exactly, and proves `funding_interpreters_agree` for the positive 2-of-2 funding witness. `SighashBridgeTargets` builds the BIP 143 witness-v0 digest and a `LocktimeEnv` to the vendor `ecdsaEntry`. This is not unconditional consensus spendability: ECDSA remains an abstract verifier, spent amount/outpoint and transaction-validity context are explicit inputs, and the scope is positive-direction P2WSH. Wave 8 `EcdsaBridgeTargets` supplies the exact conditional `VendorEcdsaBridge` transfer (`fundingSignedValid_iff_vendor`), the argument-order/DER/hashtype seam, and the funding/commitment/close interpreter agreements; the bridge is still an explicit hypothesis, not an unconditional verifier theorem. | Keep the constructed sighash/context path and positive-direction scope; a full consensus claim still needs `VendorEcdsaBridge`/EUF-CMA and the spent-amount/transaction-validity context. |
 | `L1-02` | P0 | open (tx pipeline transfer exact; known-amount/EC boundary) | `to_local` CSV/revocation execution has a known-amount/concrete-EC boundary | `InterpreterBridgeTargets` executes the delayed branch; `InterpreterRevocationTargets` executes the revocation branch with branch-selection and negative cases. `SequenceContextTargets` proves `decodeNum_delayBytes`, non-negativity/disable-bit facts, exact `checkSequenceDef_delay_iff` (version ≥ 2, height domain, `csv ≤ masked sequence`), `toLocal_delayed_sequence_context_refinement`, and `toLocal_delayed_checkerOf_refinement` at `Bitcoin.Crypto.Ecdsa.Verify.verifyImpl`; `checkerOf_eq_realCheckerOf` transfers to `RealChecker.realCheckerOf` for `nIn < tx.vin.length`, with bad-signature failures mechanized at every evaluator layer. Wave 8 `TxValidTransferTargets` proves `txCheckerFor tx nIn (some amount) = realCheckerOf tx nIn amount`, transfers the delayed/revocation branches, mechanizes the missing-amount case as fail-closed, and proves the `minimalData` and `csv ≥ 32768` decode/verdict edges (including the `csv = 32768` collapse to `0`). The remaining boundary is the known spent amount and the concrete EC verifier, not a `TxValidation.Full` transfer gap. | Keep the known-amount and concrete-EC boundaries explicit; no `TxValidation.Full` transfer gap remains. |
 | `L1-03` | P1 | open (transport attribution; wire path closed) | `FundingScriptHashLinked` is a construction invariant | `FundingNegotiation.toFundingParams` computes `witnessScriptHash := H(witnessScript.bytes)` from ordered funding keys, and `FundingLinkTargets` proves the ordered P2WSH output. Wave 7 adds `OpenChannel`, its `toFundingNegotiation`/`toFundingParams` projection, a separate `FundingPhase`/`FundingPhaseEvent`/`fundingStep`/`FundingReachable` machine, and `FundingAuthTargets`: joint open/accept construction, finite-C1 output-determines-key-set, key provenance, phase-link theorems, and the `same_message_distinct_senders` scope counterexample. Wave 8 adds `Msg.openChannel`/`MsgKind.openChannel`, `OpenChannelWire` with six-key/type/length/identity laws, projection to `Handshake.OpenChannel`, funding construction, and end-to-end `FundingPhase` reachability. | No wire patch remains; keep the finite C1 admission, transport-attribution, and `HandshakeState` routing caveats explicit. |
-| `L1-04` | P1 | open | Anchor weight has an 8 WU spec/serialization gap | `LN-L1-006` proves `serializedAnchorWeight + 8 = 1124 + 172*k`; witness serialization and the Appendix A `count_tx_out` discrepancy remain | Model the missing witness/CompactSize bytes or document the negotiated fee-basis interpretation permanently |
-| `L1-05` | P1 | open (partially mitigated) | C1 is 32-byte payment-preimage collision resistance, not 71-byte script injectivity | `c1_32_does_not_bind_funding_witnessScripts` remains; the P2WSH reverse direction still uses a finite pair-level `CollisionFreeOn` admission. `FundingLinkTargets` adds the construction lemma for the actual revealed script but does not assume global or 71-byte injectivity. | Keep the finite admission; if a global claim is required, model a domain-separated script commitment rather than SHA-256 injectivity. |
+| `L1-04` | P1 | closed (fee-basis interpretation) | Anchor weight has an 8 WU spec/serialization gap | Wave H H33 proves the witness-inclusive commitment weight is `1116 + 172*k`, that `1124 + 172*k` is the fee basis, and that the extra 8 WU is the Appendix A `count_tx_out` field, not missing witness bytes; the literal `1124` weight claim is retained as a counterexample. | No further model action; keep the literal/fee-basis distinction explicit in downstream fee consumers. |
+| `L1-05` | P1 | closed (counterexample + domain-separated construction) | C1 is 32-byte payment-preimage collision resistance, not 71-byte script injectivity | Wave H H34 proves unconditional counterexamples: a C1-satisfying primitive model collides on 71-byte funding scripts, and no primitive model binds all 71-byte scripts. It then proves a domain-separated `scriptCommitment` binds the revealed witness script under the retained finite `CollisionFreeOn` pair admission. | No global SHA-256 injectivity claim; keep the finite pair admission for the domain-separated commitment. |
 | `L1-06` | P2 | open | Reorg result is conditional on common tip and bounded depth | `LN-L1-003` keeps `SameChain`, common-prefix arithmetic, and `OutOfReachOf` explicit; deep reorgs have a separate failure mode | Connect the hypotheses to the L1 chain model or leave the conditional theorem as the deliverable |
 | `L1-07` | P0 | open (known-amount/EC boundary) | Vendored real interpreter is imported for the positive L1 branches | `InterpreterBridgeTargets` proves funding 2-of-2 and delayed agreement; `InterpreterRevocationTargets` proves the revocation branch; `SighashBridgeTargets` constructs the digest/`LocktimeEnv`. Wave 7's `SequenceContextTargets` proves the exact BIP 68/112 sequence context and transfers the delayed checker to `Bitcoin.Crypto.Ecdsa.Verify.verifyImpl` and `RealChecker.realCheckerOf` for `nIn < tx.vin.length`. Wave 8 transfers the delayed/revocation branches to `txCheckerFor (some amount)` and closes the `TxValidation.Full` transfer for a known amount; sequence range/policy edges are mechanized. The bridge remains positive-direction with an explicit amount/EC boundary, and unconditional `ConsensusSpendBridge` is still open. | No `TxValidation.Full` transfer gap remains for a known spent amount; keep the positive-direction and amount/EC boundaries explicit. |
 | `L1-08` | P0 | closed (constructed under explicit context) | BIP 143 sighash and locktime/sequence context were assumptions in the L1 bridge | `LnLean/Bitcoin/Sighash.lean` defines the ten-field BIP 143 witness-v0 preimage, serializers, sub-hashes, `ofTx`, `digest`, and guarded `sighashWitnessV0`; it proves byte-equality to the vendored `signatureHashBip143Impl`/`signatureHashBip143` and mechanizes ANYONECANPAY/zero-sub-hash omissions. `SighashBridgeTargets` constructs `LocktimeEnv` from transaction fields and proves `checker_consumes_model_digest`, instantiating the funding and delayed `to_local` agreements. Boundaries: abstract EC verifier, explicit spent amount/outpoint and transaction-validity context, positive P2WSH direction, pinned flags. | No further action for the digest construction; keep the explicit context and positive-direction scope. |
@@ -198,11 +200,27 @@ wire-only coverage, `RT-02` to node-announcement canonicalisation, and
 `CONF-01` to the deferred live message row. No unconditional consensus or
 computational-security claim is added.
 
+## Wave H 48-lane integration (complete)
+
+Wave H adds **45 independent proof modules** under `LnLean/Proofs/WaveH/` on
+top of the remote wave-8 residual lanes. The merged tree keeps all remote
+changes, the public-core bump, and the 100-target catalog. It closes `L1-04`
+(H33) and `L1-05` (H34), independently confirms `PR-05` (H07/H08/H09), and
+adds the per-input `txCheckerFor` equality (H01), the concrete one-input P2WSH
+composition (H04), exact `csv`/`MINIMALDATA` boundaries (H05/H06), the
+**319-byte** `open_channel` payload (H13–H19), the accept/PoP contract
+(H20–H22), commitment-site accounting (H23–H28), epoch-gossip refinement
+(H39–H42), schedule/fairness liveness (H43), reduction arithmetic (H44), and
+conditional reorg preservation (H45). H46–H48 provide the vendor/clean-checkout
+and release artifacts. H20 was adapted to the remote `HandshakeState` change
+that removed `DecidableEq`.
+
 ## Wave 9 lanes (running)
 
-Wave 9 launched from `10d18a1`. Six lanes have exclusive new modules and report
-paths; the parent integrates root imports, catalog targets, audit entries, and
-docs after the lane reports land.
+Wave 9 launched from `10d18a1` and now runs on top of the wave-H merge
+`b15744b`. Six lanes have exclusive new modules and report paths; the parent
+integrates root imports, catalog targets, audit entries, and docs after the
+lane reports land.
 
 | Lane | Issue(s) | Owned files | Scope |
 |---|---|---|---|
@@ -241,12 +259,12 @@ foundation (`CR-01`/`SEC-01`), and any `main` merge remain outside agent lanes.
 
 | Check | Result |
 |---|---|
-| `lake build` | 250 jobs, RC 0 |
-| `check-catalog.py --audit` | 48 proved / 0 statement-only / 100 targets / 0 unresolved / 0 proved failures / 8181 declarations |
+| `lake build` | 295 jobs, RC 0 |
+| `check-catalog.py --audit` | 48 proved / 0 statement-only / 100 targets / 0 unresolved / 0 proved failures / 10484 declarations |
 | `check-catalog.py --allow-planned` | 48/0/0 planned, RC 0 |
-| `check.sh` | `files=211 obligations=82 sorry_in_proofs=0`, RC 0 |
-| `check-final.py` | 211 Lean files, 209 root imports, RC 0 |
+| `check.sh` | `files=256 obligations=82 sorry_in_proofs=0`, RC 0 |
+| `check-final.py` | 256 Lean files, 254 root imports, RC 0 |
 | `check-conformance.py` | 61 base + 16 framing + 9 boundaries, 33 differential fixtures, 175 Lean references, 13/13 mutation controls, 6 BOLT 2 message vectors, 3 declared gaps, live 26 BigSize + 3 TLV + 4 wire, RC 0 |
-| `verify-anchors.py` | 306 anchors, 0 bad, 2 unanchored rows, RC 0 |
+| `verify-anchors.py` | 309 anchors, 0 bad, 2 unanchored rows, RC 0 |
 | `verify-vendor.sh` | 149 files, RC 0 |
-| Axiom audit | 215 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Axiom audit | 227 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |

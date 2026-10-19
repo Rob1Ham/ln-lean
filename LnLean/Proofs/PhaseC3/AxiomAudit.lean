@@ -71,6 +71,18 @@ import LnLean.Proofs.Channel.ProtocolEventFoldTargets
 import LnLean.Proofs.Routing.GossipRawRefinementTargets
 import LnLean.Proofs.Bitcoin.FundingAuthTargets
 import LnLean.Proofs.Crypto.KeyModelTargets
+import LnLean.Proofs.WaveH.H01
+import LnLean.Proofs.WaveH.H04
+import LnLean.Proofs.WaveH.H07
+import LnLean.Proofs.WaveH.H08
+import LnLean.Proofs.WaveH.H09
+import LnLean.Proofs.WaveH.H13
+import LnLean.Proofs.WaveH.H30
+import LnLean.Proofs.WaveH.H33
+import LnLean.Proofs.WaveH.H34
+import LnLean.Proofs.WaveH.H39
+import LnLean.Proofs.WaveH.H43
+import LnLean.Proofs.WaveH.H45
 import LnLean.Proofs.Bitcoin.EcdsaBridgeTargets
 import LnLean.Proofs.Bitcoin.TxValidTransferTargets
 import LnLean.Proofs.Protocol.OpenChannelWireTargets
@@ -353,6 +365,21 @@ set_option autoImplicit false
 #print axioms LnLean.Routing.replacedUpdates_timestamp_lt
 #print axioms LnLean.Proofs.Routing.GossipStoreEpochTargets.StoreEpoch.epochFold_store_eq_foldl
 
+/-! ## 21. Wave 8 headline targets -/
+
+#print axioms LnLean.Proofs.WaveH.H01.txCheckerFor_some_eq_realCheckerOf
+#print axioms LnLean.Proofs.WaveH.H04.scriptLaneTx_oneInput_ok_iff
+#print axioms LnLean.Proofs.WaveH.H07.htlcBip143Preimage_eq_bip143MsgL
+#print axioms LnLean.Proofs.WaveH.H08.htlcWirePreimage_eq_bip143MsgL
+#print axioms LnLean.Proofs.WaveH.H09.htlcBip143Preimage_digest_eq_signatureHashBip143Impl
+#print axioms LnLean.Proofs.WaveH.H13.fixedPayloadLength_eq_319
+#print axioms LnLean.Proofs.WaveH.H30.funding_txCheckerFor_verify_and_spend
+#print axioms LnLean.Proofs.WaveH.H33.h33_anchor_weight_target
+#print axioms LnLean.Proofs.WaveH.H34.c1_model_collides_on_71_byte_funding_scripts
+#print axioms LnLean.Proofs.WaveH.H39.epochStep_semantics
+#print axioms LnLean.Proofs.WaveH.H43.eventual_delivery_of_fair_attempts
+#print axioms LnLean.Proofs.WaveH.H45.channel_reorg_preserves
+
 /-! ## 15. Registry
 
   The registry is a plain list of fully-qualified names.  Keeping it in the
@@ -555,6 +582,18 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Proofs.Crypto.KeyModelTargets.key_generation_not_key_attribution,
     `LnLean.Proofs.Crypto.KeyModelTargets.attribution_contract_nonvacuous,
     `LnLean.Proofs.Crypto.KeyModelTargets.fundingSigningLaw_sign_injective,
+    `LnLean.Proofs.WaveH.H01.txCheckerFor_some_eq_realCheckerOf,
+    `LnLean.Proofs.WaveH.H04.scriptLaneTx_oneInput_ok_iff,
+    `LnLean.Proofs.WaveH.H07.htlcBip143Preimage_eq_bip143MsgL,
+    `LnLean.Proofs.WaveH.H08.htlcWirePreimage_eq_bip143MsgL,
+    `LnLean.Proofs.WaveH.H09.htlcBip143Preimage_digest_eq_signatureHashBip143Impl,
+    `LnLean.Proofs.WaveH.H13.fixedPayloadLength_eq_319,
+    `LnLean.Proofs.WaveH.H30.funding_txCheckerFor_verify_and_spend,
+    `LnLean.Proofs.WaveH.H33.h33_anchor_weight_target,
+    `LnLean.Proofs.WaveH.H34.c1_model_collides_on_71_byte_funding_scripts,
+    `LnLean.Proofs.WaveH.H39.epochStep_semantics,
+    `LnLean.Proofs.WaveH.H43.eventual_delivery_of_fair_attempts,
+    `LnLean.Proofs.WaveH.H45.channel_reorg_preserves,
     `LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.fundingSignedValid_iff_vendor,
     `LnLean.Proofs.Bitcoin.EcdsaBridgeTargets.funding_sighash_interpreters_agree_vendor,
     `LnLean.Proofs.Bitcoin.TxValidTransferTargets.txCheckerFor_some_eq_realCheckerOf,
@@ -579,4 +618,4 @@ def auditedTheorems : List Lean.Name :=
     ]
 
 set_option maxRecDepth 6000 in
-theorem auditedTheorems_length : auditedTheorems.length = 215 := rfl
+theorem auditedTheorems_length : auditedTheorems.length = 227 := rfl
