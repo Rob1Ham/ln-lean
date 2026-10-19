@@ -2,16 +2,17 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `5ddab4c` (`[WAVE11]` status tip); wave-12 integration is
-pending publication, and the status commit will record the new tip.
-Base `9359475` (wave-9 integration); wave 10 launched from `9158592`; wave 11
-launched from `4037264`; wave 12 launched from `5ddab4c`.
+**Gate HEAD:** `d210079` (`[WAVE12]` integration); the wave-12 status commit
+will advance the tip. Base `9359475` (wave-9 integration); wave 10 launched
+from `9158592`; wave 11 launched from `4037264`; wave 12 launched from
+`5ddab4c`.
 **Catalog:** 51 proved / 0 statementOnly / 0 unresolved / 294 targets.
-**Wave 12:** four disjoint lanes complete: BOLT 7 address wire parsing
-(`RT-02`), coverage-consumer contract (`PR-02` / `LN-PR-004`), live
-`funding_created`/`funding_signed` conformance (`CONF-01`), and an independent
-P0/P1 barrier/non-vacuity audit. Reports are under
-`agents/reports/swarm12/`; lane plan `agents/swarm/WAVE-12.md`.
+**Wave 12:** integrated and published non-force at `d210079`; four disjoint
+lanes complete: BOLT 7 address wire parsing (`RT-02`), coverage-consumer
+contract (`PR-02` / `LN-PR-004`), live `funding_created`/`funding_signed`
+conformance (`CONF-01`), and an independent P0/P1 barrier/non-vacuity audit.
+Reports are under `agents/reports/swarm12/`; lane plan
+`agents/swarm/WAVE-12.md`. Hosted CI run `39303105137` is green.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 
 This file describes the repair branch. Older wave tables are retained as

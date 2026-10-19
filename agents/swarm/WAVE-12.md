@@ -1,7 +1,8 @@
 # Wave 12 — address wire, coverage consumer, funding conformance, barrier audit
 
 **Base:** `5ddab4c` (`repair/integrated`, wave-11 status tip)
-**Status:** complete and integrated by the parent; publication pending.
+**Status:** complete, integrated, and published non-force at `d210079`;
+hosted CI run `39303105137` is green.
 **Catalog:** 51 rows / 294 targets; no new rows.
 
 ## Lanes and disjoint ownership

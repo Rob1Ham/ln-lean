@@ -2,17 +2,18 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `5ddab4c` (`[WAVE11]` status tip); wave-12 integration is
-pending publication, and the status commit will record the new tip. Base
-`9359475` (wave-9 integration); wave 10 launched from `9158592`; wave 11
-launched from `4037264`; wave 12 launched from `5ddab4c`.
+**Gate HEAD:** `d210079` (`[WAVE12]` integration); the wave-12 status commit
+will advance the tip. Base `9359475` (wave-9 integration); wave 10 launched
+from `9158592`; wave 11 launched from `4037264`; wave 12 launched from
+`5ddab4c`.
 **Catalog state:** **51 `proved` / 0 `statementOnly` / 0 unresolved / 294
 targets**.
 **Remote refs:** wave 11 is published non-force to `origin/repair/integrated` at
 `9940642`, with status commits `90ef1f1` and `5ddab4c`; hosted CI runs
 `39288684058`, `39290061147`, and `39290644672` completed both source gates and
-the pinned-vendor build gate successfully. Wave 12 will be published
-non-force as the next checkpoint. `origin/main` is not touched by this work.
+the pinned-vendor build gate successfully. Wave 12 is published non-force at
+`d210079`; hosted CI run `39303105137` is green. `origin/main` is not touched
+by this work.
 The former `repair/pubbump` branch is merged and retired; its public-core bump
 is part of this branch.
 **Toolchain:** `leanprover/lean4:v4.35.0`

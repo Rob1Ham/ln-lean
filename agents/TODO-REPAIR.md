@@ -433,7 +433,8 @@ Wave-12 lanes (all integrated after parent review):
   narrowed where needed.
 - [x] Parent integration: two root-imported modules, 294 targets, 435 audited
   theorems, refreshed Traceability tables (ID-indexed to keep the gate
-  memory-bounded), and full gate green.
+  memory-bounded), full gate green, and a non-force checkpoint published at
+  `d210079` (hosted CI `39303105137` green).
 
 Wave-12 gate: **build 314 jobs, strict catalog 51/51 proved / 294 targets /
 11898 declarations, `check.sh` `files=275 obligations=82 sorry_in_proofs=0`,
