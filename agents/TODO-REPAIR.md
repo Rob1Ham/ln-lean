@@ -330,8 +330,8 @@ Wave 9 launched from `10d18a1` and is integrated on top of the wave-H merge
   mutation controls.
 - [x] Parent integration: five root-imported modules, six catalog rows
   strengthened from 100 to 142 targets, audit extended to 269 theorems,
-  generated indexes/docs refreshed, full gate green, and a non-force
-  checkpoint prepared.
+  generated indexes/docs refreshed, full gate green, and the non-force
+  checkpoint committed at `9359475`.
 
 Wave-9 gate: **build 300 jobs, strict catalog 142 targets / 10742
 declarations, `check.sh` `files=261 obligations=82 sorry_in_proofs=0`, 269

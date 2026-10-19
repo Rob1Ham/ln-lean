@@ -1,6 +1,7 @@
 # Wave 9 integration status
 
 **Base:** `93fa943` (wave-H merge of `50e8b5c` and `14d9a62`)
+**Integration commit:** `9359475`
 **Branch:** `repair/integrated`
 **Result:** six lanes integrated; gates green; checkpoint prepared for non-force
 push to `origin/repair/integrated`.

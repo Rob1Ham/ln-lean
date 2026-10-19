@@ -4,6 +4,7 @@
 
 **Launch commit:** `10d18a1` (`[DOCS] finalize hosted CI evidence`)
 **Integration base:** `93fa943` (wave-H merge)
+**Integration commit:** `9359475` (`[WAVE9]` code and catalog integration)
 **Branch:** `repair/integrated`
 **Catalog at launch:** 48 proved / 0 statementOnly / 100 targets
 **Catalog at integration:** 48 proved / 0 statementOnly / 142 targets

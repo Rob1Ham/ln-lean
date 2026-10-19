@@ -30,7 +30,7 @@ Evidence labels used below:
 
 | Item | State | Evidence |
 |---|---|---|
-| Branch tip | `93fa943` wave-H merge; the wave-9 integration commit advances it (status commits may advance) | `git rev-parse HEAD` |
+| Branch tip | `9359475` wave-9 integration; status commits may advance it | `git rev-parse HEAD` |
 | `origin/main` | `b891a59`; **71 commits behind** `HEAD`; `main` is an ancestor of `HEAD` | `git rev-list --count origin/main..HEAD` = 71; `git merge-base --is-ancestor origin/main HEAD` |
 | Release tags | none | `git tag -l` empty; GitHub tags API empty |
 | GitHub releases | none | GitHub releases API empty |

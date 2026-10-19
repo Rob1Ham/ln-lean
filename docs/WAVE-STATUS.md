@@ -2,9 +2,10 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `93fa943` (wave-H merge; the wave-9 integration commit advances
-the tip). Status commits may advance the branch tip. Proof-wave 8 code was
-`10d18a1`; wave 9 launched from `50e8b5c` on top of the wave-H merge.
+**Gate HEAD:** `9359475` (`[WAVE9] integrate EC, routing, attribution,
+preimage, node, and live-message lanes`); status commits may advance the tip.
+Base `93fa943` (wave-H merge). Proof-wave 8 code was `10d18a1`; wave 9
+launched from `50e8b5c`.
 **Catalog:** 48 proved / 0 statementOnly / 0 unresolved / 142 targets.
 **Wave 9:** integrated; six lanes complete, reports under
 `agents/reports/swarm9/`; lane plan `agents/swarm/WAVE-9.md`.

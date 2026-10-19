@@ -3,8 +3,9 @@
 **Status:** living roadmap after the proof-wave 9 integration; six wave-9 lanes
 are complete on `repair/integrated`.
 **Branch:** `repair/integrated`.
+**Gate commit:** `9359475` (`[WAVE9]` integration).
 **Base commit:** `93fa943` (wave-H merge of remote `e3e0aa8` plus wave-9 launch
-`50e8b5c`); the wave-9 integration commit advances the tip. Wave 8 launch is
+`50e8b5c`). Wave 8 launch is
 `50d78ed`; proof-wave 7 code is `b48d041`; wave 7 launch is `3180581`;
 proof-wave 6 code is `0a3a5fb` (proof-wave 5 code is `6389baa`; proof-wave 4
 code at `26ced90`).
