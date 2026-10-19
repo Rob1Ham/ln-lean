@@ -255,6 +255,22 @@ Results:
   rust-lightning `Writeable`; 180 Lean references and 14/14 mutation controls,
   with the finite/public-API caveat retained.
 
+## Wave 10 lanes (running)
+
+Wave 10 launched from `9158592`, the wave-9 integration and gate-docs tip.
+Six disjoint lanes attack the next layer of the remaining P0/P1 boundaries;
+the parent integrates root imports, catalog targets, audit entries, docs, and
+the final gate after the reports land.
+
+| Lane | Issue(s) | Owned files | Scope |
+|---|---|---|---|
+| `S10-L1-EC-DOMAIN` | `L1-01`, `L1-07` | new `LnLean/Proofs/Bitcoin/EcdsaDomainTargets.lean`, report | Decide whether a canonical tag can repair `DigestBindsMod`; prove the general collision/impossibility or a faithful conditional domain theorem |
+| `S10-L1-TRANSPORT-AUTH` | `L1-03` | new `LnLean/Proofs/Protocol/TransportAuthTargets.lean`, report | Transport authentication above `OpenChannelEnvelope`; derive `EnvelopeAttributed` from explicit session/key-binding laws and retain the no-auth boundary |
+| `S10-PR-POP-DERIVE` | `PR-01` | new `LnLean/Proofs/Crypto/PopProtocolTargets.lean`, report | Challenge-response PoP protocol; honest completeness, conditional soundness/attribution, and replay/no-challenge counterexample |
+| `S10-PR-COVERAGE-WITNESS` | `PR-02` | new `LnLean/Proofs/Channel/CoverageWitnessTargets.lean`, report | Characterize the missing coverage data as a witness; constructive decoder plus legacy-only impossibility |
+| `S10-RT-NODE-IDENTITY` | `RT-02` | new `LnLean/Proofs/Routing/NodeIdentityTargets.lean`, report | Node-ID rotation/linkage and wire membership; unlinkability boundary, linkage theorem, and admission/counterexample |
+| `S10-CONF-LIVE-MSGS` | `CONF-01` | `tests/conformance/**`, `scripts/check-conformance.py`, `LnLean/Proofs/ConformanceDiffTargets.lean`, report | At least one additional live BOLT 2 message row through pinned rust-lightning `Writeable`; otherwise the exact blocker |
+
 Human-only release decisions (`OPS-02`, `OPS-03`), the probability/complexity
 foundation (`CR-01`/`SEC-01`), and any `main` merge remain outside agent lanes.
 

@@ -338,6 +338,26 @@ declarations, `check.sh` `files=261 obligations=82 sorry_in_proofs=0`, 269
 audited theorems, 310 anchors, 149 vendor files, conformance 180 refs and
 14/14 controls, and zero actual `sorry`/forbidden constructs.**
 
+### Proof-wave 10 — next boundary layer
+
+Wave 10 launched from `9158592` (wave-9 integration and gate docs). The lane
+plan is `agents/swarm/WAVE-10.md`; reports go to `agents/reports/swarm10/`.
+
+- [ ] `S10-L1-EC-DOMAIN` — canonical tag vs `DigestBindsMod`; general
+  collision/impossibility or conditional domain theorem.
+- [ ] `S10-L1-TRANSPORT-AUTH` — transport authentication above
+  `OpenChannelEnvelope`; derive `EnvelopeAttributed` and retain no-auth
+  counterexample.
+- [ ] `S10-PR-POP-DERIVE` — challenge-response PoP; completeness, conditional
+  soundness/attribution, replay counterexample.
+- [ ] `S10-PR-COVERAGE-WITNESS` — coverage witness decoder; legacy-only
+  impossibility.
+- [ ] `S10-RT-NODE-IDENTITY` — node-ID rotation/linkage and wire membership
+  boundaries.
+- [ ] `S10-CONF-LIVE-MSGS` — additional live BOLT 2 message row.
+- [ ] Parent integration: root imports, catalog targets, audit, generated
+  indexes, docs, full gate, and non-force checkpoint.
+
 The catalog is no longer the work queue. Open issues are tracked in
 `docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`.
 Human-gated release decisions remain outside agent lanes.
