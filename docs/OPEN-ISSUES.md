@@ -3,9 +3,10 @@
 **Status:** living roadmap after the proof-wave 12 integration; four wave-12
 lanes are complete on `repair/integrated`.
 **Branch:** `repair/integrated`.
-**Gate commit:** `d210079` (`[WAVE12]` integration); published tips `9940642`,
-`90ef1f1`, `5ddab4c`, and `d210079`. Hosted CI runs `39288684058`,
-`39290061147`, `39290644672`, and `39303105137` are green.
+**Gate commit:** `d9c0d2f` (`[WAVE12]` status); code integration is `d210079`.
+Published tips include `9940642`, `90ef1f1`, `5ddab4c`, `d210079`, and
+`d9c0d2f`. Hosted CI runs `39288684058`, `39290061147`, `39290644672`,
+`39303105137`, and `39303680973` are green.
 **Base commit:** `9359475` (wave-9 integration; wave 10 launched from
 `9158592`; wave 11 from `4037264`; wave 12 from `5ddab4c`). Wave 8 launch was
 `50d78ed`; proof-wave 7 code is `b48d041`; wave 7 launch is `3180581`;
