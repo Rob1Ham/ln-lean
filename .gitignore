@@ -1,5 +1,6 @@
 .lake
 .lake/
+.opencode/
 *.olean
 *.ilean
 *.trace

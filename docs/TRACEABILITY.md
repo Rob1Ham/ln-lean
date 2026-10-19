@@ -2,8 +2,10 @@
 
 **Status:** proof-wave traceability. The table has 51 rows, one for each id in
 `LnLean/Proofs/Obligations.lean` and `docs/THEOREM-INDEX.md`; 51 are `proved`,
-0 remain `statement-only`, and the catalog resolves 294 targets after
-proof-wave 12.
+0 remain `statement-only`, and the catalog resolves 294 target occurrences
+(282 unique declarations) after proof-wave 12. The wave-13 review found that
+the current Lean checks tie `declIds` to snapshot membership, not to target
+text/module equality; see `REV-05` and `agents/reports/wave13-review/R31-*`.
 
 Anchors are at pinned commit `fe4900930c6bd5786ec4203274d7cf312776a5a6`
 for rust-lightning and `1aadb719b4007c4cea0ba6e36b08c4fb53788dee` for the

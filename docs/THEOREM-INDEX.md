@@ -8,7 +8,9 @@ the Lean catalog, and vice versa.
 The proof-wave lanes added declarations and replaced `statement-only` rows with
 proved theorems. At the proof-wave 11 gate, all 51 rows are `proved` (the target
 theorem exists in the tree); 0 rows remain `statement-only`, and the catalog
-has 294 resolved targets. A `proved` row is not a claim that the full
+has 294 target occurrences (282 unique declarations; 12 duplicate ECDSA names).
+The wave-13 review found that these are occurrence counts, not a count of
+independent theorems. A `proved` row is not a claim that the full
 English property is proved by the cited theorem alone when the row names
 several targets, or when the theorem keeps cryptographic/model hypotheses
 explicit; the targets listed are the declarations that together establish the
@@ -354,7 +356,8 @@ catalog to **51 rows / 277 resolved targets** while keeping every row
 
 ### Proof-wave 12 boundary and integration notes
 
-Proof-wave 12 extends the catalog to **51 rows / 294 resolved targets** without
+Proof-wave 12 extends the catalog to **51 rows / 294 target occurrences (282
+unique declarations)** without
 adding a row. The independent barrier audit found no new model-level P0 closure.
 
 * `LN-RT-002` adds `NodeAddressTargets`: the BOLT 7

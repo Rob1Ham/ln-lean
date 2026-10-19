@@ -7,7 +7,7 @@
 Base `9359475` (wave-9 integration); wave 10 launched from `9158592`; wave 11
 launched from `4037264`; wave 12 launched from `5ddab4c`.
 **Catalog state:** **51 `proved` / 0 `statementOnly` / 0 unresolved / 294
-targets**.
+target occurrences (282 unique declarations)**.
 **Remote refs:** wave 11 is published non-force to `origin/repair/integrated` at
 `9940642`, with status commits `90ef1f1` and `5ddab4c`; hosted CI runs
 `39288684058`, `39290061147`, and `39290644672` completed both source gates and
@@ -36,6 +36,19 @@ This file describes **this repair repository**, not the older
 `ln-lean-final` / `final/integrated` tree. The earlier final tree (132 Lean
 files, 15 open `sorry` sites, vacuous global crypto assumptions) is the
 starting point of the repair, not its result.
+
+## Wave 13 review (read-only, 2026-10-19)
+
+A 32-lane review used pinned `ldk-node@fa123fed…` and
+`ldk-server@c17dc11d…` as behavioral datapoints. All reports are under
+`agents/reports/wave13-review/`; `R32-synthesis.md` is the ranked roadmap.
+The review did not change Lean code and did not move the external
+L1/Noise/EUF-CMA/source barriers. It did find tractable defects in already-
+proved consumer rows: `REV-01` reserve/in-flight admission, `REV-02` anchored
+commitment debit, `REV-03` replay/duplicate admission, `REV-04` non-chain
+`routeValid`, and `REV-05` axiom/traceability coverage overstatement. A
+bounded six-lane repair+assurance wave is recommended; see
+`agents/reports/wave13-review/R32-synthesis.md` §6.2 and `docs/OPEN-ISSUES.md`.
 
 ## What this tree is
 
@@ -173,9 +186,9 @@ overstated the mechanized result (`LN-L1-001`, `LN-L1-004`, `LN-CH-007`,
 | Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 275 Lean files, 273 root imports |
 | Vendor integrity | `./scripts/verify-vendor.sh` | **RC 0**, `OK (149 files)` |
 | Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=313 bad=0 unanchored_rows=2` |
-| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 51 proved, 0 statement-only, 294 targets, 0 unresolved, 0 proved failures, 0 candidates, 11,898 declarations |
+| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 51 proved, 0 statement-only, 294 target occurrences (282 unique), 0 unresolved, 0 proved failures, 0 candidates, 11,898 declarations |
 | Catalog, planned-aware | `python3 scripts/check-catalog.py --allow-planned` | **RC 0**, `rows=51 proved=51 statementOnly=0 planned=0 proved_failures=0` |
-| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 435 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 393 print commands over a 435-name registry; printed names use only `propext`, `Quot.sound`, `Classical.choice`; coverage gap is `REV-05` |
 | Generated index | `python3 scripts/collect-obligations.py` | `237` proof files, `81` markers, `51` catalog rows, `9537` declarations, `0` `sorry` sites |
 | Conformance | `python3 scripts/check-conformance.py` | **RC 0**, 61 base + 16 framing + 9 boundary checks, 26 differential fixtures, 200 Lean theorem references, 22/22 mutation controls, 6 finite BOLT 2 message vectors, live 26 BigSize + 3 TLV + 4 wire + 5 BOLT 2 payloads (`funding_created`, `funding_signed`, `channel_ready`, `open_channel`, `accept_channel`) |
 

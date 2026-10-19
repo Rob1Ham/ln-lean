@@ -37,7 +37,7 @@ Evidence labels used below:
 | Project version | **not declared** in `lakefile.lean` | `lake-manifest.json` `"version": "1.3.0"` is the Lake manifest schema version, not this project's version |
 | Vendor snapshot | 149 files, checksums OK locally; **gitignored and not tracked** | `./scripts/verify-vendor.sh`; `git check-ignore vendor/btc-lean-core/lakefile.lean` |
 | Vendor provenance | `vendor/btc-lean-core` is a copy of public `btc-lean` `spec/core` at `4f5c4f858fb9ca0743042644453cfa92d30dd271` (MIT repository) | `refs/PINNED.md`, `docs/L1-PIN.md` |
-| Catalog | 51 rows, 51 `proved`, 0 `statementOnly`, 0 unresolved, 0 proved failures, 294 targets | `python3 scripts/check-catalog.py --audit` — **Verified** |
+| Catalog | 51 rows, 51 `proved`, 0 `statementOnly`, 0 unresolved, 0 proved failures, 294 target occurrences (282 unique) | `python3 scripts/check-catalog.py --audit` — **Verified** |
 | Source policy check | `files=275 obligations=82 sorry_in_proofs=0` | `./scripts/check.sh` — **Verified** |
 | File/import check | 275 Lean files, 273 root imports, D=33 E=15 F=15 | `python3 scripts/check-final.py` — **Verified** |
 | Vendor integrity | `OK (149 files)` | `./scripts/verify-vendor.sh` — **Verified** |
@@ -107,7 +107,7 @@ release-lane snapshot did not.
   lake build LnLean.Proofs.PhaseC3.AxiomAudit
   ```
 
-  Require RC 0 and only `propext`, `Quot.sound`, `Classical.choice`. Wave-12 count: 435 audited theorems.
+  Require RC 0 and only `propext`, `Quot.sound`, `Classical.choice`. Wave-12 count: 393 `#print axioms` commands over a 435-name registry; coverage is tracked as `REV-05`.
 - [ ] Exact `sorry` scan (must print nothing):
 
   ```sh
@@ -313,7 +313,7 @@ Therefore:
 
 - [ ] Update `README.md` counts and release status **after** integration, using
       the actual numbers at the release commit, not the wave-3 numbers
-      (currently 275 Lean files, 273 root imports, 51 catalog rows, 294 targets).
+      (currently 275 Lean files, 273 root imports, 51 catalog rows, 294 target occurrences / 282 unique declarations).
 - [ ] Update `docs/FINAL-STATUS.md` and `docs/WAVE-STATUS.md` with the release
       commit/tag and current gate evidence. Remove stale "Gate HEAD" references
       if they no longer identify the tagged commit.

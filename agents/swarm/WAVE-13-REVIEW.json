@@ -1,0 +1,239 @@
+{
+  "wave": "wave13-review",
+  "base": "f7f0628",
+  "ldk_node": {
+    "path": "/tmp/opencode/ldk-refs/ldk-node",
+    "commit": "fa123fed131e27ecc420b77fa7086fcf1ddaebb8"
+  },
+  "ldk_server": {
+    "path": "/tmp/opencode/ldk-refs/ldk-server",
+    "commit": "c17dc11dde38f88c53457039ddf30c6b90a63ba2"
+  },
+  "concurrency": 8,
+  "lanes": [
+    {
+      "id": "R01",
+      "slug": "l1-script-ec-boundary",
+      "title": "L1 script, interpreter, and EC-verifier boundary",
+      "brief": "agents/briefs/wave13-review/R01.md",
+      "report": "agents/reports/wave13-review/R01-l1-script-ec-boundary.md"
+    },
+    {
+      "id": "R02",
+      "slug": "l1-tx-sighash-fees",
+      "title": "L1 transaction construction, sighash, PSBT, fees, and weight",
+      "brief": "agents/briefs/wave13-review/R02.md",
+      "report": "agents/reports/wave13-review/R02-l1-tx-sighash-fees.md"
+    },
+    {
+      "id": "R03",
+      "slug": "l1-chain-sync-finality",
+      "title": "Chain sync, confirmations, reorgs, and finality",
+      "brief": "agents/briefs/wave13-review/R03.md",
+      "report": "agents/reports/wave13-review/R03-l1-chain-sync-finality.md"
+    },
+    {
+      "id": "R04",
+      "slug": "l1-wallet-utxo-balance",
+      "title": "On-chain wallet, UTXOs, balances, and coin control",
+      "brief": "agents/briefs/wave13-review/R04.md",
+      "report": "agents/reports/wave13-review/R04-l1-wallet-utxo-balance.md"
+    },
+    {
+      "id": "R05",
+      "slug": "channel-lifecycle",
+      "title": "Channel lifecycle and peer/funding handshake",
+      "brief": "agents/briefs/wave13-review/R05.md",
+      "report": "agents/reports/wave13-review/R05-channel-lifecycle.md"
+    },
+    {
+      "id": "R06",
+      "slug": "commitments-fees-dust-anchors",
+      "title": "Commitment state, fees, dust, and anchor outputs",
+      "brief": "agents/briefs/wave13-review/R06.md",
+      "report": "agents/reports/wave13-review/R06-commitments-fees-dust-anchors.md"
+    },
+    {
+      "id": "R07",
+      "slug": "htlc-forwarding-fees",
+      "title": "HTLC add/fulfill/fail, forwarding, and fee accounting",
+      "brief": "agents/briefs/wave13-review/R07.md",
+      "report": "agents/reports/wave13-review/R07-htlc-forwarding-fees.md"
+    },
+    {
+      "id": "R08",
+      "slug": "close-revocation-watchtower",
+      "title": "Close, force-close, revocation, watchtowers, and backup",
+      "brief": "agents/briefs/wave13-review/R08.md",
+      "report": "agents/reports/wave13-review/R08-close-revocation-watchtower.md"
+    },
+    {
+      "id": "R09",
+      "slug": "bolt4-onion",
+      "title": "BOLT 4 onion construction, processing, and errors",
+      "brief": "agents/briefs/wave13-review/R09.md",
+      "report": "agents/reports/wave13-review/R09-bolt4-onion.md"
+    },
+    {
+      "id": "R10",
+      "slug": "bolt11-invoices",
+      "title": "BOLT 11 invoice parse/create/sign/verify/expiry",
+      "brief": "agents/briefs/wave13-review/R10.md",
+      "report": "agents/reports/wave13-review/R10-bolt11-invoices.md"
+    },
+    {
+      "id": "R11",
+      "slug": "bolt12-offers",
+      "title": "BOLT 12 offers, invoice requests, refunds, and payer proofs",
+      "brief": "agents/briefs/wave13-review/R11.md",
+      "report": "agents/reports/wave13-review/R11-bolt12-offers.md"
+    },
+    {
+      "id": "R12",
+      "slug": "payment-lifecycle",
+      "title": "Payment lifecycle, retries, MPP, keysend, and probing",
+      "brief": "agents/briefs/wave13-review/R12.md",
+      "report": "agents/reports/wave13-review/R12-payment-lifecycle.md"
+    },
+    {
+      "id": "R13",
+      "slug": "bolt7-gossip-store",
+      "title": "BOLT 7 gossip validation, store, and epochs",
+      "brief": "agents/briefs/wave13-review/R13.md",
+      "report": "agents/reports/wave13-review/R13-bolt7-gossip-store.md"
+    },
+    {
+      "id": "R14",
+      "slug": "bolt7-node-announcements",
+      "title": "BOLT 7 node announcements, addresses, chain hash, rotation",
+      "brief": "agents/briefs/wave13-review/R14.md",
+      "report": "agents/reports/wave13-review/R14-bolt7-node-announcements.md"
+    },
+    {
+      "id": "R15",
+      "slug": "bolt8-transport",
+      "title": "BOLT 8 transport, Noise, and TLS/API security",
+      "brief": "agents/briefs/wave13-review/R15.md",
+      "report": "agents/reports/wave13-review/R15-bolt8-transport.md"
+    },
+    {
+      "id": "R16",
+      "slug": "routing-scoring-liquidity",
+      "title": "Routing, scoring, pathfinding, and liquidity",
+      "brief": "agents/briefs/wave13-review/R16.md",
+      "report": "agents/reports/wave13-review/R16-routing-scoring-liquidity.md"
+    },
+    {
+      "id": "R17",
+      "slug": "ldk-node-builder-persistence",
+      "title": "LDK Node builder, config, persistence, data store, and restart",
+      "brief": "agents/briefs/wave13-review/R17.md",
+      "report": "agents/reports/wave13-review/R17-ldk-node-builder-persistence.md"
+    },
+    {
+      "id": "R18",
+      "slug": "ldk-node-events-runtime",
+      "title": "LDK Node events, background processing, and message dispatch",
+      "brief": "agents/briefs/wave13-review/R18.md",
+      "report": "agents/reports/wave13-review/R18-ldk-node-events-runtime.md"
+    },
+    {
+      "id": "R19",
+      "slug": "liquidity-jit-async",
+      "title": "Liquidity, LSPS, JIT channels, and async payments",
+      "brief": "agents/briefs/wave13-review/R19.md",
+      "report": "agents/reports/wave13-review/R19-liquidity-jit-async.md"
+    },
+    {
+      "id": "R20",
+      "slug": "ldk-node-api-ffi",
+      "title": "LDK Node public API, FFI, and bindings compatibility",
+      "brief": "agents/briefs/wave13-review/R20.md",
+      "report": "agents/reports/wave13-review/R20-ldk-node-api-ffi.md"
+    },
+    {
+      "id": "R21",
+      "slug": "ldk-server-api-auth",
+      "title": "LDK Server API surface, auth, macaroons, and request binding",
+      "brief": "agents/briefs/wave13-review/R21.md",
+      "report": "agents/reports/wave13-review/R21-ldk-server-api-auth.md"
+    },
+    {
+      "id": "R22",
+      "slug": "ldk-server-ops-config",
+      "title": "LDK Server config, TLS, Tor, metrics, and operations",
+      "brief": "agents/briefs/wave13-review/R22.md",
+      "report": "agents/reports/wave13-review/R22-ldk-server-ops-config.md"
+    },
+    {
+      "id": "R23",
+      "slug": "ldk-server-e2e-mcp",
+      "title": "LDK Server e2e tests, MCP, gRPC, and CLI/client",
+      "brief": "agents/briefs/wave13-review/R23.md",
+      "report": "agents/reports/wave13-review/R23-ldk-server-e2e-mcp.md"
+    },
+    {
+      "id": "R24",
+      "slug": "ldk-server-payment-channel-api",
+      "title": "LDK Server payment, channel, and on-chain API semantics",
+      "brief": "agents/briefs/wave13-review/R24.md",
+      "report": "agents/reports/wave13-review/R24-ldk-server-payment-channel-api.md"
+    },
+    {
+      "id": "R25",
+      "slug": "splicing",
+      "title": "Splicing",
+      "brief": "agents/briefs/wave13-review/R25.md",
+      "report": "agents/reports/wave13-review/R25-splicing.md"
+    },
+    {
+      "id": "R26",
+      "slug": "dual-funding-negotiation",
+      "title": "Dual funding, interactive tx, and channel negotiation",
+      "brief": "agents/briefs/wave13-review/R26.md",
+      "report": "agents/reports/wave13-review/R26-dual-funding-negotiation.md"
+    },
+    {
+      "id": "R27",
+      "slug": "anchor-zero-fee-upgrades",
+      "title": "Anchor channels, zero-fee commitments, and commitment upgrades",
+      "brief": "agents/briefs/wave13-review/R27.md",
+      "report": "agents/reports/wave13-review/R27-anchor-zero-fee-upgrades.md"
+    },
+    {
+      "id": "R28",
+      "slug": "async-trampoline-offers",
+      "title": "Async payments, trampoline, onion messages, and unified BOLT 12",
+      "brief": "agents/briefs/wave13-review/R28.md",
+      "report": "agents/reports/wave13-review/R28-async-trampoline-offers.md"
+    },
+    {
+      "id": "R29",
+      "slug": "catalog-coverage-matrix",
+      "title": "Catalog coverage matrix against LDK behavior",
+      "brief": "agents/briefs/wave13-review/R29.md",
+      "report": "agents/reports/wave13-review/R29-catalog-coverage-matrix.md"
+    },
+    {
+      "id": "R30",
+      "slug": "conformance-strategy",
+      "title": "Conformance strategy for LDK Node and LDK Server",
+      "brief": "agents/briefs/wave13-review/R30.md",
+      "report": "agents/reports/wave13-review/R30-conformance-strategy.md"
+    },
+    {
+      "id": "R31",
+      "slug": "nonvacuity-assurance",
+      "title": "Non-vacuity, traceability, axiom, and assumption review",
+      "brief": "agents/briefs/wave13-review/R31.md",
+      "report": "agents/reports/wave13-review/R31-nonvacuity-assurance.md"
+    },
+    {
+      "id": "R32",
+      "slug": "synthesis",
+      "title": "Synthesis and wave-13/14 roadmap",
+      "brief": "agents/briefs/wave13-review/R32.md",
+      "report": "agents/reports/wave13-review/R32-synthesis.md"
+    }
+  ]
+}

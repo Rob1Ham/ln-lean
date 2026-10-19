@@ -6,7 +6,8 @@
 `d210079`; later docs-only status commits may advance the tip.
 Base `9359475` (wave-9 integration); wave 10 launched from `9158592`; wave 11
 launched from `4037264`; wave 12 launched from `5ddab4c`.
-**Catalog:** 51 proved / 0 statementOnly / 0 unresolved / 294 targets.
+**Catalog:** 51 proved / 0 statementOnly / 0 unresolved / 294 target occurrences
+(282 unique declarations).
 **Wave 12:** integrated and published non-force at `d210079`; four disjoint
 lanes complete: BOLT 7 address wire parsing (`RT-02`), coverage-consumer
 contract (`PR-02` / `LN-PR-004`), live `funding_created`/`funding_signed`
@@ -22,6 +23,25 @@ This file describes the repair branch. Older wave tables are retained as
 history; they are not a claim about the current tree. Current open work is in
 `docs/OPEN-ISSUES.md`; the operating protocol is `docs/SWARM-LOOP.md`.
 
+## Wave 13 review (read-only, 2026-10-19)
+
+A 32-lane review scoped remaining work against pinned
+`ldk-node@fa123fed131e27ecc420b77fa7086fcf1ddaebb8` and
+`ldk-server@c17dc11dde38f88c53457039ddf30c6b90a63ba2`. All 32 reports are in
+`agents/reports/wave13-review/`; `R32-synthesis.md` is the ranked result and
+`README.md` is the short index. The review did not change Lean code.
+
+The review found no new path through the external L1/Noise/EUF-CMA/source
+barriers, but it did find tractable defects in already-proved consumer rows:
+reserve/in-flight admission (`REV-01`), anchored commitment debit (`REV-02`),
+replay/duplicate admission (`REV-03`), non-chain-backed `routeValid`
+(`REV-04`), and axiom/traceability coverage overstatement (`REV-05`). A
+bounded six-lane repair+assurance wave (`W13-LIQ`, `W13-ANCHOR`, `W13-PAY`,
+`W13-STATE`, `W13-ROUTE`, `W13-ASSURANCE`) is recommended; see
+`agents/reports/wave13-review/R32-synthesis.md` §6.2. The S12 sentence "no new
+tractable P0/P1 proof lane" remains true only for the eight external-barrier
+rows, not for this review-derived class.
+
 ## Current state
 
 | Metric | Value |
@@ -34,12 +54,12 @@ history; they are not a claim about the current tree. Current open work is in
 | Catalog rows | **51** |
 | Catalog `proved` | **51** |
 | Catalog `statementOnly` | **0** |
-| Catalog targets | **294** |
+| Catalog targets | **294 occurrences / 282 unique declarations** (12 duplicate ECDSA names) |
 | Unresolved/planned targets | **0** |
 | Vendor snapshot | **OK**, 149 files from public `btc-lean` `4f5c4f8`; `fetch-vendor.sh --from-git` tested |
 | Anchors | **313 checked, 0 bad**, 2 unanchored rows |
 | Generated obligation index | 237 proof files, 81 markers, 9537 declarations, 0 `sorry` sites |
-| Axiom audit | 435 theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Axiom audit | **393 `#print axioms` commands; 435-name registry**; printed names use only `propext`, `Quot.sound`, `Classical.choice`; 72 unique catalog targets are unprinted and 35 absent from the registry (`REV-05`) |
 | Conformance | 61 base + 16 framing + 9 boundary checks, 26 differential fixtures, 200 Lean references, 22/22 mutation controls, 3 declared model gaps; live 26 BigSize + 3 TLV + 4 wire + 5 BOLT 2 messages; 6 finite BOLT 2 message vectors |
 | Public L1 pin | `Rob1Ham/btc-lean` `main@4f5c4f8` |
 | Build dependency | `vendor/btc-lean-core` `4f5c4f8` (public `spec/core` copy) |
@@ -51,8 +71,8 @@ The exact `sorry` result is **zero matching lines**. Prose mentions of
 
 - `lake build` — **RC 0**, 314 jobs.
 - `check-catalog.py --audit` — **RC 0**, 51 proved, 0 statement-only,
-  294 targets, 0 unresolved, 0 proved failures, 0 candidates, 11,898
-  declarations.
+  294 target occurrences (282 unique), 0 unresolved, 0 proved failures, 0
+  candidates, 11,898 declarations.
 - `check.sh` — **RC 0**: `files=275 obligations=82 sorry_in_proofs=0`,
   `check: OK`.
 - `check-final.py` — **RC 0**: 275 Lean files, 273 root imports, D=33 E=15
@@ -65,9 +85,11 @@ The exact `sorry` result is **zero matching lines**. Prose mentions of
   `accept_channel`).
 - `verify-vendor.sh` — **RC 0**, 149 files (public `4f5c4f8` snapshot).
 - `verify-anchors.py` — **RC 0**, 313 anchors, 0 bad, 2 unanchored rows.
-- `AxiomAudit` — **RC 0**, 435 audited theorems with the permitted classical
-  axioms only; the `choice` short name printed inside `open Classical`
-  namespaces is `Classical.choice` when checked at root.
+- `AxiomAudit` — **RC 0**, 393 `#print axioms` commands over a 435-name
+  registry; every printed name uses only the permitted classical axioms. The
+  `choice` short name printed inside `open Classical` namespaces is
+  `Classical.choice` when checked at root. Registry-to-print coverage is not
+  complete; see `REV-05` and `agents/reports/wave13-review/R31-*.md`.
 
 ## Proof-wave 11 gate
 

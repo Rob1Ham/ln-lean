@@ -1,8 +1,9 @@
 # Open Issues and Swarm Roadmap
 
-**Status:** living roadmap after the proof-wave 12 integration; four wave-12
-proof/conformance lanes and a post-integration audit are complete on
-`repair/integrated`.
+**Status:** living roadmap after the proof-wave 12 integration and the
+read-only 32-lane wave-13 review; four wave-12 proof/conformance lanes and a
+post-integration audit are complete, and the wave-13 review is recorded below
+and under `agents/reports/wave13-review/`.
 **Branch:** `repair/integrated`.
 **Gate commit:** `1c88f17` (`[WAVE12]` docs-only status checkpoint); code integration is
 `d210079`; later docs-only status commits may advance the tip. Published tips
@@ -16,9 +17,9 @@ include `9940642`, `90ef1f1`, `5ddab4c`, `d210079`, `d9c0d2f`, `07288ad`,
 proof-wave 6 code is `0a3a5fb` (proof-wave 5 code is `6389baa`; proof-wave 4
 code at `26ced90`).
 **Catalog gate:** 51/51 rows `proved`, 0 `statement-only`, 0 unresolved,
-294 targets.
-**Full build:** 314 jobs, RC 0, 275 Lean files, 273 root imports, 435 audited
-theorems.
+294 target occurrences (282 unique declarations).
+**Full build:** 314 jobs, RC 0, 275 Lean files, 273 root imports; 393
+`#print axioms` commands over a 435-name registry.
 **Rule:** this file is updated by every wave. Closed issues keep their id and
 get a `closed` row; new gaps get a new id in the same wave that discovers them.
 
@@ -33,8 +34,30 @@ by rewording it; add the missing model or keep the scope note.
 |---|---|---|
 | **P0** | Blocks a public release or a reproducible build | `OPS-02`, `OPS-03` |
 | **P0** | Blocks any claim of spendable L1 scripts | `L1-01`, `L1-02`, `L1-07` |
-| **P1** | Major model/verification gap; codeable in a wave | `L1-03`, `PR-01`, `PR-02`, `RT-02` |
-| **P2** | Longer-term research / conformance / network assumptions | `CR-01`, `L1-06`, `NET-01`, `CONF-01`, `MODEL-01`, `SEC-01` |
+| **P0 (review-derived)** | Falsified/overstated live consumer or assurance claim; no new external artifact required | `REV-01`–`REV-05` |
+| **P1** | Major model/verification gap; codeable in a wave | `L1-03`, `PR-01`, `PR-02`, `RT-02`, `REV-06`–`REV-08` |
+| **P2** | Longer-term research / conformance / network assumptions | `CR-01`, `L1-06`, `NET-01`, `CONF-01`, `MODEL-01`, `SEC-01`, `REV-09` |
+
+## Wave 13 review (read-only, 2026-10-19)
+
+The 32-lane review used pinned `ldk-node@fa123fed…` and
+`ldk-server@c17dc11d…` as behavioral datapoints. It did **not** find a new
+route through the external L1/Noise/EUF-CMA/source barriers. It did find
+tractable model-level defects in already-proved rows. The authoritative
+synthesis is `agents/reports/wave13-review/R32-synthesis.md`; the six proposed
+wave-13 lanes and their exclusive files are in §6.2.
+
+| Id | Priority | Issue | Current boundary / evidence | Next action |
+|---|---|---|---|---|
+| `REV-01` | P0 | Reserve and in-flight admission consumers are not BOLT 2-faithful | `LiquidityProps.reserveMsat` uses the local endpoint (`:110-111`); `reserveOf .local` and `addHtlc?` inherit it; `pendingHtlcValueOf` pools both directions (`State.lean:266-269`); `addHtlc?` admits zero/minimum/CLTV-invalid HTLCs and counts terminal HTLCs (`:376-384`). BOLT 2 `02-peer-protocol.md:730-742`; R19/R32 G01–G04. | Additive `W13-LIQ` repair; preserve old carriers and witnesses. |
+| `REV-02` | P0 | Legacy anchored commitment pair omits the funder's 660-sat anchor debit; anchor presence/net-dust consumers are narrower than BOLT 3 | `Commitment.lean:380-410` subtracts only `fee`; corrected constructor is unused; `commitmentOutputs` emits both anchors (`:113-114`); gross path differs from `outputsNet` (`:951-970`). BOLT 3 `03-transactions.md:321-326`; R06/R32 G05–G07. | Additive `W13-ANCHOR` conservation; keep `waveF_f04_counterexample_660` and `commitmentPair_anchorCounterexample`. |
+| `REV-03` | P0 | Replay and duplicate-payment admission are not wired to idempotent refinements | `receive` applies `advanceReceived` (`Peer.lean:213`), while `advanceReceivedNumbered` is idempotent (`ChannelReestablishProps.lean:395-405`); `Keysend.retry` resets `succeeded` (`:252-255`); no payment-store admission predicate. LDK Node `payment/spontaneous.rs:67-73`; R12/R31/R32 G09–G11. | `W13-STATE` and `W13-PAY`; retain `duplicate_commitmentSigned_advances_twice` and `retry_pending`. |
+| `REV-04` | P0 | `routeValid` is per-hop, not chain-backed | `Route.lean:325-327` checks each hop against some enabled edge; disjoint edges `0→1` and `2→3` can pass. The docstring's end-to-end claim is unsupported. R16/R32 G12. | Add `W13-ROUTE` chain predicate and refinement; do not redefine `routeValid`. |
+| `REV-05` | P0 | Axiom-audit and traceability gates do not cover what their counts suggest | 294 target **occurrences**, 282 unique; 393 `#print axioms` commands vs 435 registry names; 72 unique catalog targets unprinted and 35 absent from the registry; `Traceability` checks IDs, not text/module equality. `Obligations.lean:458-459`; `AxiomAudit.lean:117-570,579-1018`; `Traceability.lean:830-900`; R31/R32 G20–G22. | `W13-ASSURANCE`: reconcile print/registry/catalog sets and enforce text/module equality; add a negative fixture. |
+| `REV-06` | P1 | Several `.proved` rows are definitional or hypothesis restatements | `partial_synchrony_delivers` returns its hypothesis (`Invariants.lean:483-492`); `channel_ready_gate` is a two-flag conjunction (`D18.lean:334`); `stale_snapshot_rolls_back` returns `h.2` and never applies `restore` (`PersistenceRecovery.lean:505-517`). R31/R32 G17–G19. | Reword catalog/docstrings as hypothesis/flag results; add a non-circular delivery/restore model only if separately chartered. |
+| `REV-07` | P1 | MPP exact-sum and route fee rounding are narrower than LDK/BOLT | `mppComplete`/`MppPayment.settle` require exact equality; BOLT 4 permits `≥ total_msat`. `Hop.ofEdge` rounds up; LDK truncates. `MPP.lean:144-146`; `Route.lean:92-97`; R16/R32 G08,G13. | Additive `settleGe`/floor theorem in wave 14; do not mark the existing narrower theorems false. |
+| `REV-08` | P1 | LDK Server conformance is pin-blocked | `ldk-server/Cargo.toml:16` names `ldk-node 179b4b2…`, while the review pin is `fa123fed…`; `claim_for_id` arity differs. R24/R32 G23. | Align the server pin or explicitly scope server claims to the pinned dependency; external/build decision. |
+| `REV-09` | P2 | Documentation count drift | `Obligations.lean:76` still says 48-obligation catalog; docs say 294 targets without "occurrences". R29/R32 G28. | Correct wording in the assurance lane; regenerate counts from one manifest. |
 
 ## Open issues
 
@@ -367,11 +390,11 @@ foundation (`CR-01`/`SEC-01`), and any `main` merge remain outside agent lanes.
 | Check | Result |
 |---|---|
 | `lake build` | 314 jobs, RC 0 |
-| `check-catalog.py --audit` | 51 proved / 0 statement-only / 294 targets / 0 unresolved / 0 proved failures / 11898 declarations |
+| `check-catalog.py --audit` | 51 proved / 0 statement-only / 294 target occurrences (282 unique) / 0 unresolved / 0 proved failures / 11898 declarations |
 | `check-catalog.py --allow-planned` | 51/0/0 planned, RC 0 |
 | `check.sh` | `files=275 obligations=82 sorry_in_proofs=0`, RC 0 |
 | `check-final.py` | 275 Lean files, 273 root imports, RC 0 |
 | `check-conformance.py` | 61 base + 16 framing + 9 boundaries, 26 differential fixtures, 200 Lean references, 22/22 mutation controls, 6 finite BOLT 2 message vectors, 3 declared gaps, live 26 BigSize + 3 TLV + 4 wire + 5 BOLT 2 payloads (`funding_created`, `funding_signed`, `channel_ready`, `open_channel`, `accept_channel`), RC 0 |
 | `verify-anchors.py` | 313 anchors, 0 bad, 2 unanchored rows, RC 0 |
 | `verify-vendor.sh` | 149 files, RC 0 |
-| Axiom audit | 435 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Axiom audit | 393 `#print axioms` commands over a 435-name registry; printed names use only `propext`, `Quot.sound`, `Classical.choice`; coverage gap `REV-05` |
