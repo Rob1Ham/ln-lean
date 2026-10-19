@@ -1,8 +1,8 @@
 {
   "schema": "lnlean.rust-lightning.live-transcript.v1",
   "pinned_commit": "fe4900930c6bd5786ec4203274d7cf312776a5a6",
-  "fixture_rows_sha256": "c2c82b81fd2317bdf72081e94f9b4b1b07a12c80c4f2ad36af67fe71c2c4e1ca",
-  "probe_sha256": "bf96ed9db5e5732c6bbd0299612083a19e984d6b382cd1d170728fb29d5431aa",
+  "fixture_rows_sha256": "163d923c6b41f4186a6c060678f637577231ba26e09a7b40138aa0d4840b0663",
+  "probe_sha256": "ebf163cc6a902fdb9dd9625008d108e4466d16b2575ea79b17238c460a8db838",
   "cargo_lock_sha256": "856914ef1e21687d610769bad5c2476f97184c61781c4f7dfcc21a82f9010fa1",
   "toolchain": {
     "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)",
@@ -20,14 +20,21 @@
       "result": "ok",
       "passed": 1,
       "failed": 0
+    },
+    {
+      "name": "ln::msgs::tests::encoding_channel_ready",
+      "result": "ok",
+      "passed": 1,
+      "failed": 0
     }
   ],
   "comparisons": {
     "bigsize": 26,
     "tlv": 3,
-    "wire": 4
+    "wire": 4,
+    "messages": 1
   },
   "wire_basis": "live LN_MAX_MSG_LEN; the length-header arithmetic remains the pinned-source check in extract_wire",
-  "commands_sha256": "fd2d8871aac66b38e32fe72a830582ce77937b0669768fa3574b1e5bc9a40b87",
-  "results_sha256": "9d561d872aa9fb3905174c831b334f95c5c8ea5e7db9bb76eee5c02410d82cbb"
+  "commands_sha256": "6e3aef6c9c683a8a93028de870b60abb571f1d9fd4d9839176827df8cfc93cce",
+  "results_sha256": "0fd01f2aa783377f557f725ab5d5dd8ea3b7aa2a46c75fd685e9a4f11dc3f0a9"
 }

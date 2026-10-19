@@ -28,6 +28,7 @@ import LnLean.Payment.Laws
 import LnLean.Payment.MPP
 import LnLean.Proofs.Bitcoin.AnchorProps
 import LnLean.Proofs.Bitcoin.EcdsaBridgeTargets
+import LnLean.Proofs.Bitcoin.EcdsaConcreteTargets
 import LnLean.Proofs.Bitcoin.FundingAuthTargets
 import LnLean.Proofs.Bitcoin.FundingLinkTargets
 import LnLean.Proofs.Bitcoin.FundingProps
@@ -57,6 +58,7 @@ import LnLean.Proofs.Channel.HTLCProps
 import LnLean.Proofs.Channel.HtlcGlobalIdTargets
 import LnLean.Proofs.Channel.HtlcPreimageTargets
 import LnLean.Proofs.Channel.PenaltyProps
+import LnLean.Proofs.Channel.PreimageCoverageTargets
 import LnLean.Proofs.Channel.ProtocolEventFoldTargets
 import LnLean.Proofs.Channel.ReserveProps
 import LnLean.Proofs.Channel.RevocationProps
@@ -69,6 +71,7 @@ import LnLean.Proofs.ConformanceDiffTargets
 import LnLean.Proofs.ConformanceTargets
 import LnLean.Proofs.Conservation
 import LnLean.Proofs.Crypto.AcceptPayloadTargets
+import LnLean.Proofs.Crypto.AttributionGameTargets
 import LnLean.Proofs.Crypto.EcdsaProps
 import LnLean.Proofs.Crypto.KeyModelTargets
 import LnLean.Proofs.Crypto.SchnorrProps
@@ -128,6 +131,7 @@ import LnLean.Proofs.Protocol.ChannelReestablishProps
 import LnLean.Proofs.Protocol.ErrorProps
 import LnLean.Proofs.Protocol.FeaturesProps
 import LnLean.Proofs.Protocol.HandshakeProps
+import LnLean.Proofs.Protocol.OpenChannelRoutingTargets
 import LnLean.Proofs.Protocol.OpenChannelWireTargets
 import LnLean.Proofs.ProtocolCoverageTargets
 import LnLean.Proofs.ProtocolSigningTargets
@@ -141,6 +145,7 @@ import LnLean.Proofs.Routing.GossipRawRefinementTargets
 import LnLean.Proofs.Routing.GossipStoreEpochTargets
 import LnLean.Proofs.Routing.GossipTargets
 import LnLean.Proofs.Routing.GraphProps
+import LnLean.Proofs.Routing.NodeCanonicalTargets
 import LnLean.Proofs.Routing.OnionProps
 import LnLean.Proofs.Routing.RouteBlindingProps
 import LnLean.Proofs.Security.ReorgTargets

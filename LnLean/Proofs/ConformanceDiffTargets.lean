@@ -4,7 +4,8 @@
 **What this module is.**  Concrete, machine-checked expectations for the BOLT 8
 transport frame that wraps a BOLT 1 Lightning message, finite BOLT 2
 `open_channel`/`accept_channel`/`commitment_signed`/`update_add_htlc` payload
-encodings, plus the differential fixtures in
+encodings, and one live-encoded BOLT 2 `channel_ready` differential row, plus
+the differential fixtures in
 `tests/conformance/rust-lightning/fixtures.json`.  Small framing and message
 vectors are closed by kernel reduction (`decide`); the large boundary facts use
 the model's proved length lemmas.
@@ -40,12 +41,15 @@ its `messages` object holds the finite BOLT 2 payload/field rows below.
 the pinned rust-lightning unit test `bigsize_encoding_decoding`
 (`lightning/src/util/ser.rs:1857-1901`), the TLV reader test
 `retired_tlvs_skipped_on_read` (`lightning/src/util/ser_macros.rs:2047-2071`),
-and the wire length header described above.  The checker is offline: it reads
+the BOLT 2 `channel_ready` test `encoding_channel_ready`
+(`lightning/src/ln/msgs.rs:5672-5682`), and the wire length header described
+above.  The checker is offline: it reads
 only committed JSON and this module's source, never the network or a Rust
 toolchain.  A separate optional harness
 (`tests/conformance/rust-lightning/generate.py --live`) runs the pinned tests
 and a public-API probe under `cargo --offline --locked` with the committed
-`pinned/Cargo.lock`, and records the comparison in `live-transcript.json`; the
+`pinned/Cargo.lock`, encodes the `ChannelReady` payload through the pinned
+`Writeable` impl, and records the comparison in `live-transcript.json`; the
 checker verifies that transcript hash and its pinned provenance.  The live run
 is evidence for the same finite rows, not a new model theorem.
 
@@ -896,6 +900,73 @@ theorem msg_update_add_htlc_base_header :
 /-- The type and transport header together: `008005ac`. -/
 theorem msg_update_add_htlc_base_frame_prefix :
     u16BE 128 ++ Transport.lengthHeader ⟨128, updateAddHtlcFixture.payload⟩ = bytes [0x00, 0x80, 0x05, 0xac] := by decide
+
+
+/-! ## Live BOLT 2 differential message row (S9-CONF-LIVE-MSG)
+
+The pinned rust-lightning unit test `ln::msgs::tests::encoding_channel_ready`
+constructs a `ChannelReady` with an all-`0x02` channel id, the public key
+derived from the all-`0x01` secret key, and no `short_channel_id_alias`, then
+encodes it through the public `Writeable` impl.  The same public struct and
+fields are constructed by `live_probe.rs` under `cargo --offline --locked`; the
+fixture row `rust_msg_channel_ready_encoding` records the 65-byte payload and
+the live transcript records the field-by-field agreement. -/
+
+/-- A BOLT 2 `channel_ready` (type 36) payload: channel id plus compressed
+per-commitment point.  The optional type-1 alias TLV is absent in this row. -/
+structure ChannelReadyWire where
+  channelId : ByteArray
+  nextPerCommitmentPoint : ByteArray
+
+namespace ChannelReadyWire
+
+/-- The BOLT 2 `channel_ready` payload bytes without TLVs. -/
+def payload (m : ChannelReadyWire) : ByteArray :=
+  m.channelId ++ m.nextPerCommitmentPoint
+
+end ChannelReadyWire
+
+/-- The pinned test's all-`0x02` channel id. -/
+abbrev channelReadyChannelId : ByteArray := repeatedByte 32 0x02
+
+/-- The compressed point derived from the pinned test's all-`0x01` secret. -/
+abbrev channelReadyPoint : ByteArray :=
+  bytes [
+  0x03, 0x1b, 0x84, 0xc5, 0x56, 0x7b, 0x12, 0x64, 0x40, 0x99,
+  0x5d, 0x3e, 0xd5, 0xaa, 0xba, 0x05, 0x65, 0xd7, 0x1e, 0x18,
+  0x34, 0x60, 0x48, 0x19, 0xff, 0x9c, 0x17, 0xf5, 0xe9, 0xd5,
+  0xdd, 0x07, 0x8f]
+
+/-- The channel_ready row used by the pinned differential fixture. -/
+abbrev channelReadyFixture : ChannelReadyWire where
+  channelId := channelReadyChannelId
+  nextPerCommitmentPoint := channelReadyPoint
+
+/-- channel_ready: payload length (65 bytes). -/
+theorem diff_msg_channel_ready_length : channelReadyFixture.payload.size = 65 := by decide
+
+/-- The BOLT 8 transport length for this channel_ready payload is 67. -/
+theorem diff_msg_channel_ready_transport :
+    Transport.transportLength ⟨36, channelReadyFixture.payload⟩ = 67 := by decide
+
+/-- The transport header is `0043`. -/
+theorem diff_msg_channel_ready_header :
+    Transport.lengthHeader ⟨36, channelReadyFixture.payload⟩ = bytes [0x00, 0x43] := by decide
+
+/-- The type and transport header together: `00240043`. -/
+theorem diff_msg_channel_ready_frame_prefix :
+    u16BE 36 ++ Transport.lengthHeader ⟨36, channelReadyFixture.payload⟩ = bytes [0x00, 0x24, 0x00, 0x43] := by decide
+
+/-- The exact 65-byte channel_ready payload: the pinned unit-test target. -/
+theorem diff_msg_channel_ready_payload :
+    channelReadyFixture.payload = bytes [
+      0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+      0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+      0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+      0x02, 0x02, 0x03, 0x1b, 0x84, 0xc5, 0x56, 0x7b, 0x12, 0x64,
+      0x40, 0x99, 0x5d, 0x3e, 0xd5, 0xaa, 0xba, 0x05, 0x65, 0xd7,
+      0x1e, 0x18, 0x34, 0x60, 0x48, 0x19, 0xff, 0x9c, 0x17, 0xf5,
+      0xe9, 0xd5, 0xdd, 0x07, 0x8f] := by decide
 
 
 /-! ## Compatibility path for the wave-5 audit -/

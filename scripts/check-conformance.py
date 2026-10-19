@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate the S5-CONF-DIFF wire, framing, and differential fixtures.
 
-This checker is deliberately small and dependency-free.  It does eight things:
+This checker is deliberately small and dependency-free.  It does nine things:
 
 1. Recomputes every BigSize encoding and decoding decision with an independent
    reference implementation and compares it to ``tests/conformance/vectors.json``.
@@ -17,17 +17,20 @@ This checker is deliberately small and dependency-free.  It does eight things:
    (``open_channel`` type 32, ``accept_channel`` type 33, ``update_add_htlc``
    type 128, ``commitment_signed`` type 132) and checks the payload length,
    transport length, and transport header.
-5. Replays pinned rust-lightning differential fixtures from
+5. Replays the pinned BOLT 2 ``channel_ready`` (type 36) differential fixture
+   extracted from the pinned rust-lightning ``encoding_channel_ready`` unit test,
+   including its live-encoded payload in the transcript.
+6. Replays pinned rust-lightning differential fixtures from
    ``tests/conformance/rust-lightning/fixtures.json`` (committed JSON only; no
    network or Rust toolchain).
-6. Verifies the fixture provenance against the pinned checkout when
+7. Verifies the fixture provenance against the pinned checkout when
    ``refs/rust-lightning`` is present: the recorded SHA-256 for each source
    file and, when the checkout has a ``.git`` directory, its exact HEAD.  Use
    ``--no-provenance`` to skip this optional check.
-7. Requires the promoted BOLT 8 model to exist in
+8. Requires the promoted BOLT 8 model to exist in
    ``LnLean/Wire/Message.lean`` (``transportFrame``, ``unframeTransport``, the
    round trip, the declared-length law, and the payload-decoder boundary).
-8. Cross-checks that every vector names a theorem that exists in
+9. Cross-checks that every vector names a theorem that exists in
    ``LnLean/Proofs/ConformanceTargets.lean`` or
    ``LnLean/Proofs/ConformanceDiffTargets.lean`` and that the theorem statement
    mentions the vector's input bytes (and, where applicable, its value).
@@ -72,6 +75,7 @@ LIVE_TRANSCRIPT_SCHEMA = "lnlean.rust-lightning.live-transcript.v1"
 LIVE_TEST_NAMES = [
     "util::ser::tests::bigsize_encoding_decoding",
     "util::ser_macros::tests::retired_tlvs_skipped_on_read",
+    "ln::msgs::tests::encoding_channel_ready",
 ]
 
 UINT64_MAX = 2**64 - 1
@@ -462,6 +466,11 @@ MESSAGE_TYPES = {
     "commitment_signed": 132,
 }
 
+# The live differential message row currently covers the BOLT 2 channel_ready
+# message, whose public rust-lightning struct/encoding is exercised by the
+# pinned `encoding_channel_ready` unit test and the offline probe.
+DIFF_MESSAGE_TYPES = {"channel_ready": 36}
+
 MESSAGE_REQUIRED_FIELDS = {
     "open_channel": [
         "chain_hash", "temporary_channel_id", "funding_satoshis", "push_msat",
@@ -784,7 +793,81 @@ def check_diff_wire(entry: dict[str, Any], seen_ids: set[str]) -> None:
             f"{where}: rust_result must be accept iff the message fits")
 
 
-def check_differential(doc: dict[str, Any], seen_ids: set[str]) -> tuple[int, int, int]:
+def check_diff_message(entry: dict[str, Any], seen_ids: set[str]) -> str:
+    where = f"differential.message[{entry.get('id', '?')}]"
+    for key in ("id", "kind", "name", "type", "construction", "fields",
+                "payload", "payload_length", "transport_length", "header",
+                "frame_prefix", "rust_result", "model_result", "lean",
+                "source"):
+        require(key in entry, f"{where}: missing key {key!r}")
+    require(entry["id"] not in seen_ids, f"{where}: duplicate id {entry['id']!r}")
+    seen_ids.add(entry["id"])
+    require(entry["kind"] == "message", f"{where}: kind must be 'message'")
+    name = entry["name"]
+    require(name in DIFF_MESSAGE_TYPES,
+            f"{where}: unknown BOLT 2 message name {name!r}")
+    require(entry["type"] == DIFF_MESSAGE_TYPES[name],
+            f"{where}: type {entry['type']} != BOLT type "
+            f"{DIFF_MESSAGE_TYPES[name]}")
+
+    construction = entry["construction"]
+    require(isinstance(construction, dict),
+            f"{where}: construction must be an object")
+    for key in ("channel_id", "next_per_commitment_point",
+                "short_channel_id_alias"):
+        require(key in construction, f"{where}: construction missing {key!r}")
+    require(construction["short_channel_id_alias"] is None,
+            f"{where}: only the no-alias channel_ready row is supported")
+
+    fields = entry["fields"]
+    require(isinstance(fields, list) and fields,
+            f"{where}: fields must be a non-empty list")
+    expected_names = ["channel_id", "next_per_commitment_point"]
+    actual_names = [field.get("name") for field in fields]
+    require(actual_names == expected_names,
+            f"{where}: field names {actual_names} != expected {expected_names}")
+
+    payload = b""
+    offset = 0
+    for field in fields:
+        offset = check_message_field(field, where, offset)
+        payload += parse_hex(field["hex"], where)
+    require(construction["channel_id"] == fields[0]["hex"],
+            f"{where}: construction channel_id disagrees with the field")
+    require(construction["next_per_commitment_point"] == fields[1]["hex"],
+            f"{where}: construction point disagrees with the field")
+    stated = parse_hex(entry["payload"], where)
+    require(payload == stated,
+            f"{where}: concatenated fields {payload.hex()} != payload "
+            f"{stated.hex()}")
+    require(entry["payload_length"] == len(payload),
+            f"{where}: payload_length {entry['payload_length']} != "
+            f"{len(payload)}")
+    transport = 2 + len(payload)
+    require(transport <= 0xFFFF,
+            f"{where}: message does not fit the BOLT 8 transport bound")
+    require(entry["transport_length"] == transport,
+            f"{where}: transport_length {entry['transport_length']} != "
+            f"2 + {len(payload)}")
+    require(entry["header"] == f"{transport:04x}",
+            f"{where}: header {entry['header']} != {transport:04x}")
+    require(entry["frame_prefix"] == f"{entry['type']:04x}{transport:04x}",
+            f"{where}: frame_prefix {entry['frame_prefix']} != "
+            f"{entry['type']:04x}{transport:04x}")
+    require(entry["rust_result"] == "accept",
+            f"{where}: rust_result must be accept for the live encoding row")
+    require(entry["model_result"] == "accept",
+            f"{where}: model_result must be accept for the live encoding row")
+
+    lean = entry["lean"]
+    require(isinstance(lean, dict), f"{where}: lean must be an object")
+    for key in ("payload", "length", "transport", "header", "frame_prefix"):
+        require(isinstance(lean.get(key), str) and lean[key],
+                f"{where}: lean must name its {key} theorem")
+    return name
+
+
+def check_differential(doc: dict[str, Any], seen_ids: set[str]) -> tuple[int, int, int, int]:
     require(doc.get("schema") == "lnlean.rust-lightning.differential.v1",
             f"unexpected differential schema {doc.get('schema')!r}")
     require(doc.get("pinned_commit") ==
@@ -796,7 +879,7 @@ def check_differential(doc: dict[str, Any], seen_ids: set[str]) -> tuple[int, in
             "differential provenance is missing")
     fixtures = doc.get("fixtures")
     require(isinstance(fixtures, dict), "differential fixtures must be an object")
-    for key in ("bigsize", "tlv", "wire"):
+    for key in ("bigsize", "tlv", "wire", "messages"):
         require(isinstance(fixtures.get(key), list) and fixtures[key],
                 f"differential fixtures missing {key}")
     for entry in fixtures["bigsize"]:
@@ -804,8 +887,11 @@ def check_differential(doc: dict[str, Any], seen_ids: set[str]) -> tuple[int, in
     scopes = [check_diff_tlv(entry, seen_ids) for entry in fixtures["tlv"]]
     for entry in fixtures["wire"]:
         check_diff_wire(entry, seen_ids)
+    for entry in fixtures["messages"]:
+        check_diff_message(entry, seen_ids)
     gaps = sum(1 for scope in scopes if scope.startswith("not-modelled:"))
-    return len(fixtures["bigsize"]), len(fixtures["tlv"]), len(fixtures["wire"])
+    return (len(fixtures["bigsize"]), len(fixtures["tlv"]),
+            len(fixtures["wire"]), len(fixtures["messages"]))
 
 
 def check_bolt_anchors(doc: dict[str, Any]) -> int:
@@ -965,6 +1051,7 @@ def check_live_transcript(generation: dict[str, Any],
         "bigsize": len(fixtures["bigsize"]),
         "tlv": len(fixtures["tlv"]),
         "wire": len(fixtures["wire"]),
+        "messages": len(fixtures["messages"]),
     }
     require(transcript.get("comparisons") == expected_counts,
             f"live transcript comparisons {transcript.get('comparisons')} != "
@@ -1276,6 +1363,49 @@ def check_differential_lean_sync(doc: dict[str, Any],
                 f"{where}: statement does not mention transport length "
                 f"{entry['transport_length']}")
         checked += 1
+    for entry in fixtures["messages"]:
+        lean = entry["lean"]
+        where = f"messages[{entry['id']}]"
+
+        name = lean["payload"]
+        require(name in theorems, f"lean[{name}]: theorem not declared")
+        block = theorems[name]
+        payload = parse_hex(entry["payload"], where)
+        require(payload in byte_literals(block),
+                f"lean[{name}]: statement does not mention the "
+                f"{len(payload)}-byte payload")
+        checked += 1
+
+        name = lean["length"]
+        require(name in theorems, f"lean[{name}]: theorem not declared")
+        require(re.search(rf"=\s*{entry['payload_length']}\b",
+                          theorems[name]),
+                f"lean[{name}]: statement does not conclude payload length "
+                f"{entry['payload_length']}")
+        checked += 1
+
+        name = lean["transport"]
+        require(name in theorems, f"lean[{name}]: theorem not declared")
+        require(str(entry["transport_length"]) in theorems[name],
+                f"lean[{name}]: statement does not mention transport length "
+                f"{entry['transport_length']}")
+        checked += 1
+
+        name = lean["header"]
+        require(name in theorems, f"lean[{name}]: theorem not declared")
+        header = bytes.fromhex(entry["header"])
+        require(header in byte_literals(theorems[name]),
+                f"lean[{name}]: statement does not mention header "
+                f"{entry['header']}")
+        checked += 1
+
+        name = lean["frame_prefix"]
+        require(name in theorems, f"lean[{name}]: theorem not declared")
+        prefix = bytes.fromhex(entry["frame_prefix"])
+        require(prefix in byte_literals(theorems[name]),
+                f"lean[{name}]: statement does not mention frame prefix "
+                f"{entry['frame_prefix']}")
+        checked += 1
     return checked
 
 
@@ -1366,6 +1496,14 @@ def check_mutations(doc: dict[str, Any], diff_doc: dict[str, Any] | None,
                 lambda: check_diff_tlv(tlv, set()))
 
         mutated = copy.deepcopy(diff_doc)
+        message = mutated["fixtures"]["messages"][0]
+        payload = bytearray.fromhex(message["payload"])
+        payload[-1] ^= 0x01
+        message["payload"] = payload.hex()
+        control("differential BOLT 2 message payload byte changed",
+                lambda: check_diff_message(message, set()))
+
+        mutated = copy.deepcopy(diff_doc)
         mutated["generation"]["live_cargo_test"] = True
         mutated["generation"]["mode"] = "live-cargo-test"
         mutated["generation"]["live_transcript_sha256"] = "0" * 64
@@ -1436,12 +1574,13 @@ def run(vectors: Path, lean_paths: list[Path] | None, diff_path: Path | None,
             doc, seen_ids)
         message_cases, message_counts = check_messages(doc, seen_ids)
 
-        diff_bigsize = diff_tlv = diff_wire = 0
+        diff_bigsize = diff_tlv = diff_wire = diff_messages = 0
         diff_scopes: list[str] = []
         live_fixtures = False
         if diff_doc is not None:
             live_fixtures = check_generation(diff_doc)
-            diff_bigsize, diff_tlv, diff_wire = check_differential(diff_doc, seen_ids)
+            (diff_bigsize, diff_tlv, diff_wire,
+             diff_messages) = check_differential(diff_doc, seen_ids)
             diff_scopes = [entry["model_scope"]
                            for entry in diff_doc["fixtures"]["tlv"]]
 
@@ -1533,7 +1672,8 @@ def run(vectors: Path, lean_paths: list[Path] | None, diff_path: Path | None,
           f"({message_summary})")
     if diff_doc is not None:
         print(f"differential: {diff_bigsize} rust-lightning BigSize, "
-              f"{diff_tlv} TLV, {diff_wire} wire fixtures "
+              f"{diff_tlv} TLV, {diff_wire} wire, {diff_messages} BOLT 2 "
+              f"message fixtures "
               f"(pinned {diff_doc['pinned_commit'][:7]}, offline)")
         print(f"differential TLV: {diff_tlv - diff_gaps} enforced, "
               f"{diff_gaps} declared not-modelled gaps")
@@ -1546,11 +1686,13 @@ def run(vectors: Path, lean_paths: list[Path] | None, diff_path: Path | None,
                 "bigsize": len(diff_doc["fixtures"]["bigsize"]),
                 "tlv": len(diff_doc["fixtures"]["tlv"]),
                 "wire": len(diff_doc["fixtures"]["wire"]),
+                "messages": len(diff_doc["fixtures"]["messages"]),
             }
             print(f"live evidence: {counts['bigsize']} BigSize + "
                   f"{counts['tlv']} TLV compared against rust-lightning, "
-                  f"{counts['wire']} wire via live LN_MAX_MSG_LEN; "
-                  f"transcript sha256 "
+                  f"{counts['wire']} wire via live LN_MAX_MSG_LEN, "
+                  f"{counts['messages']} BOLT 2 channel_ready payload encoded "
+                  f"live; transcript sha256 "
                   f"{generation.get('live_transcript_sha256', '')[:12]}")
         if provenance_count is not None:
             commit_note = " (HEAD verified)" if commit_verified else ""

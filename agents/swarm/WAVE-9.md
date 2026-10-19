@@ -1,12 +1,16 @@
 # Wave 9 — EC boundary, transport attribution, registration, arbitrary preimages, node canonicalisation, live messages
 
-**Status:** running; launched from `10d18a1`.
+**Status:** complete and integrated; launched from `10d18a1`.
 
 **Launch commit:** `10d18a1` (`[DOCS] finalize hosted CI evidence`)
+**Integration base:** `93fa943` (wave-H merge)
 **Branch:** `repair/integrated`
 **Catalog at launch:** 48 proved / 0 statementOnly / 100 targets
+**Catalog at integration:** 48 proved / 0 statementOnly / 142 targets
 **Full build at launch:** 250 jobs, RC 0
+**Full build at integration:** 300 jobs, RC 0
 **Axiom audit at launch:** 215 theorems
+**Axiom audit at integration:** 269 theorems
 **Roadmap:** `docs/OPEN-ISSUES.md`
 **Protocol:** `docs/SWARM-LOOP.md`
 
@@ -58,10 +62,31 @@ records the gate.
 - The parent integrates only sorry-free, faithful results, then updates the
   catalog, traceability, audit, generated indexes, roadmap, and gate record.
 
-## Launch state
+## Integration results
+
+All six lanes completed without editing shared catalog files. The parent
+integrated five new modules (`EcdsaConcreteTargets`, `PreimageCoverageTargets`,
+`AttributionGameTargets`, `OpenChannelRoutingTargets`, `NodeCanonicalTargets`)
+through `scripts/regen-root.sh`, added 42 target strings to six existing
+catalog rows, and extended `AxiomAudit` to 269 theorems. The live-message lane
+modified only the existing `ConformanceDiffTargets.lean` and conformance
+harness, so it added no Lean file.
+
+The wave-9 gate is **300 Lake jobs, RC 0**; **261 Lean files**, **259 root
+imports**; strict catalog **48 proved / 0 statement-only / 142 targets /
+10742 declarations**; `check.sh` **files=261 obligations=82
+sorry_in_proofs=0**; conformance **180 Lean references, 14/14 mutation
+controls, 1 live BOLT 2 `channel_ready` payload**; **310 anchors**; **149
+vendor files**; and only the permitted classical axioms.
+
+`RT-02` remains open and narrowed to rotation identity and wire membership.
+`L1-01`/`L1-04`/`L1-07` remain open with the EC obstruction recorded as a
+caveat; no unconditional ECDSA or consensus claim is made. `PR-01` keeps
+`KeyBinding`/`PopSound`/`PopProducedBy` explicit, `PR-02` remains mitigated,
+and `CONF-01` remains finite/public-API conformance, not node-level interop.
+
+## Launch state (historical)
 
 - Base `10d18a1`; `origin/main` remains `b891a59`.
-- Working tree before launch has only the pre-existing untracked
-  `agents/status/REPAIR.status`.
-- Wave 9 has no catalog target additions until integration; the launch commit
-  only records the lane plan and status.
+- Wave 9 launched with no catalog target additions; the launch commit only
+  recorded the lane plan and status.

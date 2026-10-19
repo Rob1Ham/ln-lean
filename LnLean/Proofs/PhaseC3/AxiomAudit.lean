@@ -90,6 +90,11 @@ import LnLean.Proofs.Crypto.AcceptPayloadTargets
 import LnLean.Proofs.Channel.HtlcPreimageTargets
 import LnLean.Proofs.Channel.CommitmentConsumerSitesTargets
 import LnLean.Proofs.Routing.GossipStoreEpochTargets
+import LnLean.Proofs.Bitcoin.EcdsaConcreteTargets
+import LnLean.Proofs.Protocol.OpenChannelRoutingTargets
+import LnLean.Proofs.Crypto.AttributionGameTargets
+import LnLean.Proofs.Channel.PreimageCoverageTargets
+import LnLean.Proofs.Routing.NodeCanonicalTargets
 
 set_option autoImplicit false
 
@@ -615,7 +620,49 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Proofs.Routing.GossipStoreEpochTargets.epochFold_gossip_eq_canonicalStoreView_rawFold,
     `LnLean.Routing.replacedUpdates_timestamp_lt,
     `LnLean.Proofs.Routing.GossipStoreEpochTargets.StoreEpoch.epochFold_store_eq_foldl,
+    `LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.eufCma_vendorVerify_iff_totalReject,
+    `LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.bridged_model_totalReject,
+    `LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.exists_bridged_model_iff_totalReject,
+    `LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.withVendorEcdsa_no_funding,
+    `LnLean.Proofs.Bitcoin.EcdsaConcreteTargets.not_digestBindsMod_fundingTag,
+    `LnLean.Proofs.Protocol.OpenChannelRoutingTargets.openRoute_initial_to_fundingCreated,
+    `LnLean.Proofs.Protocol.OpenChannelRoutingTargets.openChannel_routing_summary,
+    `LnLean.Proofs.Protocol.OpenChannelRoutingTargets.unattributed_open_is_routed,
+    `LnLean.Proofs.Protocol.OpenChannelRoutingTargets.wire_payload_does_not_determine_sender,
+    `LnLean.Proofs.Protocol.OpenChannelRoutingTargets.wire_binding_needs_FundingScript_C1,
+    `LnLean.Proofs.Crypto.AttributionGameTargets.stored_registration_funding_attribution,
+    `LnLean.Proofs.Crypto.AttributionGameTargets.stored_pop_attribution,
+    `LnLean.Proofs.Crypto.AttributionGameTargets.stored_payload_not_possession,
+    `LnLean.Proofs.Crypto.AttributionGameTargets.stored_attribution_fails_without_keyBinding,
+    `LnLean.Proofs.Crypto.AttributionGameTargets.attribution_game_summary,
+    `LnLean.Proofs.Channel.PreimageCoverageTargets.fieldAgreement_iff_eq_ofTx_and_amount,
+    `LnLean.Proofs.Channel.PreimageCoverageTargets.FieldAgreement.bytes_eq,
+    `LnLean.Proofs.Channel.PreimageCoverageTargets.FieldAgreement.digest_eq_vendor,
+    `LnLean.Proofs.Channel.PreimageCoverageTargets.wireSignatureCovers_of_preimage,
+    `LnLean.Proofs.Channel.PreimageCoverageTargets.counterPreimageLocktime_bytes_ne,
+    `LnLean.Proofs.Channel.PreimageCoverageTargets.counterPreimageAmount_bytes_ne,
+    `LnLean.Proofs.Channel.PreimageCoverageTargets.legacy_projection_not_determine_htlc_coverage,
+    `LnLean.Proofs.Channel.PreimageCoverageTargets.fieldAgreement_scriptCode_free,
+    `LnLean.Proofs.Channel.PreimageCoverageTargets.hash160_image_boundary,
+    `LnLean.Proofs.Channel.PreimageCoverageTargets.displayOrderPreimage_not_fieldAgreement,
+    `LnLean.Proofs.Channel.PreimageCoverageTargets.vectorHtlcSpend_amount_is_gross,
+    `LnLean.Proofs.Channel.PreimageCoverageTargets.preimage_coverage_summary,
+    `LnLean.Proofs.Routing.NodeCanonicalTargets.reachableNodeCanonical_node_replacement,
+    `LnLean.Proofs.Routing.NodeCanonicalTargets.reachableNodeCanonical_rotation_keeps_both,
+    `LnLean.Proofs.Routing.NodeCanonicalTargets.reachableNodeCanonical_equal_timestamp_tie_boundary,
+    `LnLean.Proofs.Routing.NodeCanonicalTargets.no_canonical_node_preserving_raw_node_extension,
+    `LnLean.Proofs.Routing.NodeCanonicalTargets.canonicalStoreView_does_not_canonicalise_nodes,
+    `LnLean.Proofs.Routing.NodeCanonicalTargets.reachableNodeCanonical_node_slot_ignores_global_clock,
+    `LnLean.Proofs.Routing.NodeCanonicalTargets.raw_nonrefinement_preserved,
+    `LnLean.Proofs.Routing.NodeCanonicalTargets.epoch_square_lifts_to_node_canonical_view,
+    `LnLean.Proofs.Routing.NodeCanonicalTargets.canonicalNodeStoreView_nodeCanonical,
+    `LnLean.Proofs.Routing.NodeCanonicalTargets.applyGossipNodeCanonical_node_of_admitted,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_channel_ready_payload,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_channel_ready_length,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_channel_ready_transport,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_channel_ready_header,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_channel_ready_frame_prefix
     ]
 
 set_option maxRecDepth 6000 in
-theorem auditedTheorems_length : auditedTheorems.length = 227 := rfl
+theorem auditedTheorems_length : auditedTheorems.length = 269 := rfl

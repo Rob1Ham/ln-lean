@@ -9,10 +9,10 @@
     "mode": "live-cargo-test",
     "live_cargo_test": true,
     "live_transcript": "tests/conformance/rust-lightning/live-transcript.json",
-    "live_transcript_sha256": "3dd7a98fc102cb7840c52944977b56ae5656acea7846c1a4a3b86e43d6db8fe6",
-    "note": "The committed rows were extracted from the pinned source/unit-test literals; `generate.py --check` re-extracts and compares them. `generate.py --live --fetch` ran the pinned unit tests and the public-API probe under `cargo --offline --locked` with the committed `pinned/Cargo.lock`; `live-transcript.json` records the comparison. The wire header arithmetic remains a pinned-source check; only `LN_MAX_MSG_LEN` is probed live."
+    "live_transcript_sha256": "105920ff8e460f80c9c6701d0c9c51b1d227587138ad56d7eaa9a794b3dc57dc",
+    "note": "The committed rows were extracted from the pinned source/unit-test literals; `generate.py --check` re-extracts and compares them. `generate.py --live --fetch` ran the pinned unit tests and the public-API probe under `cargo --offline --locked` with the committed `pinned/Cargo.lock`; `live-transcript.json` records the comparison. The BOLT 2 channel_ready payload is encoded live through the pinned `Writeable` impl; the wire header arithmetic remains a pinned-source check and only `LN_MAX_MSG_LEN` is probed live."
   },
-  "scope": "Pinned rust-lightning differential fixtures for BigSize, a TLV reader stream, and the BOLT 8 wire length header. This is NOT a full implementation test: fixtures are finite, were transcribed from the pinned source/unit tests, and are validated offline against the same independent Python references used for the BOLT vectors. No Rust toolchain or network is required to run the checker.",
+  "scope": "Pinned rust-lightning differential fixtures for BigSize, a TLV reader stream, the BOLT 8 wire length header, and one live-encoded BOLT 2 channel_ready payload. This is NOT a full implementation test: fixtures are finite, were transcribed from the pinned source/unit tests, and are validated offline against the same independent Python references used for the BOLT vectors. No Rust toolchain or network is required to run the checker.",
   "provenance": [
     {
       "path": "lightning/src/util/ser.rs",
@@ -37,6 +37,12 @@
       "sha256": "01aa058e40a0186b6bc4862642c63b8f17f534572e96196f862959b75410531a",
       "lines": "251-265",
       "use": "a message is a 2-byte big-endian type plus a variable payload"
+    },
+    {
+      "path": "lightning/src/ln/msgs.rs",
+      "sha256": "75bc3698ab6e5595dcb02de23dceb52e37a25cd31621947387054fab2461a4f8",
+      "lines": "431-443, 3239-3243, 5672-5682",
+      "use": "BOLT 2 channel_ready (type 36) field order/Writeable encoding and the encoding_channel_ready unit-test target value"
     }
   ],
   "fixtures": {
@@ -417,6 +423,50 @@
         "lean": "diff_wire_over_max_length",
         "source": "peer_channel_encryptor.rs:36, 518-523",
         "note": "rust-lightning rejects msg_len > 65535; the fixed header would truncate 65536 to 0000"
+      }
+    ],
+    "messages": [
+      {
+        "id": "rust_msg_channel_ready_encoding",
+        "kind": "message",
+        "name": "channel_ready",
+        "type": 36,
+        "construction": {
+          "channel_id": "0202020202020202020202020202020202020202020202020202020202020202",
+          "next_per_commitment_point": "031b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+          "short_channel_id_alias": null
+        },
+        "fields": [
+          {
+            "name": "channel_id",
+            "kind": "bytes",
+            "offset": 0,
+            "length": 32,
+            "hex": "0202020202020202020202020202020202020202020202020202020202020202"
+          },
+          {
+            "name": "next_per_commitment_point",
+            "kind": "point",
+            "offset": 32,
+            "length": 33,
+            "hex": "031b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f"
+          }
+        ],
+        "payload": "0202020202020202020202020202020202020202020202020202020202020202031b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+        "payload_length": 65,
+        "transport_length": 67,
+        "header": "0043",
+        "frame_prefix": "00240043",
+        "rust_result": "accept",
+        "model_result": "accept",
+        "lean": {
+          "payload": "diff_msg_channel_ready_payload",
+          "length": "diff_msg_channel_ready_length",
+          "transport": "diff_msg_channel_ready_transport",
+          "header": "diff_msg_channel_ready_header",
+          "frame_prefix": "diff_msg_channel_ready_frame_prefix"
+        },
+        "source": "ln/msgs.rs:431-443, 3239-3243, 5672-5682 (encoding_channel_ready)"
       }
     ]
   }

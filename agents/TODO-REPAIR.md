@@ -305,6 +305,39 @@ Wave-8 reports are in `agents/reports/swarm8/`. The proof-wave-8 gate is
 anchors, 149 vendor files, and 0 forbidden constructs.** The next candidates
 are listed in `docs/OPEN-ISSUES.md` under “Wave 9 candidates”.
 
+### Proof-wave 9 — remaining boundaries after wave H
+
+Wave 9 launched from `10d18a1` and is integrated on top of the wave-H merge
+`b15744b`. The lane plan is `agents/swarm/WAVE-9.md`; reports are in
+`agents/reports/swarm9/`. All six lanes are complete and integrated.
+
+- [x] `S9-PR-ATTRIBUTION` — registration/PoP game over `StoredAccept`, storage
+  is not possession, conditional `KeyBinding` attribution, and the
+  dropped-`KeyBinding` counterexample.
+- [x] `S9-L1-EC-UNCONDITIONAL` — sharp EC obstruction: the concrete pointwise
+  bridge forces total rejection; `VendorEcdsaContract` is the faithful
+  conditional form.
+- [x] `S9-L1-OPENCHANNEL-ROUTING` — transport attribution envelope, concrete
+  `open_channel` → `accept_channel` → `funding_created` route, and explicit
+  non-attribution/no-signature boundaries.
+- [x] `S9-PR-ARBITRARY-PREIMAGE` — wire-only coverage and the eight
+  arbitrary-preimage field hypotheses, with dropped-locktime/amount
+  counterexamples, display-order and 20-byte hash-image boundaries.
+- [x] `S9-RT-NODE-CANON` — node-announcement canonicalisation; `RT-02`
+  narrowed to rotation identity and wire membership, not closed.
+- [x] `S9-CONF-LIVE-MSG` — live `channel_ready` payload encoded through the
+  pinned rust-lightning `Writeable` implementation; 180 Lean refs and 14/14
+  mutation controls.
+- [x] Parent integration: five root-imported modules, six catalog rows
+  strengthened from 100 to 142 targets, audit extended to 269 theorems,
+  generated indexes/docs refreshed, full gate green, and a non-force
+  checkpoint prepared.
+
+Wave-9 gate: **build 300 jobs, strict catalog 142 targets / 10742
+declarations, `check.sh` `files=261 obligations=82 sorry_in_proofs=0`, 269
+audited theorems, 310 anchors, 149 vendor files, conformance 180 refs and
+14/14 controls, and zero actual `sorry`/forbidden constructs.**
+
 The catalog is no longer the work queue. Open issues are tracked in
 `docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`.
 Human-gated release decisions remain outside agent lanes.

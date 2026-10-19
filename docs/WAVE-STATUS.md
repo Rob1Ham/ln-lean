@@ -2,12 +2,12 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `b15744b` (`[MERGE] integrate remote wave 8 residual tree with
-45-module wave H`; remote base `e3e0aa8`). Status commits may advance the
-branch tip. Proof-wave 7 code was `b48d041`; wave 8 launched from `50d78ed`.
-**Catalog:** 48 proved / 0 statementOnly / 0 unresolved / 100 targets.
-**Wave 9:** running from `50e8b5c` on top of the wave-H merge `b15744b`; lane
-plan `agents/swarm/WAVE-9.md`.
+**Gate HEAD:** `93fa943` (wave-H merge; the wave-9 integration commit advances
+the tip). Status commits may advance the branch tip. Proof-wave 8 code was
+`10d18a1`; wave 9 launched from `50e8b5c` on top of the wave-H merge.
+**Catalog:** 48 proved / 0 statementOnly / 0 unresolved / 142 targets.
+**Wave 9:** integrated; six lanes complete, reports under
+`agents/reports/swarm9/`; lane plan `agents/swarm/WAVE-9.md`.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 
 This file describes the repair branch. Older wave tables are retained as
@@ -18,50 +18,50 @@ history; they are not a claim about the current tree. Current open work is in
 
 | Metric | Value |
 |---|---|
-| Lean files under `LnLean/` | **256** |
-| Root imports in `LnLean.lean` | **254** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
-| Full build | **RC 0**, `Build completed successfully (295 jobs)` |
+| Lean files under `LnLean/` | **261** |
+| Root imports in `LnLean.lean` | **259** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
+| Full build | **RC 0**, `Build completed successfully (300 jobs)` |
 | Actual `sorry` lines | **0** (`grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` → no matches, grep RC 1) |
 | Proof files with the word `sorry` in prose | comments only, not proof terms |
 | Catalog rows | **48** |
 | Catalog `proved` | **48** |
 | Catalog `statementOnly` | **0** |
-| Catalog targets | **100** |
+| Catalog targets | **142** |
 | Unresolved/planned targets | **0** |
 | Vendor snapshot | **OK**, 149 files from public `btc-lean` `4f5c4f8`; `fetch-vendor.sh --from-git` tested |
-| Anchors | **309 checked, 0 bad**, 2 unanchored rows |
-| Generated obligation index | 218 proof files, 81 markers, 8228 declarations, 0 `sorry` sites |
-| Axiom audit | 227 theorems; only `propext`, `Quot.sound`, `Classical.choice` |
-| Conformance | 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 175 Lean references, 13/13 mutation controls, 3 declared model gaps; live 26 BigSize + 3 TLV + 4 wire; 6 BOLT 2 message vectors |
+| Anchors | **310 checked, 0 bad**, 2 unanchored rows |
+| Generated obligation index | 223 proof files, 81 markers, 8469 declarations, 0 `sorry` sites |
+| Axiom audit | 269 theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Conformance | 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 180 Lean references, 14/14 mutation controls, 3 declared model gaps; live 26 BigSize + 3 TLV + 4 wire + 1 BOLT 2 message; 6 finite BOLT 2 message vectors |
 | Public L1 pin | `Rob1Ham/btc-lean` `main@4f5c4f8` |
 | Build dependency | `vendor/btc-lean-core` `4f5c4f8` (public `spec/core` copy) |
 
 The exact `sorry` result is **zero matching lines**. Prose mentions of
 `sorry` in documentation are not `sorry` terms.
 
-## Proof-wave 8 gate
+## Proof-wave 9 gate
 
-- `lake build` — **RC 0**, 295 jobs.
+- `lake build` — **RC 0**, 300 jobs.
 - `check-catalog.py --audit` — **RC 0**, 48 proved, 0 statement-only,
-  100 targets, 0 unresolved, 0 proved failures, 0 candidates, 10484
+  142 targets, 0 unresolved, 0 proved failures, 0 candidates, 10742
   declarations.
 - `check-catalog.py --allow-planned` — **RC 0**, same counts with
   `planned=0`.
-- `check.sh` — **RC 0**: `files=256 obligations=82 sorry_in_proofs=0`,
+- `check.sh` — **RC 0**: `files=261 obligations=82 sorry_in_proofs=0`,
   `check: OK`.
-- `check-final.py` — **RC 0**: 256 Lean files, 254 root imports, D=33 E=15
+- `check-final.py` — **RC 0**: 261 Lean files, 259 root imports, D=33 E=15
   F=15.
 - `check-conformance.py` — **RC 0**: 61 base + 16 framing + 9 boundary
-  checks, 33 differential fixtures, 175 Lean references, 13/13 mutation
-  controls, 6 BOLT 2 message vectors, deterministic fixture provenance
-  verified, live transcript `3dd7a98f…` with 26 BigSize + 3 TLV + 4 wire
-  live rows.
+  checks, 33 differential fixtures, 180 Lean references, 14/14 mutation
+  controls, 6 finite BOLT 2 message vectors, deterministic fixture provenance
+  verified, live transcript `105920ff8e46…` with 26 BigSize + 3 TLV + 4 wire
+  + 1 live BOLT 2 `channel_ready` payload.
 - `verify-vendor.sh` — **RC 0**, 149 files (public `4f5c4f8` snapshot).
-- `verify-anchors.py` — **RC 0**, 309 anchors, 0 bad, 2 unanchored rows.
-- `AxiomAudit` — **RC 0**, 227 audited theorems with the permitted classical
+- `verify-anchors.py` — **RC 0**, 310 anchors, 0 bad, 2 unanchored rows.
+- `AxiomAudit` — **RC 0**, 269 audited theorems with the permitted classical
   axioms only.
 
-**Proof-wave 8 gate: PASS.** Push is non-force to
+**Proof-wave 9 gate: PASS.** Push is non-force to
 `origin/repair/integrated`; the exact commit is recorded in
 `docs/FINAL-STATUS.md`.
 
@@ -134,6 +134,7 @@ removed `DecidableEq`.
 | Proof-wave 7 (8 lanes) | Sequence context, preimage equality, consumer migration, guarded fold, raw gossip, live conformance, open_channel auth, key model | **7 files; 79 targets; 233-job gate** |
 | Proof-wave 8 (8 lanes) | `TxValidation.Full` transfer, HTLC preimage, type-32 `open_channel`, accept payload, consumer adapter, conditional ECDSA bridge, BOLT 2 encodings, store epochs | **7 files; 100 targets; 250-job gate** |
 | Wave H 48-lane integration | 45 independent modules: per-input checker/composition, HTLC preimage/scriptCode, 319-byte `open_channel`, accept/PoP, commitment sites, anchor/script-commitment, epoch gossip, liveness, reduction arithmetic, reorg, release artifacts | **45 files; 100 targets; 227 audited; 295-job merged gate** |
+| Proof-wave 9 (6 lanes) | EC boundary, transport routing, registration/PoP, arbitrary preimages, node canonicalisation, live `channel_ready` | **5 files; 142 targets; 269 audited; 300-job gate** |
 
 ## Reproduce
 

@@ -2,10 +2,10 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `b15744b` (`[MERGE] integrate remote wave 8 residual tree with
-45-module wave H`; remote base `e3e0aa8`). Status commits may advance the
-branch tip. Proof-wave 7 code was `b48d041`; wave 8 launched from `50d78ed`.
-**Catalog state:** **48 `proved` / 0 `statementOnly` / 0 unresolved / 100
+**Gate HEAD:** `93fa943` (wave-H merge; the wave-9 integration commit advances
+the tip). Status commits may advance the branch tip. Proof-wave 8 code was
+`10d18a1`; wave 9 launched from `50e8b5c` on top of the wave-H merge.
+**Catalog state:** **48 `proved` / 0 `statementOnly` / 0 unresolved / 142
 targets**.
 **Remote refs:** push is non-force to `origin/repair/integrated`. `origin/main`
 is not touched by this work. The former `repair/pubbump` branch is merged and
@@ -42,10 +42,12 @@ to 73 resolved targets. Proof-wave 7 added seven more files (one crypto model
 and six proof modules), strengthened six rows to 79 resolved targets, and
 closed the consumer, raw-gossip, live-conformance, and fold questions, again
 without changing the 48-row count. Proof-wave 8 added seven more proof modules,
-strengthened seven rows from 79 to 100 resolved targets, and kept the 48-row
-count. The independent Wave H 48-lane integration adds 45 further proof
-modules on top of that base, taking the merged tree to **256 Lean files** and
-**227 audited headline theorems** without changing the 48-row catalog.
+strengthened seven rows from 79 to **100** resolved targets, and kept the
+48-row count. The independent Wave H 48-lane integration added 45 further
+proof modules on top of that base. Proof-wave 9 then added five proof modules,
+strengthened six rows from 100 to **142 resolved targets**, and took the tree
+to **261 Lean files**, **259 root imports**, and **269 audited headline
+theorems** without changing the 48-row catalog.
 
 * `LnLean/Proofs/Bitcoin/FundingScriptTargets.lean`
 * `LnLean/Proofs/Bitcoin/ToLocalScriptTargets.lean`
@@ -101,21 +103,21 @@ are retained.
 
 | Check | Command | Result |
 |---|---|---|
-| Full build | `LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (295 jobs).` |
+| Full build | `LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (300 jobs).` |
 | Actual `sorry` | `grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` | **0 matches** (grep RC 1: no lines) |
-| Policy checker | `./scripts/check.sh` | **RC 0**, `files=211 obligations=82 sorry_in_proofs=0`, `check: OK` |
-| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 256 Lean files, 254 root imports |
+| Policy checker | `./scripts/check.sh` | **RC 0**, `files=261 obligations=82 sorry_in_proofs=0`, `check: OK` |
+| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 261 Lean files, 259 root imports |
 | Vendor integrity | `./scripts/verify-vendor.sh` | **RC 0**, `OK (149 files)` |
-| Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=309 bad=0 unanchored_rows=2` |
-| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 48 proved, 0 statement-only, 100 targets, 0 unresolved, 0 proved failures, 0 candidates |
+| Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=310 bad=0 unanchored_rows=2` |
+| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 48 proved, 0 statement-only, 142 targets, 0 unresolved, 0 proved failures, 0 candidates |
 | Catalog, planned-aware | `python3 scripts/check-catalog.py --allow-planned` | **RC 0**, `rows=48 proved=48 statementOnly=0 planned=0 proved_failures=0` |
-| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 227 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
-| Generated index | `python3 scripts/collect-obligations.py` | `218` proof files, `81` markers, `48` catalog rows, `8228` declarations, `0` `sorry` sites |
-| Conformance | `python3 scripts/check-conformance.py` | **RC 0**, 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 175 Lean theorem references, 13/13 mutation controls, 6 BOLT 2 message vectors, live 26 BigSize + 3 TLV + 4 wire |
+| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 269 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Generated index | `python3 scripts/collect-obligations.py` | `223` proof files, `81` markers, `48` catalog rows, `8469` declarations, `0` `sorry` sites |
+| Conformance | `python3 scripts/check-conformance.py` | **RC 0**, 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 180 Lean theorem references, 14/14 mutation controls, 6 finite BOLT 2 message vectors, live 26 BigSize + 3 TLV + 4 wire + 1 BOLT 2 `channel_ready` payload |
 
-Tree size: **256 Lean files** under `LnLean/`, **254** root imports in
+Tree size: **261 Lean files** under `LnLean/`, **259** root imports in
 `LnLean.lean`; `LnLean.Proofs.All` and the `LnLean.Proofs.PhaseC2` aggregator
-are not root-imported. The full build covers 295 Lake jobs.
+are not root-imported. The full build covers 300 Lake jobs.
 
 The `sorry` grep result is exact: **there are no lines consisting only of
 `sorry` (modulo whitespace) in any `LnLean/**/*.lean` file.** Prose mentions of
@@ -283,9 +285,12 @@ is [`docs/OPEN-ISSUES.md`](OPEN-ISSUES.md). The P0 blockers are:
   branches execute through the vendored interpreter with a constructed BIP 143
   digest and an exact decoded sequence context; wave 8 also proves the exact
   known-amount `txCheckerFor` transfer and the sequence/`minimalData` edges.
-  A concrete/unconditional EC verifier (`VendorEcdsaBridge`) and the
-  amount/outpoint context, plus unconditional `ConsensusSpendBridge`, remain
-  open.
+  Wave 9 characterizes the concrete EC boundary sharply: at the current untyped
+  `ByteArray` interface a pointwise `VendorEcdsaBridge` instance is forced to
+  total rejection, so no non-vacuous concrete verifier theorem exists there.
+  The amount/outpoint context and unconditional `ConsensusSpendBridge` remain
+  open, and the EC seam must keep an explicit `VendorEcdsaContract`/EUF-CMA
+  hypothesis.
 
 Wave 7 closed `CH-01` (consumer path), `RT-01` (canonical wrapper and raw
 non-refinement), `CONF-02` (live finite comparison), and `MODEL-02`/`MODEL-03`
@@ -294,14 +299,18 @@ non-refinement), `CONF-02` (live finite comparison), and `MODEL-02`/`MODEL-03`
 preimage, the type-32 `open_channel` wire path, the proof-layer consumer
 adapter, and the update/announcement epoch history.
 
-Still open: a concrete/unconditional EC verifier or explicit `VendorEcdsaBridge`
-instance (`L1-01`, `L1-07`), transport attribution for the new `open_channel`
-wire record (`L1-03`), registration/proof-of-possession beyond the stored accept
-payload (`PR-01`), arbitrary-preimage and wire-only coverage (`PR-02`),
-node-announcement canonicalisation (`RT-02`), the live BOLT 2 message row
-(`CONF-01`), computational C1/C3/C8 reductions (`CR-01`, `SEC-01`), and release
-packaging (`OPS-01`–`OPS-04`). The known-amount/sequence-policy edges for
-`L1-02` are mechanized; no `TxValidation.Full` transfer gap remains.
+Still open: a non-vacuous concrete EC verifier at this interface or an explicit
+`VendorEcdsaContract` (`L1-01`, `L1-07`), transport authentication/C3 and key
+ownership for `open_channel` beyond the explicit `EnvelopeAttributed`
+hypothesis (`L1-03`), registration proof-of-possession beyond the explicit
+`KeyBinding`/`PopSound`/`PopProducedBy` hypotheses (`PR-01`), a legacy
+wire-only coverage decoder and the conditional view binding (`PR-02`),
+identity/linkage across a `nodeId` rotation plus wire membership, address
+parsing, and rate limits (`RT-02`), additional live message encodings and
+node-level interop (`CONF-01`), computational C1/C3/C8 reductions (`CR-01`,
+`SEC-01`), and release packaging (`OPS-01`–`OPS-04`). The
+known-amount/sequence-policy edges for `L1-02` are mechanized; no
+`TxValidation.Full` transfer gap remains.
 
 ## Reproduce
 
@@ -402,3 +411,32 @@ Wave 8 residual lanes. The merged tree keeps all remote changes and adds:
 H20 was adapted to the remote `HandshakeState` change that removed
 `DecidableEq` (the added `acceptChannel?` field); its concrete witness
 transitions are now proved by definitional equality rather than `decide`.
+
+## Proof-wave 9 boundary characterization results
+
+Wave 9 added five proof modules and strengthened six catalog rows from 100 to
+**142 resolved targets**, extending the audit to **269 headline theorems**:
+
+* `EcdsaConcreteTargets` proves the exact concrete-EC dichotomy
+  (`eufCma_vendorVerify_iff_totalReject`, `bridged_model_totalReject`,
+  `exists_bridged_model_iff_totalReject`) and identifies `ResidueBinding` +
+  `KeyBinding` as the faithful conditional contract. This is an obstruction
+  result, not an ECDSA-security theorem.
+* `OpenChannelRoutingTargets` adds transport attribution by key equality, the
+  concrete routed `open_channel` → `accept_channel` → `funding_created` path,
+  and non-attribution/no-signature boundaries; it does not authenticate a
+  sender from the wire payload.
+* `AttributionGameTargets` proves conditional registration/PoP attribution,
+  storage-is-not-possession, and the dropped-`KeyBinding` counterexample under
+  explicit `PopSound`/`PopProducedBy` hypotheses.
+* `PreimageCoverageTargets` gives the exact eight-field arbitrary-preimage
+  characterization, conditional byte/digest/signature transfer, and retained
+  dropped-locktime/amount counterexamples; legacy wire-only coverage remains
+  negative.
+* `NodeCanonicalTargets` adds strict-timestamp node replacement, rotation and
+  equal-timestamp boundaries, raw-extension impossibility, and epoch-square
+  lifting. `RT-02` is narrowed, not closed.
+* `ConformanceDiffTargets` adds one live BOLT 2 `channel_ready` payload row
+  through the pinned rust-lightning `Writeable` implementation, with 180 Lean
+  references and 14/14 mutation controls. This is finite/public-API evidence,
+  not node-level interop.

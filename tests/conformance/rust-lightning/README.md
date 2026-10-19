@@ -20,7 +20,7 @@ not a differential run against a rust-lightning node.
 | `live-transcript.json` | recorded live comparison and its provenance hashes |
 
 `fixtures.json` records the commit, the SHA-256 of each source file used, and
-the exact source lines.  The fixtures cover three behaviours:
+the exact source lines.  The fixtures cover four behaviours:
 
 1. **BigSize** (`lightning/src/util/ser.rs:1857-1901`, unit test
    `bigsize_encoding_decoding`): the eight canonical encode/decode values and
@@ -39,6 +39,13 @@ the exact source lines.  The fixtures cover three behaviours:
    header is `msgbuf.len() - 16 - 2`, i.e. the type plus payload, bounded by
    `LN_MAX_MSG_LEN = u16::MAX = 65535`.  This is the BOLT 8 transport length,
    not the model's payload-only length.
+4. **BOLT 2 message** (`lightning/src/ln/msgs.rs:431-443,3239-3243,5672-5682`,
+   unit test `encoding_channel_ready`): a `ChannelReady` (type 36) with an
+   all-`0x02` channel id, the public key for the all-`0x01` secret, and no
+   `short_channel_id_alias`.  The live probe constructs the public struct and
+   calls the pinned `Writeable` implementation, yielding the exact 65-byte
+   payload `0202…0203 1b84…078f`; the fixture records the field table,
+   payload, transport length `67`, and header `0043`.
 
 ## Run
 
@@ -54,21 +61,22 @@ true — verifies the transcript hash and the transcript's fixture-row, probe,
 lockfile, and pinned-commit provenance:
 
 ```text
-differential: 26 rust-lightning BigSize, 3 TLV, 4 wire fixtures (pinned fe49009, offline)
+differential: 26 rust-lightning BigSize, 3 TLV, 4 wire, 1 BOLT 2 message fixtures (pinned fe49009, offline)
 differential TLV: 2 enforced, 1 declared not-modelled gaps
 fixture generation: live-cargo-test (live cargo test: yes)
-live evidence: 26 BigSize + 3 TLV compared against rust-lightning, 4 wire via live LN_MAX_MSG_LEN; transcript sha256 3dd7a98fc102
-provenance: 4 pinned rust-lightning source files verified (HEAD verified)
+live evidence: 26 BigSize + 3 TLV compared against rust-lightning, 4 wire via live LN_MAX_MSG_LEN, 1 BOLT 2 channel_ready payload encoded live; transcript sha256 105920ff8e46
+provenance: 5 pinned rust-lightning source files verified (HEAD verified)
 ```
 
 `--no-diff` skips these fixtures; `--no-lean` skips the theorem cross-check;
 `--no-self-test` skips the in-memory mutation controls; `--no-provenance` skips
 the optional pinned-source check.
 
-`generate.py --check` (the default) verifies the four provenance hashes,
-re-extracts the literal arrays and TLV stream from the pinned unit tests, and
-fails if any committed derived field differs.  `generate.py --write` rewrites
-those fields deterministically; running it on the committed file is a no-op.
+`generate.py --check` (the default) verifies the five provenance hashes,
+re-extracts the literal arrays, TLV stream, and channel_ready target from the
+pinned unit tests, and fails if any committed derived field differs.
+`generate.py --write` rewrites those fields deterministically; running it on
+the committed file is a no-op.
 
 ## Live run
 
@@ -80,21 +88,22 @@ python3 tests/conformance/rust-lightning/generate.py --live
 writing `Cargo.lock`/`target` into `refs/`), installs the committed
 `pinned/Cargo.lock` and `live_probe.rs`, and runs:
 
-1. the two pinned unit tests with `cargo test --offline --locked`;
+1. the three pinned unit tests with `cargo test --offline --locked`;
 2. `live_probe.rs` with `cargo run --offline --locked`; the probe uses only the
    public `BigSize` `Readable`/`Writeable` impls, the exported
-   `decode_tlv_stream!` macro, and `LN_MAX_MSG_LEN`, then prints one result per
-   fixture input;
+   `decode_tlv_stream!` macro, `LN_MAX_MSG_LEN`, and the public `ChannelReady`
+   fields/`Writeable` impl, then prints one result per fixture input;
 3. a field-by-field comparison of the live results with `fixtures.json`.
 
-The probe compares all 26 BigSize rows and all 3 TLV rows.  The 4 wire rows are
-checked against the live `LN_MAX_MSG_LEN = 65535`; their length-header
-arithmetic remains the pinned-source check in `extract_wire` (the constant is
-public, the header computation is not exposed as an API).  On success the
-script writes `live-transcript.json` (deterministic JSON: pinned commit,
-fixture-row digest, probe/lockfile hashes, cargo/rustc versions, per-test
-results, comparison counts, and command/result digests) and prints its SHA-256.
-On any cargo or comparison failure it exits non-zero and writes no transcript.
+The probe compares all 26 BigSize rows, all 3 TLV rows, and the
+`channel_ready` message row.  The 4 wire rows are checked against the live
+`LN_MAX_MSG_LEN = 65535`; their length-header arithmetic remains the pinned-source
+check in `extract_wire` (the constant is public, the header computation is not
+exposed as an API).  On success the script writes `live-transcript.json`
+(deterministic JSON: pinned commit, fixture-row digest, probe/lockfile hashes,
+cargo/rustc versions, per-test results, comparison counts, and command/result
+digests) and prints its SHA-256.  On any cargo or comparison failure it exits
+non-zero and writes no transcript.
 
 The committed transcript was produced with:
 
@@ -123,7 +132,8 @@ code, and `generate.py --check` re-extracts every derived value from those same
 pinned literals, so the committed file is reproducible and any drift is a hard
 failure.  The `generation` object now records `mode = live-cargo-test`,
 `live_cargo_test = true`, and the transcript hash; the live run independently
-confirmed the 26 BigSize and 3 TLV rows and the live `LN_MAX_MSG_LEN`.
+confirmed the 26 BigSize and 3 TLV rows, the live `LN_MAX_MSG_LEN`, and the
+`channel_ready` payload encoded through the public `Writeable` impl.
 
 The wire fixture's `header` field is the plaintext two-byte value passed as
 AEAD associated data in rust-lightning; the real transport encrypts that header

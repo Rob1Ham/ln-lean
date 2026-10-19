@@ -51,11 +51,12 @@ python3 tests/conformance/rust-lightning/generate.py --check
 
 `--write` rewrites the derived fixture fields; running it on the committed file
 is a no-op.  `--live` copies the pinned checkout to a disposable directory,
-installs `pinned/Cargo.lock` and `live_probe.rs`, runs the two pinned unit tests
-and the public-API probe with `cargo test/run --offline --locked`, compares
-every BigSize/TLV fixture field with the live result, checks the wire fixtures
-against the live `LN_MAX_MSG_LEN`, and writes `live-transcript.json`.  It never
-claims success on failure.
+installs `pinned/Cargo.lock` and `live_probe.rs`, runs the three pinned unit
+tests and the public-API probe with `cargo test/run --offline --locked`,
+compares every BigSize/TLV fixture field with the live result, encodes the BOLT 2
+`channel_ready` payload through the pinned `Writeable` impl, checks the wire
+fixtures against the live `LN_MAX_MSG_LEN`, and writes
+`live-transcript.json`.  It never claims success on failure.
 
 The cargo cache is a machine-level artifact.  On a machine without the pinned
 crates, `--fetch` performs one online `cargo fetch --locked` to complete the
@@ -143,6 +144,20 @@ its `lean.payload` field.  These vectors do **not** claim signature validity,
 sender identity, handshake routing, or a live rust-lightning message
 serialization comparison.
 
+### Live BOLT 2 message row (`channel_ready`, type 36)
+
+The pinned differential fixture set adds one live BOLT 2 message row,
+`rust_msg_channel_ready_encoding`.  It records the exact 65-byte
+`channel_ready` payload from rust-lightning's pinned
+`ln::msgs::tests::encoding_channel_ready` test: an all-`0x02` channel id
+followed by the compressed per-commitment point derived from the all-`0x01`
+secret key (`03 1b 84 c5 … 07 8f`), with no `short_channel_id_alias` TLV.  The
+transport length is `67` (`0043`).  The offline checker re-extracts the
+unit-test literal and rebuilds the field table; `generate.py --live` constructs
+the public `ChannelReady` struct in `live_probe.rs` and encodes it through the
+pinned `Writeable` implementation, so the transcript compares real
+rust-lightning field encoding rather than replaying another finite vector.
+
 ### rust-lightning differential fixtures
 
 `fixtures.json` records the pinned commit, per-file SHA-256 hashes, source
@@ -158,8 +173,9 @@ The `generation` object records the live path:
 `tests/conformance/rust-lightning/generate.py` re-extracts the pinned unit-test
 literals, `--live` runs the pinned tests and the `live_probe.rs` public-API
 probe under `cargo --offline --locked`, and `live-transcript.json` records the
-per-group comparison (26 BigSize, 3 TLV, 4 wire) plus the pinned source, probe,
-and lockfile hashes.  `scripts/check-conformance.py` verifies the transcript
+per-group comparison (26 BigSize, 3 TLV, 4 wire, 1 BOLT 2 `channel_ready`) plus
+the pinned source, probe, and lockfile hashes.
+`scripts/check-conformance.py` verifies the transcript
 hash and its provenance whenever `live_cargo_test` is true.  The live run does
 not change the offline checker: every fixture row is still re-derived from the
 pinned source and replayed without a Rust toolchain.
@@ -175,4 +191,5 @@ total Lightning message length, maximum `65535`.
 The rust-lightning canon is commit `fe4900930c6bd5786ec4203274d7cf312776a5a6`
 (`lightning/src/util/ser.rs:442-490` for BigSize canonicality;
 `lightning/src/ln/peer_channel_encryptor.rs:36,518-540` for the transport
-length).
+length; `lightning/src/ln/msgs.rs:431-443,3239-3243,5672-5682` for the
+`channel_ready` fields/encoding and its pinned unit-test target).

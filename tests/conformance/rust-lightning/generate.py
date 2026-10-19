@@ -15,12 +15,13 @@ reproducibility gap without requiring a Rust toolchain:
 
 ``--live`` is the only mode that invokes ``cargo``.  It copies the pinned
 checkout to a disposable directory, installs the committed ``pinned/Cargo.lock``
-and the public-API probe ``live_probe.rs``, runs the two pinned unit tests with
-``--offline --locked``, then runs the probe and compares every BigSize and TLV
-fixture field against the live rust-lightning result.  The wire fixtures are
-compared against the live ``LN_MAX_MSG_LEN`` constant; their header arithmetic
-is still the pinned source check performed by ``extract_wire``.  On success it
-writes a deterministic transcript; it never claims a live result on failure.
+and the public-API probe ``live_probe.rs``, runs the pinned unit tests with
+``--offline --locked``, then runs the probe and compares every BigSize/TLV
+fixture field and the BOLT 2 ``channel_ready`` payload against the live
+rust-lightning result.  The wire fixtures are compared against the live
+``LN_MAX_MSG_LEN`` constant; their header arithmetic is still the pinned source
+check performed by ``extract_wire``.  On success it writes a deterministic
+transcript; it never claims a live result on failure.
 
 The cargo cache is a machine-level artifact, not part of this tree.  ``--fetch``
 performs one online ``cargo fetch --locked`` to complete the cache, after which
@@ -66,6 +67,7 @@ PINNED_COMMIT = "fe4900930c6bd5786ec4203274d7cf312776a5a6"
 LIVE_TESTS = [
     "util::ser::tests::bigsize_encoding_decoding",
     "util::ser_macros::tests::retired_tlvs_skipped_on_read",
+    "ln::msgs::tests::encoding_channel_ready",
 ]
 LIVE_NOTE = (
     "The committed rows were extracted from the pinned source/unit-test "
@@ -73,8 +75,9 @@ LIVE_NOTE = (
     "`generate.py --live --fetch` ran the pinned unit tests and the public-API "
     "probe under `cargo --offline --locked` with the committed "
     "`pinned/Cargo.lock`; `live-transcript.json` records the comparison. "
-    "The wire header arithmetic remains a pinned-source check; only "
-    "`LN_MAX_MSG_LEN` is probed live."
+    "The BOLT 2 channel_ready payload is encoded live through the pinned "
+    "`Writeable` impl; the wire header arithmetic remains a pinned-source "
+    "check and only `LN_MAX_MSG_LEN` is probed live."
 )
 OFFLINE_NOTE = (
     "The committed rows were extracted from the pinned source/unit-test "
@@ -110,6 +113,13 @@ PROVENANCE = [
         "sha256": "01aa058e40a0186b6bc4862642c63b8f17f534572e96196f862959b75410531a",
         "lines": "251-265",
         "use": "a message is a 2-byte big-endian type plus a variable payload",
+    },
+    {
+        "path": "lightning/src/ln/msgs.rs",
+        "sha256": "75bc3698ab6e5595dcb02de23dceb52e37a25cd31621947387054fab2461a4f8",
+        "lines": "431-443, 3239-3243, 5672-5682",
+        "use": "BOLT 2 channel_ready (type 36) field order/Writeable encoding and "
+               "the encoding_channel_ready unit-test target value",
     },
 ]
 
@@ -239,6 +249,37 @@ def extract_wire(source: Path) -> int:
     return 0xFFFF
 
 
+def extract_messages(source: Path) -> dict[str, str]:
+    """Re-extract the pinned BOLT 2 channel_ready encoding target.
+
+    The pinned `ln::msgs::tests::encoding_channel_ready` test constructs a
+    `ChannelReady` with an all-`0x02` channel id, the public key derived from
+    the all-`0x01` secret key, and no `short_channel_id_alias`, then compares
+    `encode()` with a literal.  The literal is the full 65-byte payload:
+    32-byte channel id followed by a 33-byte compressed point.
+    """
+    text = (source / "lightning/src/ln/msgs.rs").read_text(encoding="utf-8")
+    body = function_body(text, "encoding_channel_ready")
+    require("ChannelId::from_bytes([2; 32])" in body,
+            "channel_ready test no longer uses an all-0x02 channel id")
+    require("short_channel_id_alias: None" in body,
+            "channel_ready test no longer omits the alias TLV")
+    target = re.search(r'<Vec<u8>>::from_hex\(\s*"([0-9a-f]+)"\s*\)', body)
+    require(target is not None,
+            "channel_ready encoded payload literal not found")
+    payload = target.group(1)
+    require(len(payload) == 130,
+            f"channel_ready payload is {len(payload)//2} bytes, expected 65")
+    point = payload[64:]
+    require(point[:2] in ("02", "03"),
+            "channel_ready commitment point is not a compressed point")
+    return {
+        "channel_id": payload[:64],
+        "next_per_commitment_point": point,
+        "payload": payload,
+    }
+
+
 def offline_generation() -> dict[str, Any]:
     return {
         "script": "tests/conformance/rust-lightning/generate.py",
@@ -300,6 +341,7 @@ def derived(doc: dict[str, Any], source: Path,
     values, byte_rows, errors = extract_bigsize(source)
     accepted, unknown_even, truncated = extract_tlv(source)
     max_len = extract_wire(source)
+    message_source = extract_messages(source)
 
     fixtures = doc["fixtures"]
     bigsize = fixtures["bigsize"]
@@ -364,6 +406,50 @@ def derived(doc: dict[str, Any], source: Path,
         row["fits"] = transport_length <= max_len
         row["model_fits"] = row["fits"]
         row["rust_result"] = "accept" if row["fits"] else "reject"
+
+    messages = fixtures.get("messages")
+    require(isinstance(messages, list) and messages,
+            "differential fixtures missing the BOLT 2 message rows")
+    for row in messages:
+        require(row.get("kind") == "message",
+                f"message fixture {row.get('id')} is not kind=message")
+        require(row.get("name") == "channel_ready",
+                f"message fixture {row.get('id')} is not channel_ready")
+        require(row.get("type") == 36,
+                f"message fixture {row.get('id')} is not type 36")
+        payload = bytes.fromhex(message_source["payload"])
+        transport_length = 2 + len(payload)
+        require(transport_length <= max_len,
+                f"message fixture {row['id']} exceeds the pinned maximum")
+        row["construction"] = {
+            "channel_id": message_source["channel_id"],
+            "next_per_commitment_point":
+                message_source["next_per_commitment_point"],
+            "short_channel_id_alias": None,
+        }
+        row["fields"] = [
+            {
+                "name": "channel_id",
+                "kind": "bytes",
+                "offset": 0,
+                "length": 32,
+                "hex": message_source["channel_id"],
+            },
+            {
+                "name": "next_per_commitment_point",
+                "kind": "point",
+                "offset": 32,
+                "length": 33,
+                "hex": message_source["next_per_commitment_point"],
+            },
+        ]
+        row["payload"] = message_source["payload"]
+        row["payload_length"] = len(payload)
+        row["transport_length"] = transport_length
+        row["header"] = f"{transport_length:04x}"
+        row["frame_prefix"] = f"{row['type']:04x}{transport_length:04x}"
+        row["rust_result"] = "accept"
+        row["model_result"] = "accept"
 
     doc["provenance"] = [dict(entry) for entry in PROVENANCE]
     doc["pinned_commit"] = PINNED_COMMIT
@@ -454,6 +540,13 @@ def probe_commands(doc: dict[str, Any]) -> list[str]:
         mode = ("unlisted" if row["rust_result"] == "unknown-required-feature"
                 else "retired")
         commands.append(f"T\t{row['id']}\t{mode}\t{row['bytes']}")
+    for row in fixtures["messages"]:
+        construction = row["construction"]
+        alias = construction["short_channel_id_alias"]
+        alias_arg = "-" if alias is None else str(alias)
+        commands.append(
+            f"B\t{row['id']}\t{alias_arg}\t{construction['channel_id']}\t"
+            f"{construction['next_per_commitment_point']}")
     commands.append("M")
     return commands
 
@@ -505,6 +598,13 @@ def compare_live(doc: dict[str, Any], results: dict[str, list[str]]
         if got != expected:
             problems.append(f"tlv[{row['id']}]: live {got} != fixture {expected}")
 
+    for row in fixtures["messages"]:
+        got = results.get(row["id"])
+        expected = ["ok", row["payload"]]
+        if got != expected:
+            problems.append(
+                f"message[{row['id']}]: live {got} != fixture {expected}")
+
     if live_max != 0xFFFF:
         problems.append(f"live LN_MAX_MSG_LEN {live_max} != 65535")
     for row in fixtures["wire"]:
@@ -527,6 +627,7 @@ def compare_live(doc: dict[str, Any], results: dict[str, list[str]]
         "bigsize": len(fixtures["bigsize"]),
         "tlv": len(fixtures["tlv"]),
         "wire": len(fixtures["wire"]),
+        "messages": len(fixtures["messages"]),
     }
     return problems, counts
 
@@ -605,8 +706,9 @@ def live_run(source: Path, fixture_doc: dict[str, Any], timeout: int,
         write_doc(transcript, transcript_path)
         digest = sha256_file(transcript_path)
         print(f"live: {counts['bigsize']} BigSize and {counts['tlv']} TLV fixtures "
-              f"agree with rust-lightning; wire: {counts['wire']} checked against "
-              f"live LN_MAX_MSG_LEN={results['LN_MAX_MSG_LEN'][0]}")
+              f"agree with rust-lightning; {counts['messages']} BOLT 2 "
+              f"channel_ready payload(s) encoded live; wire: {counts['wire']} "
+              f"checked against live LN_MAX_MSG_LEN={results['LN_MAX_MSG_LEN'][0]}")
         print(f"live transcript: {transcript_path} ({digest})")
         transcript["_path"] = str(transcript_path)
         transcript["_sha256"] = digest
@@ -656,13 +758,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"wrote {display} "
                   f"({len(expected['fixtures']['bigsize'])} BigSize, "
                   f"{len(expected['fixtures']['tlv'])} TLV, "
-                  f"{len(expected['fixtures']['wire'])} wire fixtures)")
+                  f"{len(expected['fixtures']['wire'])} wire, "
+                  f"{len(expected['fixtures']['messages'])} message fixtures)")
         else:
             problems = diff_docs(expected, doc)
             require(not problems, "fixture mismatch:\n  " + "\n  ".join(problems[:20]))
             print(f"fixtures: {len(doc['fixtures']['bigsize'])} BigSize, "
                   f"{len(doc['fixtures']['tlv'])} TLV, "
-                  f"{len(doc['fixtures']['wire'])} wire match the pinned source")
+                  f"{len(doc['fixtures']['wire'])} wire, "
+                  f"{len(doc['fixtures']['messages'])} message match the pinned source")
         print(f"provenance: {len(PROVENANCE)} source files verified at "
               f"{PINNED_COMMIT[:7]}")
         if args.live:
