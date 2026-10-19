@@ -426,3 +426,24 @@ No shared or other-lane file was edited. The only writes are the three owned
 paths in §2. No `git add`, `git commit`, `git push`, or branch switch was run.
 No bare `lake build` or full gate was run; the only build was the scoped
 `LnLean.Proofs.Wave14.AssuranceAudit` command in §6.
+
+## 10. Post-integration update (parent, `f0a3c07`)
+
+The parent added 30 representative Wave 14 headline declarations to
+`AxiomAudit` (16 imports and 30 `#print axioms` commands plus matching registry
+entries). The current assurance surface is therefore:
+
+- `#print axioms` commands: **423**;
+- `auditedTheorems` registry names: **465**;
+- `auditedTheorems_length`: **465**;
+- catalog targets still unprinted: **72**;
+- catalog targets still absent from the registry: **35**;
+- registry-only names: **42**;
+- traceability text/module mismatches: **0**.
+
+`scripts/check-assurance-coverage.py --report` is RC 0;
+`--strict` remains RC 1 on the unchanged 72/35 gap, which is expected and is the
+intended blocking signal once the missing prints/registry entries are added.
+`--self-test` remains RC 0. The catalog docstring was corrected to
+`The 51-row catalog: ...` rather than the exact wording proposed in §8.3; the
+meaning is the same. No other lane-owned file was changed by the parent.

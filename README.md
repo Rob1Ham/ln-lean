@@ -10,15 +10,15 @@ full-verification gaps — L1 script execution, computational cryptography,
 wire completeness, conformance, and public release packaging — are tracked in
 [`docs/OPEN-ISSUES.md`](docs/OPEN-ISSUES.md).
 
-At the proof-wave 12 gate, the integrated `repair/integrated` tree has:
+At the proof-wave 14 gate, the integrated `repair/integrated` tree has:
 
-* **275 Lean files** under `LnLean/` — 38 executable model modules and 237
+* **291 Lean files** under `LnLean/` — 38 executable model modules and 253
   proof modules;
-* **273 root imports** in `LnLean.lean` (the `Proofs.All` and `Proofs.PhaseC2`
+* **289 root imports** in `LnLean.lean` (the `Proofs.All` and `Proofs.PhaseC2`
   aggregators are intentionally not root-imported);
 * **51 catalog obligations: 51 `proved`, 0 `statement-only`**;
 * **0 actual `sorry` sites** in the proof tree;
-* a full build of **314 jobs, RC 0**;
+* a full build of **330 jobs, RC 0**;
 
 A `proved` row means the named declaration exists and is sorry-free. It does
 not mean the English sentence is unconditionally true: several rows keep
@@ -32,21 +32,21 @@ the lane reports under `agents/reports/`.
 |---|---:|
 | Catalog rows | 51 |
 | `proved` | 51 |
-| Catalog targets | 294 |
+| Catalog targets | 294 occurrences / 282 unique |
 | `statement-only` | 0 |
 | Unresolved/planned targets | 0 |
 | Actual `sorry` terms | 0 |
-| Lean files | 275 |
-| Root imports | 273 |
-| Full build | 314 jobs, RC 0 |
-| Audited headline theorems | 435 |
+| Lean files | 291 |
+| Root imports | 289 |
+| Full build | 330 jobs, RC 0 |
+| Audited headline theorems | 465 registry names / 423 print commands |
 | Conformance vectors | 61 base + 16 framing + 9 boundaries; 26 differential fixtures; live 26 BigSize + 3 TLV + 4 wire + 5 BOLT 2 payloads (`funding_created`, `funding_signed`, `channel_ready`, `open_channel`, `accept_channel`); 200 Lean refs; 22/22 mutation controls |
 
 The strict catalog audit is now green:
 
 ```text
 rows=51 proved=51 statementOnly=0 targets=294 unresolved=0
-proved_failures=0 duplicate_ids=0 candidates=0 declarations=11898
+proved_failures=0 duplicate_ids=0 candidates=0 declarations=12374
 ```
 
 The remaining work is no longer catalog promotion. It is the harder bridge from

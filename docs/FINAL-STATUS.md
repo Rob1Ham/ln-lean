@@ -2,25 +2,21 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `1c88f17` (`[WAVE12]` docs-only status checkpoint); code integration is
-`d210079`; later docs-only status commits may advance the tip.
-Base `9359475` (wave-9 integration); wave 10 launched from `9158592`; wave 11
-launched from `4037264`; wave 12 launched from `5ddab4c`.
+**Gate HEAD:** `f0a3c07` (`[WAVE14]` code integration); later docs-only
+status commits may advance the tip. Base `9359475` (wave-9 integration); wave
+10 launched from `9158592`; wave 11 launched from `4037264`; wave 12 launched
+from `5ddab4c`; wave 14 launched from `a331b71`.
 **Catalog state:** **51 `proved` / 0 `statementOnly` / 0 unresolved / 294
 target occurrences (282 unique declarations)**.
-**Remote refs:** wave 11 is published non-force to `origin/repair/integrated` at
-`9940642`, with status commits `90ef1f1` and `5ddab4c`; hosted CI runs
-`39288684058`, `39290061147`, and `39290644672` completed both source gates and
-the pinned-vendor build gate successfully. Wave 12 is published non-force at
-`d210079` with status checkpoints `d9c0d2f`, `07288ad`, `97897b6`, and `1c88f17`; hosted CI
-runs `39303105137`, `39303680973`, `39303944696`, `39304616746`, and
-`39304938940` are green. The post-integration
-audit in `agents/reports/swarm12/S12-POST-INTEGRATION-AUDIT.md` confirms the
-remaining P0/P1 rows are external/human barriers and no tractable wave-13 proof
-lane remains. `origin/main` is not touched
-by this work.
-The former `repair/pubbump` branch is merged and retired; its public-core bump
-is part of this branch.
+**Remote refs:** wave 11 and wave 12 are published non-force on
+`origin/repair/integrated`; the wave-13 review tip `a331b71` has green hosted CI
+runs through `39325365957`. Wave 14 code is `f0a3c07`; it is published
+non-force on the same branch after the local gate, not by rewriting history.
+The post-integration audit in
+`agents/reports/swarm12/S12-POST-INTEGRATION-AUDIT.md` still applies to the
+external P0/P1 barriers. `origin/main` is not touched by this work. The former
+`repair/pubbump` branch is merged and retired; its public-core bump is part of
+this branch.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 **L1 build dependency:** read-only `vendor/btc-lean-core` copy of public
 `btc-lean` `spec/core` at
@@ -51,6 +47,32 @@ bounded six-lane repair+assurance wave is recommended; see
 `agents/reports/wave13-review/R32-synthesis.md` §6.2 and `docs/OPEN-ISSUES.md`.
 Hosted CI run `39325365957` is green at `c88d9fd` (source-level gates and the
 pinned-vendor build gate).
+
+## Wave 14 repair and assurance (2026-10-19)
+
+Wave 14 launched from the wave-13 review base `a331b71` and ran 16 disjoint
+additive lanes. Reports are under `agents/reports/wave14/`; the lane table and
+contract are in `agents/swarm/WAVE-14.md`. The new modules are:
+
+`LiquidityReserve`, `LiquidityInFlight`, `AnchorDebitConsumer`,
+`AnchorPresenceConsumer`, `NumberedReceipt`, `SnapshotRestoreConsumer`,
+`PaymentAdmission`, `KeysendRetryGuard`, `RouteChain`, `RouteFeeCapacity`,
+`MppSettlement`, `FeeUpdateLegality`, `DeliveryModel`, `ReadyUsefulness`,
+`AssuranceAudit`, and `UnifiedSendFatal`, all under
+`LnLean/Proofs/Wave14/`.
+
+They provide corrected reserve/directional-in-flight carriers, a
+production-facing canonical anchor-debit pair, exact anchor-presence and
+net-dust witnesses, numbered receipt idempotence, stale-snapshot restore
+consumers, finite payment-store admission and guarded keysend retry, a
+chain-backed route predicate, floor fee and capacity carriers, additive
+`settleGe`/overpay completion, checked fee-update legality, explicit
+delivery/usability models, and a fatal/retryable unified-send model. The
+assurance lane adds `scripts/check-assurance-coverage.py` with report, strict,
+and self-test modes. No catalog row was added or removed; the old carriers and
+counterexamples are retained. The wave narrows `REV-01`–`REV-07`; it does not
+move the external L1/Noise/EUF-CMA/source barriers, the LDK Server pin, or the
+72/35 assurance coverage gap.
 
 ## What this tree is
 
@@ -182,21 +204,22 @@ overstated the mechanized result (`LN-L1-001`, `LN-L1-004`, `LN-CH-007`,
 
 | Check | Command | Result |
 |---|---|---|
-| Full build | `LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (314 jobs).` |
+| Full build | `LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (330 jobs).` |
 | Actual `sorry` | `grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` | **0 matches** (grep RC 1: no lines) |
-| Policy checker | `./scripts/check.sh` | **RC 0**, `files=275 obligations=82 sorry_in_proofs=0`, `check: OK` |
-| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 275 Lean files, 273 root imports |
+| Policy checker | `./scripts/check.sh` | **RC 0**, `files=291 obligations=82 sorry_in_proofs=0`, `check: OK` |
+| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 291 Lean files, 289 root imports |
 | Vendor integrity | `./scripts/verify-vendor.sh` | **RC 0**, `OK (149 files)` |
-| Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=313 bad=0 unanchored_rows=2` |
-| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 51 proved, 0 statement-only, 294 target occurrences (282 unique), 0 unresolved, 0 proved failures, 0 candidates, 11,898 declarations |
+| Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=315 bad=0 unanchored_rows=2` |
+| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 51 proved, 0 statement-only, 294 target occurrences (282 unique), 0 unresolved, 0 proved failures, 0 candidates, 12,374 declarations |
 | Catalog, planned-aware | `python3 scripts/check-catalog.py --allow-planned` | **RC 0**, `rows=51 proved=51 statementOnly=0 planned=0 proved_failures=0` |
-| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 393 print commands over a 435-name registry; printed names use only `propext`, `Quot.sound`, `Classical.choice`; coverage gap is `REV-05` |
-| Generated index | `python3 scripts/collect-obligations.py` | `237` proof files, `81` markers, `51` catalog rows, `9537` declarations, `0` `sorry` sites |
+| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 423 print commands over a 465-name registry; printed names use only `propext`, `Quot.sound`, `Classical.choice`; coverage gap is `REV-05` |
+| Assurance coverage | `python3 scripts/check-assurance-coverage.py --report` | **RC 0**: 294 occurrences / 282 unique, 423 prints / 465 registry, 72 unprinted, 35 unregistered, 0 traceability mismatches; `--strict` RC 1 on the current gap, `--self-test` RC 0 |
+| Generated index | `python3 scripts/collect-obligations.py` | `253` proof files, `81` markers, `51` catalog rows, `9978` declarations, `0` `sorry` sites |
 | Conformance | `python3 scripts/check-conformance.py` | **RC 0**, 61 base + 16 framing + 9 boundary checks, 26 differential fixtures, 200 Lean theorem references, 22/22 mutation controls, 6 finite BOLT 2 message vectors, live 26 BigSize + 3 TLV + 4 wire + 5 BOLT 2 payloads (`funding_created`, `funding_signed`, `channel_ready`, `open_channel`, `accept_channel`) |
 
-Tree size: **275 Lean files** under `LnLean/`, **273** root imports in
+Tree size: **291 Lean files** under `LnLean/`, **289** root imports in
 `LnLean.lean`; `LnLean.Proofs.All` and the `LnLean.Proofs.PhaseC2` aggregator
-are not root-imported. The full build covers 314 Lake jobs.
+are not root-imported. The full build covers 330 Lake jobs.
 
 The `sorry` grep result is exact: **there are no lines consisting only of
 `sorry` (modulo whitespace) in any `LnLean/**/*.lean` file.** Prose mentions of

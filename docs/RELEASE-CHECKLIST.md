@@ -8,10 +8,11 @@ tag name, a merge strategy, or a tag signing method.
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
 **Lane base:** `9359475` (wave-9 integration; wave 10 launched from `9158592`;
-wave 11 launched from `4037264`; original checklist lane was `47189fe`)
+wave 11 launched from `4037264`; wave 14 launched from `a331b71`;
+original checklist lane was `47189fe`)
 **Snapshot used for the original lane checks:** `f2123ef`; waves 4–11 later
-added fifty-two Lean modules and new gate commands. The current tree is
-**275 Lean files / 273 root imports / 314 build jobs / 294 catalog targets**;
+added the current tree and new gate commands. The current tree is
+**291 Lean files / 289 root imports / 330 build jobs / 294 catalog targets**;
 re-run every gate row before tagging.
 **Target release type:** a **model/proof-tree** release, not an implementation
 release and not a complete verification of Lightning.
@@ -29,8 +30,8 @@ Evidence labels used below:
 
 | Item | State | Evidence |
 |---|---|---|
-| Branch tip | `d210079` wave-12 code integration; later status commits may advance it | `git rev-parse HEAD` |
-| `origin/main` | `b891a59`; **106 commits behind** code gate `d210079`; `main` is an ancestor of `HEAD` | `git rev-list --count origin/main..d210079` = 106; `git merge-base --is-ancestor origin/main d210079` |
+| Branch tip | `f0a3c07` wave-14 code integration; later status commits may advance it | `git rev-parse HEAD` |
+| `origin/main` | `b891a59`; **114 commits behind** code gate `f0a3c07`; `main` is an ancestor of `HEAD` | `git rev-list --count origin/main..f0a3c07` = 114; `git merge-base --is-ancestor origin/main f0a3c07` |
 | Release tags | none | `git tag -l` empty; GitHub tags API empty |
 | GitHub releases | none | GitHub releases API empty |
 | `LICENSE` | **none** at repository root | `find` / `git ls-files` |
@@ -38,11 +39,11 @@ Evidence labels used below:
 | Vendor snapshot | 149 files, checksums OK locally; **gitignored and not tracked** | `./scripts/verify-vendor.sh`; `git check-ignore vendor/btc-lean-core/lakefile.lean` |
 | Vendor provenance | `vendor/btc-lean-core` is a copy of public `btc-lean` `spec/core` at `4f5c4f858fb9ca0743042644453cfa92d30dd271` (MIT repository) | `refs/PINNED.md`, `docs/L1-PIN.md` |
 | Catalog | 51 rows, 51 `proved`, 0 `statementOnly`, 0 unresolved, 0 proved failures, 294 target occurrences (282 unique) | `python3 scripts/check-catalog.py --audit` — **Verified** |
-| Source policy check | `files=275 obligations=82 sorry_in_proofs=0` | `./scripts/check.sh` — **Verified** |
-| File/import check | 275 Lean files, 273 root imports, D=33 E=15 F=15 | `python3 scripts/check-final.py` — **Verified** |
+| Source policy check | `files=291 obligations=82 sorry_in_proofs=0` | `./scripts/check.sh` — **Verified** |
+| File/import check | 291 Lean files, 289 root imports, D=33 E=15 F=15 | `python3 scripts/check-final.py` — **Verified** |
 | Vendor integrity | `OK (149 files)` | `./scripts/verify-vendor.sh` — **Verified** |
-| Anchors | 313 anchors, 0 bad, 2 unanchored rows | `python3 scripts/verify-anchors.py` — **Verified** |
-| Full build | **Verified at the wave-12 code gate: 314 jobs, RC 0.** | See build gate below |
+| Anchors | 315 anchors, 0 bad, 2 unanchored rows | `python3 scripts/verify-anchors.py` — **Verified** |
+| Full build | **Verified at the wave-14 code gate: 330 jobs, RC 0.** | See build gate below |
 | Public CI | Build provisioning now falls back to exact public commit `4f5c4f8`; hosted runs `39288684058` at `9940642` and `39290061147` at `90ef1f1` completed the source gates and the pinned-vendor `lake build`. | `.github/workflows/ci.yml`; GitHub Actions runs `39288684058`, `39290061147` |
 
 The working tree at the snapshot was clean except for the pre-existing untracked
@@ -99,15 +100,15 @@ release-lane snapshot did not.
   LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build
   ```
 
-- [ ] Require RC 0 and record the exact job count from the output. The wave-11 code gate
-      reports `Build completed successfully (314 jobs)`; rerun at the tag commit.
+- [ ] Require RC 0 and record the exact job count from the output. The wave-14 code gate
+      reports `Build completed successfully (330 jobs)`; rerun at the tag commit.
 - [ ] Axiom audit:
 
   ```sh
   lake build LnLean.Proofs.PhaseC3.AxiomAudit
   ```
 
-  Require RC 0 and only `propext`, `Quot.sound`, `Classical.choice`. Wave-12 count: 393 `#print axioms` commands over a 435-name registry; coverage is tracked as `REV-05`.
+  Require RC 0 and only `propext`, `Quot.sound`, `Classical.choice`. Wave-14 count: 423 `#print axioms` commands over a 465-name registry; coverage is tracked as `REV-05`.
 - [ ] Exact `sorry` scan (must print nothing):
 
   ```sh
@@ -313,7 +314,7 @@ Therefore:
 
 - [ ] Update `README.md` counts and release status **after** integration, using
       the actual numbers at the release commit, not the wave-3 numbers
-      (currently 275 Lean files, 273 root imports, 51 catalog rows, 294 target occurrences / 282 unique declarations).
+      (currently 291 Lean files, 289 root imports, 51 catalog rows, 294 target occurrences / 282 unique declarations).
 - [ ] Update `docs/FINAL-STATUS.md` and `docs/WAVE-STATUS.md` with the release
       commit/tag and current gate evidence. Remove stale "Gate HEAD" references
       if they no longer identify the tagged commit.

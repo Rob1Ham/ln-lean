@@ -1,25 +1,26 @@
 # Open Issues and Swarm Roadmap
 
-**Status:** living roadmap after the proof-wave 12 integration and the
-read-only 32-lane wave-13 review; four wave-12 proof/conformance lanes and a
-post-integration audit are complete, and the wave-13 review is recorded below
-and under `agents/reports/wave13-review/`.
+**Status:** living roadmap after the proof-wave 14 integration; 16 additive
+wave-14 repair/assurance lanes are complete, and the wave-13 review remains
+recorded below and under `agents/reports/wave13-review/`. Wave 14 did **not**
+move the external L1/Noise/EUF-CMA/source barriers; it narrows the review-derived
+consumer and assurance gaps.
 **Branch:** `repair/integrated`.
-**Gate commit:** `1c88f17` (`[WAVE12]` docs-only status checkpoint); code integration is
-`d210079`; later docs-only status commits may advance the tip. Published tips
-include `9940642`, `90ef1f1`, `5ddab4c`, `d210079`, `d9c0d2f`, `07288ad`,
-`97897b6`, and `1c88f17`. Hosted CI runs `39288684058`, `39290061147`,
-`39290644672`, `39303105137`, `39303680973`, `39303944696`, `39304616746`, and
-`39304938940` are green.
+**Gate commit:** `f0a3c07` (`[WAVE14]` code integration); later docs-only status
+commits may advance the tip. Published tips include `9940642`, `90ef1f1`,
+`5ddab4c`, `d210079`, `d9c0d2f`, `07288ad`, `97897b6`, `1c88f17`, `a331b71`,
+and `f0a3c07`. Hosted CI runs through the wave-13 review tip `a331b71` are
+green; the wave-14 local gate is recorded in `agents/status/WAVE-14-INTEGRATION.md`.
 **Base commit:** `9359475` (wave-9 integration; wave 10 launched from
-`9158592`; wave 11 from `4037264`; wave 12 from `5ddab4c`). Wave 8 launch was
-`50d78ed`; proof-wave 7 code is `b48d041`; wave 7 launch is `3180581`;
-proof-wave 6 code is `0a3a5fb` (proof-wave 5 code is `6389baa`; proof-wave 4
-code at `26ced90`).
+`9158592`; wave 11 from `4037264`; wave 12 from `5ddab4c`; wave 14 from
+`a331b71`). Wave 8 launch was `50d78ed`; proof-wave 7 code is `b48d041`;
+wave 7 launch is `3180581`; proof-wave 6 code is `0a3a5fb` (proof-wave 5 code
+is `6389baa`; proof-wave 4 code at `26ced90`).
 **Catalog gate:** 51/51 rows `proved`, 0 `statement-only`, 0 unresolved,
 294 target occurrences (282 unique declarations).
-**Full build:** 314 jobs, RC 0, 275 Lean files, 273 root imports; 393
-`#print axioms` commands over a 435-name registry.
+**Full build:** 330 jobs, RC 0, 291 Lean files, 289 root imports; 423
+`#print axioms` commands over a 465-name registry; the assurance checker still
+reports 72 unique catalog targets unprinted and 35 absent from the registry.
 **Rule:** this file is updated by every wave. Closed issues keep their id and
 get a `closed` row; new gaps get a new id in the same wave that discovers them.
 
@@ -34,7 +35,7 @@ by rewording it; add the missing model or keep the scope note.
 |---|---|---|
 | **P0** | Blocks a public release or a reproducible build | `OPS-02`, `OPS-03` |
 | **P0** | Blocks any claim of spendable L1 scripts | `L1-01`, `L1-02`, `L1-07` |
-| **P0 (review-derived)** | Falsified/overstated live consumer or assurance claim; no new external artifact required | `REV-01`–`REV-05` |
+| **P0 (review-derived)** | Falsified/overstated live consumer or assurance claim; no new external artifact required | `REV-01`–`REV-05` (all narrowed by Wave 14; consumer wiring/assurance closure still pending) |
 | **P1** | Major model/verification gap; codeable in a wave | `L1-03`, `PR-01`, `PR-02`, `RT-02`, `REV-06`–`REV-08` |
 | **P2** | Longer-term research / conformance / network assumptions | `CR-01`, `L1-06`, `NET-01`, `CONF-01`, `MODEL-01`, `SEC-01`, `REV-09` |
 
@@ -49,15 +50,48 @@ wave-13 lanes and their exclusive files are in §6.2.
 
 | Id | Priority | Issue | Current boundary / evidence | Next action |
 |---|---|---|---|---|
-| `REV-01` | P0 | Reserve and in-flight admission consumers are not BOLT 2-faithful | `LiquidityProps.reserveMsat` uses the local endpoint (`:110-111`); `reserveOf .local` and `addHtlc?` inherit it; `pendingHtlcValueOf` pools both directions (`State.lean:266-269`); `addHtlc?` admits zero/minimum/CLTV-invalid HTLCs and counts terminal HTLCs (`:376-384`). BOLT 2 `02-peer-protocol.md:730-742`; R19/R32 G01–G04. | Additive `W13-LIQ` repair; preserve old carriers and witnesses. |
-| `REV-02` | P0 | Legacy anchored commitment pair omits the funder's 660-sat anchor debit; anchor presence/net-dust consumers are narrower than BOLT 3 | `Commitment.lean:380-410` subtracts only `fee`; corrected constructor is unused; `commitmentOutputs` emits both anchors (`:113-114`); gross path differs from `outputsNet` (`:951-970`). BOLT 3 `03-transactions.md:321-326`; R06/R32 G05–G07. | Additive `W13-ANCHOR` conservation; keep `waveF_f04_counterexample_660` and `commitmentPair_anchorCounterexample`. |
-| `REV-03` | P0 | Replay and duplicate-payment admission are not wired to idempotent refinements | `receive` applies `advanceReceived` (`Peer.lean:213`), while `advanceReceivedNumbered` is idempotent (`ChannelReestablishProps.lean:395-405`); `Keysend.retry` resets `succeeded` (`:252-255`); no payment-store admission predicate. LDK Node `payment/spontaneous.rs:67-73`; R12/R31/R32 G09–G11. | `W13-STATE` and `W13-PAY`; retain `duplicate_commitmentSigned_advances_twice` and `retry_pending`. |
-| `REV-04` | P0 | `routeValid` is per-hop, not chain-backed | `Route.lean:325-327` checks each hop against some enabled edge; disjoint edges `0→1` and `2→3` can pass. The docstring's end-to-end claim is unsupported. R16/R32 G12. | Add `W13-ROUTE` chain predicate and refinement; do not redefine `routeValid`. |
-| `REV-05` | P0 | Axiom-audit and traceability gates do not cover what their counts suggest | 294 target **occurrences**, 282 unique; 393 `#print axioms` commands vs 435 registry names; 72 unique catalog targets unprinted and 35 absent from the registry; `Traceability` checks IDs, not text/module equality. `Obligations.lean:458-459`; `AxiomAudit.lean:117-570,579-1018`; `Traceability.lean:830-900`; R31/R32 G20–G22. | `W13-ASSURANCE`: reconcile print/registry/catalog sets and enforce text/module equality; add a negative fixture. |
-| `REV-06` | P1 | Several `.proved` rows are definitional or hypothesis restatements | `partial_synchrony_delivers` returns its hypothesis (`Invariants.lean:483-492`); `channel_ready_gate` is a two-flag conjunction (`D18.lean:334`); `stale_snapshot_rolls_back` returns `h.2` and never applies `restore` (`PersistenceRecovery.lean:505-517`). R31/R32 G17–G19. | Reword catalog/docstrings as hypothesis/flag results; add a non-circular delivery/restore model only if separately chartered. |
-| `REV-07` | P1 | MPP exact-sum and route fee rounding are narrower than LDK/BOLT | `mppComplete`/`MppPayment.settle` require exact equality; BOLT 4 permits `≥ total_msat`. `Hop.ofEdge` rounds up; LDK truncates. `MPP.lean:144-146`; `Route.lean:92-97`; R16/R32 G08,G13. | Additive `settleGe`/floor theorem in wave 14; do not mark the existing narrower theorems false. |
+| `REV-01` | P0 (narrowed by Wave 14) | Reserve and in-flight admission consumers are not BOLT 2-faithful | `LiquidityProps.reserveMsat` uses the local endpoint (`:110-111`); `reserveOf .local` and `addHtlc?` inherit it; `pendingHtlcValueOf` pools both directions (`State.lean:266-269`); `addHtlc?` admits zero/minimum/CLTV-invalid HTLCs and counts terminal HTLCs (`:376-384`). BOLT 2 `02-peer-protocol.md:730-742`; R19/R32 G01–G04. | Wave 14 `W14-LIQ-RESERVE`/`W14-LIQ-INFLIGHT` add corrected reserve and directional in-flight carriers with separation witnesses; wire them into the production `addHtlc?` consumer next while preserving the old carriers. |
+| `REV-02` | P0 (narrowed by Wave 14) | Legacy anchored commitment pair omits the funder's 660-sat anchor debit; anchor presence/net-dust consumers are narrower than BOLT 3 | `Commitment.lean:380-410` subtracts only `fee`; corrected constructor is unused; `commitmentOutputs` emits both anchors (`:113-114`); gross path differs from `outputsNet` (`:951-970`). BOLT 3 `03-transactions.md:321-326`; R06/R32 G05–G07. | Wave 14 `W14-ANCHOR-DEBIT` exposes `commitmentPairCanonical` and conservation; `W14-ANCHOR-PRESENCE` adds exact presence and net-dust witnesses. Wire the canonical pair into production and retain the legacy counterexamples. |
+| `REV-03` | P0 (narrowed by Wave 14) | Replay and duplicate-payment admission are not wired to idempotent refinements | `receive` applies `advanceReceived` (`Peer.lean:213`), while `advanceReceivedNumbered` is idempotent (`ChannelReestablishProps.lean:395-405`); `Keysend.retry` resets `succeeded` (`:252-255`); no payment-store admission predicate. LDK Node `payment/spontaneous.rs:67-73`; R12/R31/R32 G09–G11. | Wave 14 `W14-STATE-RECEIPT`, `W14-PAY-STORE`, and `W14-PAY-KEYSEND` provide numbered receipts, finite-store admission, and guarded retry; wire them into the production paths and retain the old replay/retry witnesses. |
+| `REV-04` | P0 (narrowed by Wave 14) | `routeValid` is per-hop, not chain-backed | `Route.lean:325-327` checks each hop against some enabled edge; disjoint edges `0→1` and `2→3` can pass. The docstring's end-to-end claim is unsupported. R16/R32 G12. | Wave 14 `W14-ROUTE-CHAIN` adds `routeChainValid` and a refinement to `routeValid`, with connected/disconnected witnesses; do not redefine `routeValid`. |
+| `REV-05` | P0 (narrowed by Wave 14) | Axiom-audit and traceability gates do not cover what their counts suggest | 294 target **occurrences**, 282 unique; 423 `#print axioms` commands vs 465 registry names; 72 unique catalog targets unprinted and 35 absent from the registry; `Traceability` checks IDs, not text/module equality. `Obligations.lean:458-459`; `AxiomAudit.lean:117-570,579-1018`; `Traceability.lean:830-900`; R31/R32 G20–G22. | `W14-ASSURANCE` adds `scripts/check-assurance-coverage.py` with report/strict/self-test modes and a negative fixture, and records 0 traceability mismatches on the current tables; add the missing prints/registry names and wire strict mode into CI. |
+| `REV-06` | P1 (narrowed by Wave 14) | Several `.proved` rows are definitional or hypothesis restatements | `partial_synchrony_delivers` returns its hypothesis (`Invariants.lean:483-492`); `channel_ready_gate` is a two-flag conjunction (`D18.lean:334`); `stale_snapshot_rolls_back` returns `h.2` and never applies `restore` (`PersistenceRecovery.lean:505-517`). R31/R32 G17–G19. | Wave 14 `W14-DELIVERY`, `W14-READY`, and `W14-STATE-SNAPSHOT` add explicit delivery, usability, and restore consumers; reword the catalog/docstrings where the retained rows are still hypothesis/flag results. |
+| `REV-07` | P1 (narrowed by Wave 14) | MPP exact-sum and route fee rounding are narrower than LDK/BOLT | `mppComplete`/`MppPayment.settle` require exact equality; BOLT 4 permits `≥ total_msat`. `Hop.ofEdge` rounds up; LDK truncates. `MPP.lean:144-146`; `Route.lean:92-97`; R16/R32 G08,G13. | Wave 14 `W14-MPP` adds `settleGe`/overpay completion and `W14-ROUTE-FEE` adds floor/capacity carriers; existing exact-sum and ceiling rows are retained and remain narrower. |
 | `REV-08` | P1 | LDK Server conformance is pin-blocked | `ldk-server/Cargo.toml:16` names `ldk-node 179b4b2…`, while the review pin is `fa123fed…`; `claim_for_id` arity differs. R24/R32 G23. | Align the server pin or explicitly scope server claims to the pinned dependency; external/build decision. |
-| `REV-09` | P2 | Documentation count drift | `Obligations.lean:76` still says 48-obligation catalog; docs say 294 targets without "occurrences". R29/R32 G28. | Correct wording in the assurance lane; regenerate counts from one manifest. |
+| `REV-09` | P2 | closed (Wave 14): documentation count drift | `Obligations.lean:76` now says 51-row; current summaries use target occurrences/unique declarations. R29/R32 G28. | No further action; regenerate counts from the manifest when rows change. |
+
+## Wave 14 repair and assurance lanes (complete, 2026-10-19)
+
+Wave 14 launched from the wave-13 review base `a331b71` and ran 16 disjoint
+additive lanes. Reports are under `agents/reports/wave14/`; the lane table and
+contract are in `agents/swarm/WAVE-14.md`. The catalog remains at 51 rows and
+294 target occurrences (282 unique); the new modules are model/assurance
+support, not new catalog rows. The old carriers and counterexamples are
+retained.
+
+| Lane | Issue(s) | Result |
+|---|---|---|
+| `W14-LIQ-RESERVE` | `REV-01` | Corrected reserve direction (`localReserveMsat`, `remoteReserveMsatCorrected`, corrected outbound/inbound); `reserve_direction_separates` and a non-empty corrected witness; legacy `reserveMsat` unchanged |
+| `W14-LIQ-INFLIGHT` | `REV-01` | Directional pending-only HTLC value, `AffordableAddDirectional`, directional separation, terminal-HITLC exclusion, and `updateAddHtlc_preserves_directionalCap` |
+| `W14-ANCHOR-DEBIT` | `REV-02` | `commitmentPairCanonical` consumer for the existing corrected constructor; conservation under `fee + 660` bounds, no-anchor alias, legacy 660 overfund witness retained |
+| `W14-ANCHOR-PRESENCE` | `REV-02` | Exact anchor-presence predicate, single-anchor case, and gross/net net-dust mismatch witness; existing `outputs`/`outputsNet` unchanged |
+| `W14-STATE-RECEIPT` | `REV-03` | Numbered `commitment_signed` receipt adapter; fresh/duplicate/wrong-number cases, idempotence and replay separation; old unnumbered path retained |
+| `W14-STATE-SNAPSHOT` | `REV-06` | `restore`-applying stale-snapshot consumer, latest-prefix failure witness, and a concrete reachable-later-update counterexample |
+| `W14-PAY-STORE` | `REV-03` | Finite payment store and `admitSend`; duplicate pending/succeeded rejection, failed retry, identical-keysend separation; in-memory scope explicit |
+| `W14-PAY-KEYSEND` | `REV-03` | `retryIfNotSucceeded` guarded retry; succeeded/failed/pending cases and the retained legacy succeeded-reset divergence |
+| `W14-ROUTE-CHAIN` | `REV-04` | `routeChainValid` edge-list predicate; refinement to `routeValid`, connected positive witness, and disconnected `routeValid` counterexample; `routeValid` unchanged |
+| `W14-ROUTE-FEE` | `REV-07` | Floor-vs-ceiling fee separation and additive capacity/`htlcMinimum`/`htlcMaximum` usability carrier; existing `ofEdge` retained |
+| `W14-MPP` | `REV-07` | Additive `settleGe`/`≥ total` completion; exact-implies-ge, overpay accepted/underpay rejected, exact `mppComplete` retained |
+| `W14-FEE-UPDATE` | `REV-02`,`REV-07` | Checked fee-update legality (funder/phase/sufficiency), concrete valid and insufficient witnesses, plus an additive zero-fee/shared-anchor sidecar |
+| `W14-DELIVERY` | `REV-06`,`NET-01` | Explicit delivery oracle/model, bounded-to-eventual derivation, zero/fixed-delay instances, and `latency := none` no-delivery counterexample; scheduler bridge remains open |
+| `W14-READY` | `REV-06` | `UsableChannel`/`Readiness` carrier with confirmations/connectivity/shutdown/splice fields; two-flag gate separation and positive refinement |
+| `W14-ASSURANCE` | `REV-05`,`REV-09` | Offline `check-assurance-coverage.py` with report/strict/self-test modes; exposes 294 occurrences/282 unique, 423 prints/465 registry, 72 unprinted, 35 unregistered, 0 traceability mismatches; catalog docstring corrected |
+| `W14-UNIFIED` | `G25` | Self-contained unified-send fatal/retryable/succeeded model; fatal does not fall back, retryable does, concrete branch witnesses |
+
+Wave 14 narrows `REV-01`–`REV-07` at the model level. It does not wire the new
+carriers into the production consumers, does not close the LDK Server pin gap
+(`REV-08`), and does not fix the 72/35 assurance coverage gap. `REV-09` is
+closed by the corrected catalog docstring and occurrence/unique wording.
 
 ## Open issues
 
@@ -87,7 +121,7 @@ wave-13 lanes and their exclusive files are in §6.2.
 | `HT-01` | P1 | closed (tagged namespace) | Untagged global HTLC id uniqueness is false under BOLT 2 per-sender counters | `LN-HT-004` keeps per-sender `dir_id_unique`, the `CrossDisjoint` untagged form, and now the direction-tagged `HTLCTag` namespace with `tagged_id_unique_of_reachable`/`tagged_ids_nodup_of_reachable`. `cross_direction_duplicate_tagged` connects the old counterexample. The wire remains per-sender by BOLT 2 design. | No further model action; keep the tag documented as a model-side namespace, not a new wire encoding. |
 | `RT-01` | P1 | closed (canonical wrapper; raw non-refinement proved) | Gossip key attribution and raw insertion are separate | `admitGossipAttributed`/`admitGossipDirected` gate updates on validity plus announced-key attribution; wave 6 derives `NodeKeyConsistent`/`CanonicalAnnouncements` on canonical reachable states. Wave 7 proves raw `applyGossip` is **not** a function refinement of canonical admission, supplies `applyGossipCanonicalStore` whose gossip/registration projection is exactly `admitGossipCanonical`, proves the sharp refinement square on canonical-shaped stores under admission gates and the raw global clock, and establishes the extended reachable-store invariant. A reachable boundary witness shows the canonical per-slot gate accepts an update the raw global clock rejects, and an impossibility theorem rules out canonical-preserving raw announcement extensions. Wave 8 adds the `StoreEpoch` replacement-history layer, `epochFold_gossip_eq_canonicalStoreView_rawFold`, and `StoreEpoch.epochFold_store_eq_foldl`, with two divergence witnesses showing both admission hypotheses are necessary. | No further action for the raw/canonical square; use the canonical wrapper and the epoch API as the supported path, and keep raw insertion documented as non-canonical. |
 | `RT-02` | P1 | blocked (address parsing modelled; chain policy/production pipeline external) | Gossip node-announcement canonicalisation remains a design gap | `GossipCanonicalTargets` defines `admitGossipCanonical`, `ReachableCanonical`, and `CanonicalAdmitted`; closure/preservation proofs derive both invariants, with update supersession, node-key rotation, concrete non-vacuity, and conflict witnesses. The rotation boundary and raw-store caveat are explicit. Wave 8 adds the update/announcement epoch history and canonical square, but node-announcement canonicalisation remains open by design. Wave 9 `NodeCanonicalTargets` adds an additive node layer: `insertNodeCanonical`, BOLT 7 strict-timestamp `NodeSupersedes`, `CanonicalNodeAnnouncements`, a node-canonical view, `applyGossipNodeCanonical`, `ReachableNodeCanonical`, and `NodeCanonicalAdmitted`. It proves reachable replacement and rotation witnesses, the equal-timestamp unrecoverable boundary, `no_canonical_node_preserving_raw_node_extension`, the per-slot/global-clock separation, and lifts the wave-8 epoch square to the node-canonical view. Wave 10 `NodeIdentityTargets` proves no antisymmetric store-only relation links two canonically distinct wire keys (`canonical_distinct_nodes_no_oriented_store_link`, `no_store_function_selects_both_rotation_worlds`); an explicit `RotationWitness` preserves wire membership (`rotation_preserves_wireMember`) but not signatures (`rotation_not_signature_preserving`); `WireMember` requires both channel wire keys to have node announcements, and `missing_endpoint_channel_admitted` shows the core transition does not enforce it.  Wave 11 `NodeIdentityChainTargets` adds signed rotation certificates, transitive chains, explicit re-signing with wire membership, old-signature counterexamples, and per-node timestamp/sequence replay limits. Address parsing and a production rotation/announcement pipeline remain outside the model. | Keep the canonical update/announcement/node path and rotation witnesses green. Remaining: identity across a `nodeId` rotation (the witness is opaque, not cryptographic), chain existence, address parsing, rate limits, and re-signing of rotated channel announcements.  Keep the signed-chain/re-signing/rate layer; address parsing, chain-existence policy, and a production gossip pipeline remain future work. Wave 12 adds `NodeAddressTargets`: the real BOLT 7 `u16 addrlen` blob, typed IPv4/IPv6/Tor v2/Tor v3/ASCII-DNS descriptors with exact 6/18/12/37-byte layouts, nonzero ports, ascending type order, at most one type 5, canonical-list round-trip/injectivity, and explicit rejection of truncated, unsorted, two-DNS, and malformed inputs. Chain-existence policy, cryptographic rotation identity, and a production gossip pipeline remain external. |
-| `NET-01` | P2 | open | Network/liveness results depend on scheduling/fairness assumptions | `LN-SEC-003` keeps four `Assumptions P`; `LN-SEC-005` uses `FeeScheduleBounded`; `LN-SEC-006` requires a watchtower report | State the adversarial schedule/fairness model explicitly and prove one concrete eventual-delivery instance |
+| `NET-01` | P2 | open (narrowed by Wave 14) | Network/liveness results depend on scheduling/fairness assumptions | `LN-SEC-003` keeps four `Assumptions P`; `LN-SEC-005` uses `FeeScheduleBounded`; `LN-SEC-006` requires a watchtower report | Wave 14 `W14-DELIVERY` adds an explicit delivery oracle, eventual-delivery and no-delivery instances; the adversarial scheduler/network bridge remains open. |
 | `CONF-01` | P2 | open (five live message rows; additional encodings remain) | No shared conformance suite against BOLT vectors | `tests/conformance/vectors.json` + `scripts/check-conformance.py` cover 61 BigSize/TLV vectors, 16 framing cases, 9 decoder-boundary cases, and 9 mutation controls; `ConformanceTargets.lean`/`ConformanceDiffTargets.lean` add 151 `decide` theorems. The checker is wired into CI. Wave 8 adds six BOLT 2 payload/field vectors, 29 `decide` theorems, and 13/13 mutation controls; the live message row remained deferred. Wave 9 `S9-CONF-LIVE-MSG` adds the live BOLT 2 `channel_ready` (type 36) payload encoded through the pinned rust-lightning `Writeable` implementation under `cargo --offline --locked`, with five Lean targets (`diff_msg_channel_ready_payload`, `_length`, `_transport`, `_header`, `_frame_prefix`), 180 Lean references, 14/14 mutation controls, and a hash-pinned transcript. Wave 10 `S10-CONF-LIVE-MSGS` adds the live `open_channel` (type 32) base case through the public `OpenChannel`/`CommonOpenChannelFields` encoder, with five more Lean targets, 185 Lean references, 16/16 mutation controls, and transcript hash `9c6b664d7ac4…`. This remains finite/public-API conformance, not node-level interop; two TLV value-minimality/unknown-type cases are declared model gaps.  Wave 11 adds a live `accept_channel` (type 33) payload through the pinned public rust-lightning `Writeable` encoder, five Lean targets, two mutation controls, 190 Lean references, 18/18 controls, and three live BOLT 2 payloads (`channel_ready`, `open_channel`, `accept_channel`). Wave 12 adds live `funding_created` (type 34) and `funding_signed` (type 35) payloads through the same public `Writeable` API, ten Lean targets, four mutation controls, 200 Lean references, 22/22 controls, and five live BOLT 2 payloads, with fixture digest `1d5ed91c…` and transcript `a47b2aa4…`. This remains finite/public-API conformance, not node-level interop. | Keep the five live message rows and the vector suite green; additional message encodings, TLVs, Noise/MAC, dispatch, full decoders, and node-level interop remain future work. Do not claim full protocol conformance. |
 | `CONF-02` | P2 | closed (live finite comparison) | No live differential conformance against rust-lightning | `tests/conformance/rust-lightning/pinned/` now contains a 188-package `Cargo.lock` and public-API `live_probe.rs`; `cargo test --offline --locked` passes both pinned tests. The live probe agrees field-by-field on **26/26 BigSize + 3/3 TLV**, and **4/4 wire** rows check live `LN_MAX_MSG_LEN=65535` (header arithmetic remains source-derived). `live-transcript.json` is SHA-256-pinned and rerun-byte-identical; the checker verifies transcript/probe/lock hashes, fixture digest, result counts, and forged-transcript mutation. Caveats: finite/public-API comparison, not node-level interop; transcript is evidence, not proof; clean machines need one networked `--fetch` before offline runs. | Keep the pinned live harness and transcript green; `CONF-01` remains open for additional encodings only. |
 | `CONF-03` | P2 | closed (promoted + deterministic) | Transport framing was conformance-only and fixtures were offline transcriptions | `LnLean.Wire.Transport` contains the BOLT 8 length/frame/decoder model with the wave-5 theorem names, while production `Wire.unframe` remains payload-only and is proved to reject every transport frame. `generate.py` deterministically re-derives and provenance-checks the fixtures; wave 7 adds the live transcript and hash checks. | No further action; keep the promoted transport module, deterministic generator, and live harness green. |
@@ -389,12 +423,13 @@ foundation (`CR-01`/`SEC-01`), and any `main` merge remain outside agent lanes.
 
 | Check | Result |
 |---|---|
-| `lake build` | 314 jobs, RC 0 |
-| `check-catalog.py --audit` | 51 proved / 0 statement-only / 294 target occurrences (282 unique) / 0 unresolved / 0 proved failures / 11898 declarations |
+| `lake build` | 330 jobs, RC 0 |
+| `check-catalog.py --audit` | 51 proved / 0 statement-only / 294 target occurrences (282 unique) / 0 unresolved / 0 proved failures / 12374 declarations |
 | `check-catalog.py --allow-planned` | 51/0/0 planned, RC 0 |
-| `check.sh` | `files=275 obligations=82 sorry_in_proofs=0`, RC 0 |
-| `check-final.py` | 275 Lean files, 273 root imports, RC 0 |
+| `check.sh` | `files=291 obligations=82 sorry_in_proofs=0`, RC 0 |
+| `check-final.py` | 291 Lean files, 289 root imports, RC 0 |
 | `check-conformance.py` | 61 base + 16 framing + 9 boundaries, 26 differential fixtures, 200 Lean references, 22/22 mutation controls, 6 finite BOLT 2 message vectors, 3 declared gaps, live 26 BigSize + 3 TLV + 4 wire + 5 BOLT 2 payloads (`funding_created`, `funding_signed`, `channel_ready`, `open_channel`, `accept_channel`), RC 0 |
-| `verify-anchors.py` | 313 anchors, 0 bad, 2 unanchored rows, RC 0 |
+| `verify-anchors.py` | 315 anchors, 0 bad, 2 unanchored rows, RC 0 |
 | `verify-vendor.sh` | 149 files, RC 0 |
-| Axiom audit | 393 `#print axioms` commands over a 435-name registry; printed names use only `propext`, `Quot.sound`, `Classical.choice`; coverage gap `REV-05` |
+| assurance coverage | 294 occurrences / 282 unique; 423 prints / 465 registry; 72 unprinted, 35 unregistered; 0 traceability mismatches; `--report` RC 0, `--strict` RC 1 on the current gap, `--self-test` RC 0 |
+| Axiom audit | 423 `#print axioms` commands over a 465-name registry; printed names use only `propext`, `Quot.sound`, `Classical.choice`; coverage gap `REV-05` |

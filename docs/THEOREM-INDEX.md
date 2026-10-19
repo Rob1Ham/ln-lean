@@ -387,3 +387,25 @@ adding a row. The independent barrier audit found no new model-level P0 closure.
   `LN-SEC-007` records that `witnessRegistry_sound` is a projection of the
   registry predicate. The P0/P1 barrier verdicts are in
   `agents/reports/swarm12/S12-AUDIT-BARRIERS.md`.
+
+### Proof-wave 14 repair and assurance notes
+
+Wave 14 adds 16 additive modules under `LnLean/Proofs/Wave14/` without adding a
+catalog row. The catalog remains **51 rows / 294 target occurrences (282 unique
+declarations)**. The modules narrow the wave-13 review gaps rather than moving
+the external L1/Noise/EUF-CMA/source barriers:
+
+* liquidity: `LiquidityReserve`, `LiquidityInFlight`;
+* anchors: `AnchorDebitConsumer`, `AnchorPresenceConsumer`;
+* state/payment: `NumberedReceipt`, `SnapshotRestoreConsumer`,
+  `PaymentAdmission`, `KeysendRetryGuard`;
+* routing/MPP/fees: `RouteChain`, `RouteFeeCapacity`, `MppSettlement`,
+  `FeeUpdateLegality`;
+* model/assurance: `DeliveryModel`, `ReadyUsefulness`, `AssuranceAudit`,
+  `UnifiedSendFatal`.
+
+`scripts/check-assurance-coverage.py` is the assurance enforcement surface:
+`--report` is green with 294 occurrences / 282 unique, 423 prints / 465 registry
+names, 72 unprinted and 35 unregistered catalog targets, and 0 traceability
+mismatches; `--strict` is intentionally red until that 72/35 gap is closed;
+`--self-test` detects both injected faults. See `agents/reports/wave14/`.

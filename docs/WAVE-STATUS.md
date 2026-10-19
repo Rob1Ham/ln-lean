@@ -2,21 +2,22 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `1c88f17` (`[WAVE12]` docs-only status checkpoint); code integration is
-`d210079`; later docs-only status commits may advance the tip.
+**Gate HEAD:** `f0a3c07` (`[WAVE14]` code integration); later docs-only status
+commits may advance the tip.
 Base `9359475` (wave-9 integration); wave 10 launched from `9158592`; wave 11
-launched from `4037264`; wave 12 launched from `5ddab4c`.
+launched from `4037264`; wave 12 launched from `5ddab4c`; wave 14 launched from
+`a331b71`.
 **Catalog:** 51 proved / 0 statementOnly / 0 unresolved / 294 target occurrences
 (282 unique declarations).
-**Wave 12:** integrated and published non-force at `d210079`; four disjoint
-lanes complete: BOLT 7 address wire parsing (`RT-02`), coverage-consumer
-contract (`PR-02` / `LN-PR-004`), live `funding_created`/`funding_signed`
-conformance (`CONF-01`), and an independent P0/P1 barrier/non-vacuity audit.
-Reports are under `agents/reports/swarm12/`; lane plan
-`agents/swarm/WAVE-12.md`. Hosted CI runs `39303105137` (integration), `39303680973`, `39303944696`, and
-`39304616746`, and `39304938940` (status checkpoints) are green. A post-integration audit
-(`agents/reports/swarm12/S12-POST-INTEGRATION-AUDIT.md`) found no tractable
-wave-13 P0/P1 proof lane.
+**Wave 14:** integrated at `f0a3c07`; 16 disjoint additive repair/assurance
+lanes complete. Reports are under `agents/reports/wave14/`; lane plan and
+contract are `agents/swarm/WAVE-14.md`. The wave narrows `REV-01`–`REV-07`
+without moving the external barriers and without adding catalog rows. Local
+gate: **330 jobs, 291 Lean files, 289 root imports, 315 anchors, 0 `sorry`**.
+**Wave 12:** historical; integrated and published non-force at `d210079` with
+four lanes (BOLT 7 address parsing, coverage-consumer contract, live
+`funding_created`/`funding_signed`, barrier audit). Hosted CI through the
+wave-13 review tip `a331b71` is green.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 
 This file describes the repair branch. Older wave tables are retained as
@@ -47,9 +48,9 @@ at `c88d9fd` (source-level gates and the pinned-vendor build gate).
 
 | Metric | Value |
 |---|---|
-| Lean files under `LnLean/` | **275** |
-| Root imports in `LnLean.lean` | **273** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
-| Full build | **RC 0**, `Build completed successfully (314 jobs)` |
+| Lean files under `LnLean/` | **291** |
+| Root imports in `LnLean.lean` | **289** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
+| Full build | **RC 0**, `Build completed successfully (330 jobs)` |
 | Actual `sorry` lines | **0** (`grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` → no matches, grep RC 1) |
 | Proof files with the word `sorry` in prose | comments only, not proof terms |
 | Catalog rows | **51** |
@@ -58,9 +59,9 @@ at `c88d9fd` (source-level gates and the pinned-vendor build gate).
 | Catalog targets | **294 occurrences / 282 unique declarations** (12 duplicate ECDSA names) |
 | Unresolved/planned targets | **0** |
 | Vendor snapshot | **OK**, 149 files from public `btc-lean` `4f5c4f8`; `fetch-vendor.sh --from-git` tested |
-| Anchors | **313 checked, 0 bad**, 2 unanchored rows |
-| Generated obligation index | 237 proof files, 81 markers, 9537 declarations, 0 `sorry` sites |
-| Axiom audit | **393 `#print axioms` commands; 435-name registry**; printed names use only `propext`, `Quot.sound`, `Classical.choice`; 72 unique catalog targets are unprinted and 35 absent from the registry (`REV-05`) |
+| Anchors | **315 checked, 0 bad**, 2 unanchored rows |
+| Generated obligation index | 253 proof files, 81 markers, 51 catalog rows, 9978 declarations, 0 `sorry` sites |
+| Axiom audit | **423 `#print axioms` commands; 465-name registry**; printed names use only `propext`, `Quot.sound`, `Classical.choice`; 72 unique catalog targets are unprinted and 35 absent from the registry (`REV-05`) |
 | Conformance | 61 base + 16 framing + 9 boundary checks, 26 differential fixtures, 200 Lean references, 22/22 mutation controls, 3 declared model gaps; live 26 BigSize + 3 TLV + 4 wire + 5 BOLT 2 messages; 6 finite BOLT 2 message vectors |
 | Public L1 pin | `Rob1Ham/btc-lean` `main@4f5c4f8` |
 | Build dependency | `vendor/btc-lean-core` `4f5c4f8` (public `spec/core` copy) |
@@ -68,7 +69,32 @@ at `c88d9fd` (source-level gates and the pinned-vendor build gate).
 The exact `sorry` result is **zero matching lines**. Prose mentions of
 `sorry` in documentation are not `sorry` terms.
 
-## Proof-wave 12 gate
+## Proof-wave 14 gate
+
+- `lake build` — **RC 0**, 330 jobs.
+- `check-catalog.py --audit` — **RC 0**, 51 proved, 0 statement-only,
+  294 target occurrences (282 unique), 0 unresolved, 0 proved failures, 0
+  candidates, 12,374 declarations.
+- `check.sh` — **RC 0**: `files=291 obligations=82 sorry_in_proofs=0`,
+  `check: OK`.
+- `check-final.py` — **RC 0**: 291 Lean files, 289 root imports, D=33 E=15
+  F=15.
+- `check-conformance.py` — **RC 0**: 200 Lean references, 22/22 mutation
+  controls, 6 finite BOLT 2 message vectors, and five live BOLT 2 payloads
+  (`funding_created`, `funding_signed`, `channel_ready`, `open_channel`,
+  `accept_channel`), unchanged from wave 12.
+- `verify-vendor.sh` — **RC 0**, 149 files (public `4f5c4f8` snapshot).
+- `verify-anchors.py` — **RC 0**, 315 anchors, 0 bad, 2 unanchored rows.
+- `AxiomAudit` — **RC 0**, 423 `#print axioms` commands over a 465-name
+  registry; 30 new Wave 14 headline entries; every printed name uses only the
+  permitted classical axioms.
+- `check-assurance-coverage.py --report` — **RC 0**: 294 occurrences / 282
+  unique, 423 prints / 465 registry, 72 unprinted, 35 unregistered, 0
+  traceability mismatches. `--strict` is **RC 1** on the current gap, as
+  intended; `--self-test` is **RC 0** and detects both injected faults.
+- Exact `sorry` scan — **0** matching lines.
+
+## Proof-wave 12 gate (historical)
 
 - `lake build` — **RC 0**, 314 jobs.
 - `check-catalog.py --audit` — **RC 0**, 51 proved, 0 statement-only,

@@ -110,7 +110,7 @@ conditional boundaries and counterexamples are recorded in
 `agents/reports/swarm11/`.
 
 **Proof-wave 12 scope notes.** The catalog remains **51 rows**, now with **294
-resolved targets**. `LN-RT-002` adds `NodeAddressTargets`, which models the real
+target occurrences (282 unique declarations)**. `LN-RT-002` adds `NodeAddressTargets`, which models the real
 BOLT 7 `u16 addrlen` address blob and typed descriptors (IPv4, IPv6, Tor v2,
 Tor v3, ASCII DNS) with exact widths, nonzero ports, ascending order, at most
 one DNS descriptor, canonical round-trip/injectivity, and rejection theorems;
@@ -122,3 +122,15 @@ reconstructed from the consumer alone; production coverage remains external.
 claims for `LN-L1-001`, `LN-L1-004`, `LN-CH-007`, `LN-PR-001`, `LN-RT-002`, and
 `LN-SEC-007` were narrowed to their mechanized conditional forms. See
 `agents/reports/swarm12/`.
+
+**Proof-wave 14 scope notes.** The catalog remains **51 rows / 294 target
+occurrences (282 unique declarations)**. Wave 14 adds 16 additive modules under
+`LnLean/Proofs/Wave14/` for the wave-13 review repairs (`REV-01`–`REV-07`) and
+the assurance checker. These modules introduce corrected reserve/directional
+in-flight carriers, canonical anchor debit and presence witnesses, numbered
+receipts, stale-restore consumers, payment admission/guarded retry, chain-backed
+routing, floor/capacity fees, `settleGe`, checked fee legality, delivery and
+readiness models, and a fatal/retryable unified-send model. They do not add
+catalog rows, do not change the old predicate meanings, and do not close the
+external barriers. See `agents/reports/wave14/` and
+`agents/status/WAVE-14-INTEGRATION.md`.
