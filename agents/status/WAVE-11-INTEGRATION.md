@@ -5,7 +5,8 @@
 **Branch:** `repair/integrated`
 **Result:** eight lanes reviewed and integrated; source, build, conformance, and
 axiom gates green. Published non-force to `origin/repair/integrated` at
-`9940642`; hosted CI run `39288684058` is green.
+`9940642` and status commit `90ef1f1`; hosted CI runs `39288684058` and
+`39290061147` are green.
 
 ## Modules
 

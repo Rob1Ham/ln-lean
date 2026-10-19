@@ -409,7 +409,8 @@ rows were strengthened.
 - [x] Parent integration: seven root-imported modules, three new catalog rows,
   seven rows strengthened from 198 to 277 targets, audit extended to 407
   theorems, generated indexes/docs refreshed, full gate green, and a non-force
-  checkpoint published at `9940642` (hosted CI `39288684058` green).
+  checkpoint published at `9940642` and `90ef1f1` (hosted CI
+  `39288684058` and `39290061147` green).
 
 Wave-11 gate: **build 312 jobs, strict catalog 51/51 proved / 277 targets /
 11743 declarations, `check.sh` `files=273 obligations=82 sorry_in_proofs=0`,

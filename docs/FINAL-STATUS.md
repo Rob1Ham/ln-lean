@@ -9,8 +9,9 @@ wave 10 launched from `9158592`; wave 11 launched from `4037264`.
 **Catalog state:** **51 `proved` / 0 `statementOnly` / 0 unresolved / 277
 targets**.
 **Remote refs:** wave 11 is published non-force to `origin/repair/integrated` at
-`9940642`; hosted CI run `39288684058` completed both source gates and the
-pinned-vendor build gate successfully. `origin/main` is not touched by this work. The former `repair/pubbump` branch is merged and
+`9940642` and status commit `90ef1f1`; hosted CI runs `39288684058`
+and `39290061147` completed both source gates and the pinned-vendor build
+gate successfully. `origin/main` is not touched by this work. The former `repair/pubbump` branch is merged and
 retired; its public-core bump is part of this branch.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 **L1 build dependency:** read-only `vendor/btc-lean-core` copy of public

@@ -3,8 +3,9 @@
 **Status:** living roadmap after the proof-wave 11 integration; eight wave-11
 lanes are complete on `repair/integrated`.
 **Branch:** `repair/integrated`.
-**Gate commit:** `6a48d41` (`[WAVE11]`); published tip `9940642`; status
-commits may advance the tip. Hosted CI run `39288684058` is green.
+**Gate commit:** `6a48d41` (`[WAVE11]`); published tips `9940642` and
+`90ef1f1`; status commits may advance the tip. Hosted CI runs
+`39288684058` and `39290061147` are green.
 **Base commit:** `9359475` (wave-9 integration; wave 10 launched from
 `9158592`). Wave 8 launch was `50d78ed`; proof-wave 7 code is `b48d041`;
 wave 7 launch is `3180581`; proof-wave 6 code is `0a3a5fb` (proof-wave 5 code

@@ -8,7 +8,8 @@ launched from `4037264`.
 **Catalog:** 51 proved / 0 statementOnly / 0 unresolved / 277 targets.
 **Wave 11:** integrated and published non-force; eight lanes complete, reports
 under `agents/reports/swarm11/`; lane plan `agents/swarm/WAVE-11.md`.
-Hosted CI run `39288684058` at `9940642` is green.
+Hosted CI runs `39288684058` at `9940642` and `39290061147` at `90ef1f1`
+are green.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 
 This file describes the repair branch. Older wave tables are retained as
