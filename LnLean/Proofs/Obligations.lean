@@ -73,7 +73,7 @@ structure Obligation where
   rlAnchor : String
 deriving Repr, DecidableEq, BEq
 
-/-- The 48-obligation catalog: six entries per domain. -/
+/-- The 51-row catalog: the original six-per-domain rows plus later additions. -/
 def obligations : List Obligation :=
   [
   -- Foundations / L1 (6)

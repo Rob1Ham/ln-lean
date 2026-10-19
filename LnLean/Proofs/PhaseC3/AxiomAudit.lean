@@ -109,6 +109,21 @@ import LnLean.Proofs.Security.ChainFinalityTargets
 import LnLean.Proofs.Payment.InvoiceWireTargets
 import LnLean.Proofs.Channel.HtlcAggregateTargets
 import LnLean.Proofs.Model.NonVacuityTargets
+import LnLean.Proofs.Wave14.AnchorDebitConsumer
+import LnLean.Proofs.Wave14.AnchorPresenceConsumer
+import LnLean.Proofs.Wave14.DeliveryModel
+import LnLean.Proofs.Wave14.FeeUpdateLegality
+import LnLean.Proofs.Wave14.KeysendRetryGuard
+import LnLean.Proofs.Wave14.LiquidityInFlight
+import LnLean.Proofs.Wave14.LiquidityReserve
+import LnLean.Proofs.Wave14.MppSettlement
+import LnLean.Proofs.Wave14.NumberedReceipt
+import LnLean.Proofs.Wave14.PaymentAdmission
+import LnLean.Proofs.Wave14.ReadyUsefulness
+import LnLean.Proofs.Wave14.RouteChain
+import LnLean.Proofs.Wave14.RouteFeeCapacity
+import LnLean.Proofs.Wave14.SnapshotRestoreConsumer
+import LnLean.Proofs.Wave14.UnifiedSendFatal
 
 set_option autoImplicit false
 
@@ -569,6 +584,40 @@ set_option autoImplicit false
 #print axioms LnLean.Proofs.Routing.NodeAddressTargets.decodeAddresses_two_dns
 #print axioms LnLean.Proofs.Routing.NodeAddressTargets.witnessList_roundtrip
 
+
+/-! ## 23. Wave 14 repair and assurance targets -/
+
+#print axioms LnLean.Proofs.Wave14.AnchorDebitConsumer.commitmentPairCanonical_conserved
+#print axioms LnLean.Proofs.Wave14.AnchorDebitConsumer.legacy_anchor_overfunds_660
+#print axioms LnLean.Proofs.Wave14.AnchorPresenceConsumer.exactAnchorPresence_spec
+#print axioms LnLean.Proofs.Wave14.AnchorPresenceConsumer.netDust_mismatch
+#print axioms LnLean.Proofs.Wave14.DeliveryModel.DeliveryModel.eventuallyDelivered_of_partiallySynchronous
+#print axioms LnLean.Proofs.Wave14.DeliveryModel.partial_synchrony_not_universal
+#print axioms LnLean.Proofs.Wave14.FeeUpdateLegality.checkedFeeStep_refines_updateFee
+#print axioms LnLean.Proofs.Wave14.FeeUpdateLegality.nonFunder_update_not_allowed
+#print axioms LnLean.Proofs.Wave14.KeysendRetryGuard.retryIfNotSucceeded_succeeded
+#print axioms LnLean.Proofs.Wave14.KeysendRetryGuard.legacy_retry_resets_succeeded
+#print axioms LnLean.Proofs.Wave14.LiquidityInFlight.directional_inFlight_separates
+#print axioms LnLean.Proofs.Wave14.LiquidityInFlight.updateAddHtlc_preserves_directionalCap
+#print axioms LnLean.Proofs.Wave14.LiquidityReserve.reserve_direction_separates
+#print axioms LnLean.Proofs.Wave14.LiquidityReserve.corrected_outbound_nonempty
+#print axioms LnLean.Proofs.Wave14.MppSettlement.settleGe_fulfils
+#print axioms LnLean.Proofs.Wave14.MppSettlement.overpay_completes_ge_not_exact
+#print axioms LnLean.Proofs.Wave14.NumberedReceipt.receiveNumbered_idempotent
+#print axioms LnLean.Proofs.Wave14.NumberedReceipt.replay_does_not_double_advance
+#print axioms LnLean.Proofs.Wave14.PaymentAdmission.duplicate_send_rejected
+#print axioms LnLean.Proofs.Wave14.PaymentAdmission.two_identical_keysends_not_both_succeed
+#print axioms LnLean.Proofs.Wave14.ReadyUsefulness.channel_ready_gate_not_usable
+#print axioms LnLean.Proofs.Wave14.ReadyUsefulness.usable_implies_channel_ready_gate
+#print axioms LnLean.Proofs.Wave14.RouteChain.routeChainValid_implies_routeValid
+#print axioms LnLean.Proofs.Wave14.RouteChain.routeValid_not_chainBacked
+#print axioms LnLean.Proofs.Wave14.RouteFeeCapacity.floor_vs_ceiling_separates
+#print axioms LnLean.Proofs.Wave14.RouteFeeCapacity.amount_above_htlcMaximum_rejected
+#print axioms LnLean.Proofs.Wave14.SnapshotRestoreConsumer.stale_snapshot_restore_loses_update
+#print axioms LnLean.Proofs.Wave14.SnapshotRestoreConsumer.stale_snapshot_not_latest
+#print axioms LnLean.Proofs.Wave14.UnifiedSendFatal.fatal_does_not_fallback
+#print axioms LnLean.Proofs.Wave14.UnifiedSendFatal.retryable_falls_back
+
 /-! ## 15. Registry
 
   The registry is a plain list of fully-qualified names.  Keeping it in the
@@ -1012,7 +1061,37 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Proofs.Routing.NodeAddressTargets.decodeAddresses_not_sorted,
     `LnLean.Proofs.Routing.NodeAddressTargets.decodeAddresses_two_dns,
     `LnLean.Proofs.Routing.NodeAddressTargets.witnessList_roundtrip,
+    `LnLean.Proofs.Wave14.AnchorDebitConsumer.commitmentPairCanonical_conserved,
+    `LnLean.Proofs.Wave14.AnchorDebitConsumer.legacy_anchor_overfunds_660,
+    `LnLean.Proofs.Wave14.AnchorPresenceConsumer.exactAnchorPresence_spec,
+    `LnLean.Proofs.Wave14.AnchorPresenceConsumer.netDust_mismatch,
+    `LnLean.Proofs.Wave14.DeliveryModel.DeliveryModel.eventuallyDelivered_of_partiallySynchronous,
+    `LnLean.Proofs.Wave14.DeliveryModel.partial_synchrony_not_universal,
+    `LnLean.Proofs.Wave14.FeeUpdateLegality.checkedFeeStep_refines_updateFee,
+    `LnLean.Proofs.Wave14.FeeUpdateLegality.nonFunder_update_not_allowed,
+    `LnLean.Proofs.Wave14.KeysendRetryGuard.retryIfNotSucceeded_succeeded,
+    `LnLean.Proofs.Wave14.KeysendRetryGuard.legacy_retry_resets_succeeded,
+    `LnLean.Proofs.Wave14.LiquidityInFlight.directional_inFlight_separates,
+    `LnLean.Proofs.Wave14.LiquidityInFlight.updateAddHtlc_preserves_directionalCap,
+    `LnLean.Proofs.Wave14.LiquidityReserve.reserve_direction_separates,
+    `LnLean.Proofs.Wave14.LiquidityReserve.corrected_outbound_nonempty,
+    `LnLean.Proofs.Wave14.MppSettlement.settleGe_fulfils,
+    `LnLean.Proofs.Wave14.MppSettlement.overpay_completes_ge_not_exact,
+    `LnLean.Proofs.Wave14.NumberedReceipt.receiveNumbered_idempotent,
+    `LnLean.Proofs.Wave14.NumberedReceipt.replay_does_not_double_advance,
+    `LnLean.Proofs.Wave14.PaymentAdmission.duplicate_send_rejected,
+    `LnLean.Proofs.Wave14.PaymentAdmission.two_identical_keysends_not_both_succeed,
+    `LnLean.Proofs.Wave14.ReadyUsefulness.channel_ready_gate_not_usable,
+    `LnLean.Proofs.Wave14.ReadyUsefulness.usable_implies_channel_ready_gate,
+    `LnLean.Proofs.Wave14.RouteChain.routeChainValid_implies_routeValid,
+    `LnLean.Proofs.Wave14.RouteChain.routeValid_not_chainBacked,
+    `LnLean.Proofs.Wave14.RouteFeeCapacity.floor_vs_ceiling_separates,
+    `LnLean.Proofs.Wave14.RouteFeeCapacity.amount_above_htlcMaximum_rejected,
+    `LnLean.Proofs.Wave14.SnapshotRestoreConsumer.stale_snapshot_restore_loses_update,
+    `LnLean.Proofs.Wave14.SnapshotRestoreConsumer.stale_snapshot_not_latest,
+    `LnLean.Proofs.Wave14.UnifiedSendFatal.fatal_does_not_fallback,
+    `LnLean.Proofs.Wave14.UnifiedSendFatal.retryable_falls_back,
     ]
 
 set_option maxRecDepth 6000 in
-theorem auditedTheorems_length : auditedTheorems.length = 435 := rfl
+theorem auditedTheorems_length : auditedTheorems.length = 465 := rfl
