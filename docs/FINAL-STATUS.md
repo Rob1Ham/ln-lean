@@ -2,8 +2,8 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `97897b6` (`[WAVE12]` docs-only finalization checkpoint); code
-integration is `d210079`; later docs-only status commits may advance the tip.
+**Gate HEAD:** `1c88f17` (`[WAVE12]` docs-only status checkpoint); code integration is
+`d210079`; later docs-only status commits may advance the tip.
 Base `9359475` (wave-9 integration); wave 10 launched from `9158592`; wave 11
 launched from `4037264`; wave 12 launched from `5ddab4c`.
 **Catalog state:** **51 `proved` / 0 `statementOnly` / 0 unresolved / 294
@@ -12,8 +12,9 @@ targets**.
 `9940642`, with status commits `90ef1f1` and `5ddab4c`; hosted CI runs
 `39288684058`, `39290061147`, and `39290644672` completed both source gates and
 the pinned-vendor build gate successfully. Wave 12 is published non-force at
-`d210079` with status checkpoints `d9c0d2f`, `07288ad`, and `97897b6`; hosted CI
-runs `39303105137`, `39303680973`, `39303944696`, and `39304616746` are green. The post-integration
+`d210079` with status checkpoints `d9c0d2f`, `07288ad`, `97897b6`, and `1c88f17`; hosted CI
+runs `39303105137`, `39303680973`, `39303944696`, `39304616746`, and
+`39304938940` are green. The post-integration
 audit in `agents/reports/swarm12/S12-POST-INTEGRATION-AUDIT.md` confirms the
 remaining P0/P1 rows are external/human barriers and no tractable wave-13 proof
 lane remains. `origin/main` is not touched

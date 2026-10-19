@@ -434,9 +434,9 @@ Wave-12 lanes (all integrated after parent review):
 - [x] Parent integration: two root-imported modules, 294 targets, 435 audited
   theorems, refreshed Traceability tables (ID-indexed to keep the gate
   memory-bounded), full gate green, and a non-force checkpoint published at
-  `d210079` with status checkpoints `d9c0d2f`, `07288ad`, and `97897b6`
-  (hosted CI `39303105137`, `39303680973`, `39303944696`, and `39304616746`
-  green).
+  `d210079` with status checkpoints `d9c0d2f`, `07288ad`, `97897b6`, and `1c88f17`
+  (hosted CI `39303105137`, `39303680973`, `39303944696`, `39304616746`, and
+  `39304938940` green).
 
 - [x] `S12-POST-AUDIT` — post-integration re-audit confirmed the integrated
   modules, gate counts, and remaining external/human barriers; no tractable

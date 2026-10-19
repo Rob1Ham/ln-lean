@@ -2,8 +2,8 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `97897b6` (`[WAVE12]` docs-only finalization checkpoint); code
-integration is `d210079`; later docs-only status commits may advance the tip.
+**Gate HEAD:** `1c88f17` (`[WAVE12]` docs-only status checkpoint); code integration is
+`d210079`; later docs-only status commits may advance the tip.
 Base `9359475` (wave-9 integration); wave 10 launched from `9158592`; wave 11
 launched from `4037264`; wave 12 launched from `5ddab4c`.
 **Catalog:** 51 proved / 0 statementOnly / 0 unresolved / 294 targets.
@@ -13,7 +13,7 @@ contract (`PR-02` / `LN-PR-004`), live `funding_created`/`funding_signed`
 conformance (`CONF-01`), and an independent P0/P1 barrier/non-vacuity audit.
 Reports are under `agents/reports/swarm12/`; lane plan
 `agents/swarm/WAVE-12.md`. Hosted CI runs `39303105137` (integration), `39303680973`, `39303944696`, and
-`39304616746` (status checkpoints) are green. A post-integration audit
+`39304616746`, and `39304938940` (status checkpoints) are green. A post-integration audit
 (`agents/reports/swarm12/S12-POST-INTEGRATION-AUDIT.md`) found no tractable
 wave-13 P0/P1 proof lane.
 **Toolchain:** `leanprover/lean4:v4.35.0`

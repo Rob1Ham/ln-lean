@@ -4,11 +4,12 @@
 proof/conformance lanes and a post-integration audit are complete on
 `repair/integrated`.
 **Branch:** `repair/integrated`.
-**Gate commit:** `97897b6` (`[WAVE12]` docs-only finalization checkpoint); code
-integration is `d210079`. Published tips include `9940642`, `90ef1f1`,
-`5ddab4c`, `d210079`, `d9c0d2f`, `07288ad`, and `97897b6`. Hosted CI runs
-`39288684058`, `39290061147`, `39290644672`, `39303105137`, `39303680973`,
-`39303944696`, and `39304616746` are green.
+**Gate commit:** `1c88f17` (`[WAVE12]` docs-only status checkpoint); code integration is
+`d210079`; later docs-only status commits may advance the tip. Published tips
+include `9940642`, `90ef1f1`, `5ddab4c`, `d210079`, `d9c0d2f`, `07288ad`,
+`97897b6`, and `1c88f17`. Hosted CI runs `39288684058`, `39290061147`,
+`39290644672`, `39303105137`, `39303680973`, `39303944696`, `39304616746`, and
+`39304938940` are green.
 **Base commit:** `9359475` (wave-9 integration; wave 10 launched from
 `9158592`; wave 11 from `4037264`; wave 12 from `5ddab4c`). Wave 8 launch was
 `50d78ed`; proof-wave 7 code is `b48d041`; wave 7 launch is `3180581`;
