@@ -40,7 +40,8 @@ bounded six-lane repair+assurance wave (`W13-LIQ`, `W13-ANCHOR`, `W13-PAY`,
 `W13-STATE`, `W13-ROUTE`, `W13-ASSURANCE`) is recommended; see
 `agents/reports/wave13-review/R32-synthesis.md` §6.2. The S12 sentence "no new
 tractable P0/P1 proof lane" remains true only for the eight external-barrier
-rows, not for this review-derived class.
+rows, not for this review-derived class. Hosted CI run `39325365957` is green
+at `c88d9fd` (source-level gates and the pinned-vendor build gate).
 
 ## Current state
 

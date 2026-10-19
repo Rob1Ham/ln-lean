@@ -49,6 +49,8 @@ commitment debit, `REV-03` replay/duplicate admission, `REV-04` non-chain
 `routeValid`, and `REV-05` axiom/traceability coverage overstatement. A
 bounded six-lane repair+assurance wave is recommended; see
 `agents/reports/wave13-review/R32-synthesis.md` §6.2 and `docs/OPEN-ISSUES.md`.
+Hosted CI run `39325365957` is green at `c88d9fd` (source-level gates and the
+pinned-vendor build gate).
 
 ## What this tree is
 
