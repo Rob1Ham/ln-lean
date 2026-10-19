@@ -11,7 +11,7 @@ tag name, a merge strategy, or a tag signing method.
 wave 11 launched from `4037264`; original checklist lane was `47189fe`)
 **Snapshot used for the original lane checks:** `f2123ef`; waves 4–11 later
 added fifty-two Lean modules and new gate commands. The current tree is
-**273 Lean files / 271 root imports / 312 build jobs / 277 catalog targets**;
+**275 Lean files / 273 root imports / 314 build jobs / 294 catalog targets**;
 re-run every gate row before tagging.
 **Target release type:** a **model/proof-tree** release, not an implementation
 release and not a complete verification of Lightning.
@@ -29,20 +29,20 @@ Evidence labels used below:
 
 | Item | State | Evidence |
 |---|---|---|
-| Branch tip | `6a48d41` wave-11 integration; status commits may advance it | `git rev-parse HEAD` |
-| `origin/main` | `b891a59`; **102 commits behind** code gate `6a48d41`; `main` is an ancestor of `HEAD` | `git rev-list --count origin/main..6a48d41` = 102; `git merge-base --is-ancestor origin/main 6a48d41` |
+| Branch tip | `d210079` wave-12 code integration; later status commits may advance it | `git rev-parse HEAD` |
+| `origin/main` | `b891a59`; **106 commits behind** code gate `d210079`; `main` is an ancestor of `HEAD` | `git rev-list --count origin/main..d210079` = 106; `git merge-base --is-ancestor origin/main d210079` |
 | Release tags | none | `git tag -l` empty; GitHub tags API empty |
 | GitHub releases | none | GitHub releases API empty |
 | `LICENSE` | **none** at repository root | `find` / `git ls-files` |
 | Project version | **not declared** in `lakefile.lean` | `lake-manifest.json` `"version": "1.3.0"` is the Lake manifest schema version, not this project's version |
 | Vendor snapshot | 149 files, checksums OK locally; **gitignored and not tracked** | `./scripts/verify-vendor.sh`; `git check-ignore vendor/btc-lean-core/lakefile.lean` |
 | Vendor provenance | `vendor/btc-lean-core` is a copy of public `btc-lean` `spec/core` at `4f5c4f858fb9ca0743042644453cfa92d30dd271` (MIT repository) | `refs/PINNED.md`, `docs/L1-PIN.md` |
-| Catalog | 51 rows, 51 `proved`, 0 `statementOnly`, 0 unresolved, 0 proved failures, 277 targets | `python3 scripts/check-catalog.py --audit` — **Verified** |
-| Source policy check | `files=273 obligations=82 sorry_in_proofs=0` | `./scripts/check.sh` — **Verified** |
-| File/import check | 273 Lean files, 271 root imports, D=33 E=15 F=15 | `python3 scripts/check-final.py` — **Verified** |
+| Catalog | 51 rows, 51 `proved`, 0 `statementOnly`, 0 unresolved, 0 proved failures, 294 targets | `python3 scripts/check-catalog.py --audit` — **Verified** |
+| Source policy check | `files=275 obligations=82 sorry_in_proofs=0` | `./scripts/check.sh` — **Verified** |
+| File/import check | 275 Lean files, 273 root imports, D=33 E=15 F=15 | `python3 scripts/check-final.py` — **Verified** |
 | Vendor integrity | `OK (149 files)` | `./scripts/verify-vendor.sh` — **Verified** |
-| Anchors | 311 anchors, 0 bad, 2 unanchored rows | `python3 scripts/verify-anchors.py` — **Verified** |
-| Full build | **Verified at the wave-11 code gate: 312 jobs, RC 0.** | See build gate below |
+| Anchors | 313 anchors, 0 bad, 2 unanchored rows | `python3 scripts/verify-anchors.py` — **Verified** |
+| Full build | **Verified at the wave-12 code gate: 314 jobs, RC 0.** | See build gate below |
 | Public CI | Build provisioning now falls back to exact public commit `4f5c4f8`; hosted runs `39288684058` at `9940642` and `39290061147` at `90ef1f1` completed the source gates and the pinned-vendor `lake build`. | `.github/workflows/ci.yml`; GitHub Actions runs `39288684058`, `39290061147` |
 
 The working tree at the snapshot was clean except for the pre-existing untracked
@@ -69,7 +69,7 @@ unconditional. The scope caveats in `docs/THEOREM-INDEX.md`,
 - [ ] Require: 51 rows, 51 `proved`, 0 `statementOnly`, 0 unresolved,
       0 proved failures, 0 duplicate ids, 0 promotion candidates.
       **Verified at the wave-11 gate:** `rows=51 proved=51 statementOnly=0
-      targets=277 unresolved=0 proved_failures=0 duplicate_ids=0 candidates=0
+      targets=294 unresolved=0 proved_failures=0 duplicate_ids=0 candidates=0
       declarations=11743`. If integration deliberately changes the catalog,
       record the new expected counts and why; do not silently accept a
       different number.
@@ -100,14 +100,14 @@ release-lane snapshot did not.
   ```
 
 - [ ] Require RC 0 and record the exact job count from the output. The wave-11 code gate
-      reports `Build completed successfully (312 jobs)`; rerun at the tag commit.
+      reports `Build completed successfully (314 jobs)`; rerun at the tag commit.
 - [ ] Axiom audit:
 
   ```sh
   lake build LnLean.Proofs.PhaseC3.AxiomAudit
   ```
 
-  Require RC 0 and only `propext`, `Quot.sound`, `Classical.choice`. Wave-11 count: 407 audited theorems.
+  Require RC 0 and only `propext`, `Quot.sound`, `Classical.choice`. Wave-12 count: 435 audited theorems.
 - [ ] Exact `sorry` scan (must print nothing):
 
   ```sh
@@ -211,7 +211,7 @@ downstream users without a clear grant.
 ## 5. Tag / PR / merge path (`OPS-03`)
 
 **This is a hard release blocker and is not resolved.** There is no tag and no
-release. `origin/main` is at `b891a59`; code gate `db52cc9` is 100 commits
+release. `origin/main` is at `b891a59`; code gate `d210079` is 106 commits
 ahead and `main` is an ancestor, so a fast-forward is technically possible. The path below is a
 sequence, not a decision on PR vs direct merge or merge-commit vs fast-forward.
 
@@ -313,7 +313,7 @@ Therefore:
 
 - [ ] Update `README.md` counts and release status **after** integration, using
       the actual numbers at the release commit, not the wave-3 numbers
-      (currently 273 Lean files, 271 root imports, 51 catalog rows, 277 targets).
+      (currently 275 Lean files, 273 root imports, 51 catalog rows, 294 targets).
 - [ ] Update `docs/FINAL-STATUS.md` and `docs/WAVE-STATUS.md` with the release
       commit/tag and current gate evidence. Remove stale "Gate HEAD" references
       if they no longer identify the tagged commit.

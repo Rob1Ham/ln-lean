@@ -2,17 +2,21 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `d9c0d2f` (`[WAVE12]` status commit); code integration is
-`d210079`. Base `9359475` (wave-9 integration); wave 10 launched from
-`9158592`; wave 11 launched from `4037264`; wave 12 launched from `5ddab4c`.
+**Gate HEAD:** `07288ad` (`[WAVE12]` docs-only status checkpoint); code
+integration is `d210079`. Base `9359475` (wave-9 integration); wave 10 launched
+from `9158592`; wave 11 launched from `4037264`; wave 12 launched from
+`5ddab4c`.
 **Catalog state:** **51 `proved` / 0 `statementOnly` / 0 unresolved / 294
 targets**.
 **Remote refs:** wave 11 is published non-force to `origin/repair/integrated` at
 `9940642`, with status commits `90ef1f1` and `5ddab4c`; hosted CI runs
 `39288684058`, `39290061147`, and `39290644672` completed both source gates and
 the pinned-vendor build gate successfully. Wave 12 is published non-force at
-`d210079` with status commit `d9c0d2f`; hosted CI runs `39303105137` and
-`39303680973` are green. `origin/main` is not touched
+`d210079` with status checkpoints `d9c0d2f` and `07288ad`; hosted CI runs
+`39303105137`, `39303680973`, and `39303944696` are green. The post-integration
+audit in `agents/reports/swarm12/S12-POST-INTEGRATION-AUDIT.md` confirms the
+remaining P0/P1 rows are external/human barriers and no tractable wave-13 proof
+lane remains. `origin/main` is not touched
 by this work.
 The former `repair/pubbump` branch is merged and retired; its public-core bump
 is part of this branch.

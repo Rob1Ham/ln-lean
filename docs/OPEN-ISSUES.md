@@ -3,10 +3,11 @@
 **Status:** living roadmap after the proof-wave 12 integration; four wave-12
 lanes are complete on `repair/integrated`.
 **Branch:** `repair/integrated`.
-**Gate commit:** `d9c0d2f` (`[WAVE12]` status); code integration is `d210079`.
-Published tips include `9940642`, `90ef1f1`, `5ddab4c`, `d210079`, and
-`d9c0d2f`. Hosted CI runs `39288684058`, `39290061147`, `39290644672`,
-`39303105137`, and `39303680973` are green.
+**Gate commit:** `07288ad` (`[WAVE12]` docs-only status checkpoint); code
+integration is `d210079`. Published tips include `9940642`, `90ef1f1`,
+`5ddab4c`, `d210079`, `d9c0d2f`, and `07288ad`. Hosted CI runs
+`39288684058`, `39290061147`, `39290644672`, `39303105137`, `39303680973`, and
+`39303944696` are green.
 **Base commit:** `9359475` (wave-9 integration; wave 10 launched from
 `9158592`; wave 11 from `4037264`; wave 12 from `5ddab4c`). Wave 8 launch was
 `50d78ed`; proof-wave 7 code is `b48d041`; wave 7 launch is `3180581`;
@@ -333,6 +334,7 @@ human decisions.
 | `S12-PR-CONSUMER` | `PR-02` / `LN-PR-004` | new `LnLean/Proofs/Channel/CoverageConsumerTargets.lean`, report | Explicit full-record/wire-determined coverage-consumer contract and non-determinacy separation; eight `LN-PR-004` targets |
 | `S12-CONF-FUNDING` | `CONF-01` | `tests/conformance/**`, `scripts/check-conformance.py`, `LnLean/Proofs/ConformanceDiffTargets.lean`, report | Live `funding_created` (34) and `funding_signed` (35) payloads; ten Lean targets, 200 refs, 22/22 controls, five live BOLT 2 payloads |
 | `S12-AUDIT-BARRIERS` | P0/P1 audit | `agents/reports/swarm12/S12-AUDIT-BARRIERS.md` | Independent non-vacuity/barrier review of the nine P0/P1 rows; no model-level closure; explicit external requirements recorded |
+| `S12-POST-AUDIT` | P0/P1 re-audit | `agents/reports/swarm12/S12-POST-INTEGRATION-AUDIT.md` | Post-integration verification of both modules and the full gate; no tractable wave-13 proof lane; remaining rows are external/human barriers |
 
 Human-only release decisions (`OPS-02`, `OPS-03`), the probability/complexity
 foundation (`CR-01`/`SEC-01`), and any `main` merge remain outside agent lanes.
