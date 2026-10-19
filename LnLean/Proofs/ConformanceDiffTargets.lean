@@ -4,8 +4,8 @@
 **What this module is.**  Concrete, machine-checked expectations for the BOLT 8
 transport frame that wraps a BOLT 1 Lightning message, finite BOLT 2
 `open_channel`/`accept_channel`/`commitment_signed`/`update_add_htlc` payload
-encodings, and live-encoded BOLT 2 `channel_ready`/`open_channel` differential
-rows, plus
+encodings, and live-encoded BOLT 2 `funding_created`/`funding_signed`/
+`channel_ready`/`open_channel`/`accept_channel` differential rows, plus
 the differential fixtures in
 `tests/conformance/rust-lightning/fixtures.json`.  Small framing and message
 vectors are closed by kernel reduction (`decide`); the large boundary facts use
@@ -42,7 +42,10 @@ its `messages` object holds the finite BOLT 2 payload/field rows below.
 the pinned rust-lightning unit test `bigsize_encoding_decoding`
 (`lightning/src/util/ser.rs:1857-1901`), the TLV reader test
 `retired_tlvs_skipped_on_read` (`lightning/src/util/ser_macros.rs:2047-2071`),
-the BOLT 2 `channel_ready` test `encoding_channel_ready`
+the BOLT 2 `funding_created` test `encoding_funding_created`
+(`lightning/src/ln/msgs.rs:5633-5655`), the BOLT 2 `funding_signed` test
+`encoding_funding_signed` (`lightning/src/ln/msgs.rs:5656-5670`), the BOLT 2
+`channel_ready` test `encoding_channel_ready`
 (`lightning/src/ln/msgs.rs:5672-5682`), the BOLT 2 `open_channel` test
 `encoding_open_channel` (`lightning/src/ln/msgs.rs:5098-5188`), and the wire
 length header described
@@ -51,8 +54,9 @@ only committed JSON and this module's source, never the network or a Rust
 toolchain.  A separate optional harness
 (`tests/conformance/rust-lightning/generate.py --live`) runs the pinned tests
 and a public-API probe under `cargo --offline --locked` with the committed
-`pinned/Cargo.lock`, encodes the `ChannelReady` and `OpenChannel` payloads
-through the pinned `Writeable` impl, and records the comparison in
+`pinned/Cargo.lock`, encodes the `FundingCreated`, `FundingSigned`,
+`ChannelReady`, `OpenChannel`, and `AcceptChannel` payloads through the pinned
+`Writeable` impl, and records the comparison in
 `live-transcript.json`; the
 checker verifies that transcript hash and its pinned provenance.  The live run
 is evidence for the same finite rows, not a new model theorem.
@@ -1188,6 +1192,156 @@ theorem diff_msg_accept_channel_payload :
   0xa1, 0x8d, 0x56, 0x53, 0xc4, 0xed, 0xf5, 0x39, 0x1f, 0xf2,
   0x3a, 0x61, 0xf0, 0x3f, 0xf8, 0x3d, 0x23, 0x7e, 0x88, 0x0e,
   0xe6, 0x11, 0x87, 0xfa, 0x9f, 0x37, 0x9a, 0x02, 0x8e, 0x0a] := by decide
+
+
+/-! ## Live BOLT 2 differential message rows: funding_created and funding_signed (S12-CONF-FUNDING)
+
+The pinned rust-lightning unit tests `ln::msgs::tests::encoding_funding_created`
+and `encoding_funding_signed` construct the public `FundingCreated` /
+`FundingSigned` structs with an all-`0x02` channel id, the pinned Txid and
+compact signature, then encode them through the public `Writeable` impls.  The
+same public structs and fields are constructed by `live_probe.rs` under
+`cargo --offline --locked`; the fixture rows
+`rust_msg_funding_created_encoding` and `rust_msg_funding_signed_encoding`
+record the payloads and the live transcript records the field-by-field
+agreement.  `funding_created` is type 34 and `funding_signed` is type 35. -/
+
+/-- A BOLT 2 `funding_created` payload: temporary channel id, funding txid,
+output index, and the funder's 64-byte commitment signature. -/
+structure FundingCreatedWire where
+  temporaryChannelId : ByteArray
+  fundingTxid : ByteArray
+  fundingOutputIndex : Nat
+  signature : ByteArray
+
+namespace FundingCreatedWire
+
+/-- The BOLT 2 `funding_created` payload bytes. -/
+def payload (m : FundingCreatedWire) : ByteArray :=
+  m.temporaryChannelId ++ m.fundingTxid ++ u16BE m.fundingOutputIndex ++
+    m.signature
+
+end FundingCreatedWire
+
+/-- A BOLT 2 `funding_signed` payload: channel id and the fundee's 64-byte
+commitment signature. -/
+structure FundingSignedWire where
+  channelId : ByteArray
+  signature : ByteArray
+
+namespace FundingSignedWire
+
+/-- The BOLT 2 `funding_signed` payload bytes. -/
+def payload (m : FundingSignedWire) : ByteArray :=
+  m.channelId ++ m.signature
+
+end FundingSignedWire
+
+/-- The pinned test's all-`0x02` temporary channel id. -/
+abbrev fundingChannelId : ByteArray := repeatedByte 32 0x02
+
+/-- The funding transaction id from the pinned `encoding_funding_created`
+test, in wire byte order (the payload order). -/
+abbrev fundingCreatedTxid : ByteArray :=
+  bytes [
+  0x6e, 0x96, 0xfe, 0x9f, 0x8b, 0x0d, 0xdc, 0xd7, 0x29, 0xba,
+  0x03, 0xcf, 0xaf, 0xa5, 0xa2, 0x7b, 0x05, 0x0b, 0x39, 0xd3,
+  0x54, 0xdd, 0x98, 0x08, 0x14, 0x26, 0x8d, 0xfa, 0x9a, 0x44,
+  0xd4, 0xc2]
+
+/-- The compact signature from the pinned `encoding_funding_created` /
+`encoding_funding_signed` tests. -/
+abbrev fundingSignature : ByteArray :=
+  bytes [
+  0xd9, 0x77, 0xcb, 0x9b, 0x53, 0xd9, 0x3a, 0x6f, 0xf6, 0x4b,
+  0xb5, 0xf1, 0xe1, 0x58, 0xb4, 0x09, 0x4b, 0x66, 0xe7, 0x98,
+  0xfb, 0x12, 0x91, 0x11, 0x68, 0xa3, 0xcc, 0xdf, 0x80, 0xa8,
+  0x30, 0x96, 0x34, 0x0a, 0x6a, 0x95, 0xda, 0x0a, 0xe8, 0xd9,
+  0xf7, 0x76, 0x52, 0x8e, 0xec, 0xdb, 0xb7, 0x47, 0xeb, 0x6b,
+  0x54, 0x54, 0x95, 0xa4, 0x31, 0x9e, 0xd5, 0x37, 0x8e, 0x35,
+  0xb2, 0x1e, 0x07, 0x3a]
+
+/-- The `funding_created` row used by the pinned differential fixture. -/
+abbrev fundingCreatedFixture : FundingCreatedWire where
+  temporaryChannelId := fundingChannelId
+  fundingTxid := fundingCreatedTxid
+  fundingOutputIndex := 255
+  signature := fundingSignature
+
+/-- The `funding_signed` row used by the pinned differential fixture. -/
+abbrev fundingSignedFixture : FundingSignedWire where
+  channelId := fundingChannelId
+  signature := fundingSignature
+
+/-- funding_created: payload length (130 bytes). -/
+theorem diff_msg_funding_created_length :
+    fundingCreatedFixture.payload.size = 130 := by decide
+
+/-- The BOLT 8 transport length for this funding_created payload is 132. -/
+theorem diff_msg_funding_created_transport :
+    Transport.transportLength ⟨34, fundingCreatedFixture.payload⟩ = 132 := by
+  decide
+
+/-- The transport header is `0084`. -/
+theorem diff_msg_funding_created_header :
+    Transport.lengthHeader ⟨34, fundingCreatedFixture.payload⟩ =
+      bytes [0x00, 0x84] := by decide
+
+/-- The type and transport header together: `00220084`. -/
+theorem diff_msg_funding_created_frame_prefix :
+    u16BE 34 ++ Transport.lengthHeader ⟨34, fundingCreatedFixture.payload⟩ =
+      bytes [0x00, 0x22, 0x00, 0x84] := by decide
+
+/-- The exact 130-byte funding_created payload: the pinned unit-test target. -/
+theorem diff_msg_funding_created_payload :
+    fundingCreatedFixture.payload = bytes [
+      0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+      0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+      0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+      0x02, 0x02, 0x6e, 0x96, 0xfe, 0x9f, 0x8b, 0x0d, 0xdc, 0xd7,
+      0x29, 0xba, 0x03, 0xcf, 0xaf, 0xa5, 0xa2, 0x7b, 0x05, 0x0b,
+      0x39, 0xd3, 0x54, 0xdd, 0x98, 0x08, 0x14, 0x26, 0x8d, 0xfa,
+      0x9a, 0x44, 0xd4, 0xc2, 0x00, 0xff, 0xd9, 0x77, 0xcb, 0x9b,
+      0x53, 0xd9, 0x3a, 0x6f, 0xf6, 0x4b, 0xb5, 0xf1, 0xe1, 0x58,
+      0xb4, 0x09, 0x4b, 0x66, 0xe7, 0x98, 0xfb, 0x12, 0x91, 0x11,
+      0x68, 0xa3, 0xcc, 0xdf, 0x80, 0xa8, 0x30, 0x96, 0x34, 0x0a,
+      0x6a, 0x95, 0xda, 0x0a, 0xe8, 0xd9, 0xf7, 0x76, 0x52, 0x8e,
+      0xec, 0xdb, 0xb7, 0x47, 0xeb, 0x6b, 0x54, 0x54, 0x95, 0xa4,
+      0x31, 0x9e, 0xd5, 0x37, 0x8e, 0x35, 0xb2, 0x1e, 0x07, 0x3a] := by
+  decide
+
+/-- funding_signed: payload length (96 bytes). -/
+theorem diff_msg_funding_signed_length :
+    fundingSignedFixture.payload.size = 96 := by decide
+
+/-- The BOLT 8 transport length for this funding_signed payload is 98. -/
+theorem diff_msg_funding_signed_transport :
+    Transport.transportLength ⟨35, fundingSignedFixture.payload⟩ = 98 := by
+  decide
+
+/-- The transport header is `0062`. -/
+theorem diff_msg_funding_signed_header :
+    Transport.lengthHeader ⟨35, fundingSignedFixture.payload⟩ =
+      bytes [0x00, 0x62] := by decide
+
+/-- The type and transport header together: `00230062`. -/
+theorem diff_msg_funding_signed_frame_prefix :
+    u16BE 35 ++ Transport.lengthHeader ⟨35, fundingSignedFixture.payload⟩ =
+      bytes [0x00, 0x23, 0x00, 0x62] := by decide
+
+/-- The exact 96-byte funding_signed payload: the pinned unit-test target. -/
+theorem diff_msg_funding_signed_payload :
+    fundingSignedFixture.payload = bytes [
+      0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+      0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+      0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+      0x02, 0x02, 0xd9, 0x77, 0xcb, 0x9b, 0x53, 0xd9, 0x3a, 0x6f,
+      0xf6, 0x4b, 0xb5, 0xf1, 0xe1, 0x58, 0xb4, 0x09, 0x4b, 0x66,
+      0xe7, 0x98, 0xfb, 0x12, 0x91, 0x11, 0x68, 0xa3, 0xcc, 0xdf,
+      0x80, 0xa8, 0x30, 0x96, 0x34, 0x0a, 0x6a, 0x95, 0xda, 0x0a,
+      0xe8, 0xd9, 0xf7, 0x76, 0x52, 0x8e, 0xec, 0xdb, 0xb7, 0x47,
+      0xeb, 0x6b, 0x54, 0x54, 0x95, 0xa4, 0x31, 0x9e, 0xd5, 0x37,
+      0x8e, 0x35, 0xb2, 0x1e, 0x07, 0x3a] := by decide
 
 
 /-! ## Compatibility path for the wave-5 audit -/

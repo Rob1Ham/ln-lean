@@ -17,8 +17,9 @@ reproducibility gap without requiring a Rust toolchain:
 checkout to a disposable directory, installs the committed ``pinned/Cargo.lock``
 and the public-API probe ``live_probe.rs``, runs the pinned unit tests with
 ``--offline --locked``, then runs the probe and compares every BigSize/TLV
-fixture field and the BOLT 2 ``channel_ready`` payload against the live
-rust-lightning result.  The wire fixtures are compared against the live
+fixture field and the BOLT 2 ``funding_created``/``funding_signed``/
+``channel_ready``/``open_channel``/``accept_channel`` payloads against the
+live rust-lightning result.  The wire fixtures are compared against the live
 ``LN_MAX_MSG_LEN`` constant; their header arithmetic is still the pinned source
 check performed by ``extract_wire``.  On success it writes a deterministic
 transcript; it never claims a live result on failure.
@@ -67,6 +68,8 @@ PINNED_COMMIT = "fe4900930c6bd5786ec4203274d7cf312776a5a6"
 LIVE_TESTS = [
     "util::ser::tests::bigsize_encoding_decoding",
     "util::ser_macros::tests::retired_tlvs_skipped_on_read",
+    "ln::msgs::tests::encoding_funding_created",
+    "ln::msgs::tests::encoding_funding_signed",
     "ln::msgs::tests::encoding_channel_ready",
     "ln::msgs::tests::encoding_open_channel",
     "ln::msgs::tests::encoding_accept_channel",
@@ -77,10 +80,10 @@ LIVE_NOTE = (
     "`generate.py --live --fetch` ran the pinned unit tests and the public-API "
     "probe under `cargo --offline --locked` with the committed "
     "`pinned/Cargo.lock`; `live-transcript.json` records the comparison. "
-    "The BOLT 2 channel_ready, open_channel, and accept_channel payloads are "
-    "encoded live through the pinned `Writeable` impl; the wire header "
-    "arithmetic remains a pinned-source check and only `LN_MAX_MSG_LEN` is "
-    "probed live."
+    "The BOLT 2 funding_created, funding_signed, channel_ready, open_channel, "
+    "and accept_channel payloads are encoded live through the pinned "
+    "`Writeable` impl; the wire header arithmetic remains a pinned-source "
+    "check and only `LN_MAX_MSG_LEN` is probed live."
 )
 OFFLINE_NOTE = (
     "The committed rows were extracted from the pinned source/unit-test "
@@ -120,10 +123,13 @@ PROVENANCE = [
     {
         "path": "lightning/src/ln/msgs.rs",
         "sha256": "75bc3698ab6e5595dcb02de23dceb52e37a25cd31621947387054fab2461a4f8",
-        "lines": "431-443, 3239-3243, 5098-5188, 5399-5464, 5672-5682",
-        "use": "BOLT 2 channel_ready (type 36), open_channel (type 32), and "
+        "lines": "403-428, 431-443, 3227-3240, 5098-5188, 5399-5464, "
+                 "5633-5670, 5672-5682",
+        "use": "BOLT 2 funding_created (type 34), funding_signed (type 35), "
+               "channel_ready (type 36), open_channel (type 32), and "
                "accept_channel (type 33) field order/Writeable encodings and "
-               "the encoding_channel_ready / encoding_open_channel / "
+               "the encoding_funding_created / encoding_funding_signed / "
+               "encoding_channel_ready / encoding_open_channel / "
                "encoding_accept_channel unit-test target values",
     },
 ]
@@ -518,6 +524,150 @@ def extract_accept_channel(source: Path) -> dict[str, Any]:
     }
 
 
+# BOLT 2 `funding_created` field layout, matching
+# `impl_writeable_msg!(FundingCreated, ...)` in the pinned `msgs.rs`.
+FUNDING_CREATED_FIELD_LAYOUT = [
+    ("temporary_channel_id", "bytes", 32),
+    ("funding_txid", "bytes", 32),
+    ("funding_output_index", "u16", 2),
+    ("signature", "signature64", 64),
+]
+
+FUNDING_CREATED_CONSTRUCTION_KEYS = [
+    "temporary_channel_id", "funding_txid", "funding_output_index", "signature",
+]
+
+# BOLT 2 `funding_signed` field layout, matching
+# `impl_writeable_msg!(FundingSigned, ...)` in the pinned `msgs.rs`.
+FUNDING_SIGNED_FIELD_LAYOUT = [
+    ("channel_id", "bytes", 32),
+    ("signature", "signature64", 64),
+]
+
+FUNDING_SIGNED_CONSTRUCTION_KEYS = ["channel_id", "signature"]
+
+
+def extract_funding_created(source: Path) -> dict[str, Any]:
+    """Re-extract the pinned BOLT 2 `funding_created` encoding target.
+
+    The pinned `ln::msgs::tests::encoding_funding_created` test constructs a
+    public `FundingCreated` with an all-`0x02` temporary channel id, the Txid
+    parsed from its pinned display string, output index `255`, and the pinned
+    compact signature, then compares `encode()` with a literal.  The target is
+    the 130-byte payload: 32-byte id, 32-byte txid, `u16` output index, and
+    64-byte signature.
+    """
+    text = (source / "lightning/src/ln/msgs.rs").read_text(encoding="utf-8")
+    body = function_body(text, "encoding_funding_created")
+    require("ChannelId::from_bytes([2; 32])" in body,
+            "funding_created test no longer uses an all-0x02 temporary id")
+    require("funding_output_index: 255" in body,
+            "funding_created test output index changed")
+    require("Txid::from_str(" in body,
+            "funding_created test no longer parses a pinned Txid")
+    require("signature: sig_1" in body,
+            "funding_created test signature construction changed")
+    target = re.search(r'<Vec<u8>>::from_hex\(\s*"([0-9a-f]+)"\s*\)', body)
+    require(target is not None,
+            "funding_created encoded payload literal not found")
+    payload = target.group(1)
+    require(len(payload) == 260,
+            f"funding_created payload is {len(payload)//2} bytes, expected 130")
+    require(payload[:64] == "02" * 32,
+            "funding_created temporary channel id is not all-0x02")
+    require(payload[128:132] == "00ff",
+            "funding_created funding_output_index is not 255")
+
+    fields: list[dict[str, Any]] = []
+    construction: dict[str, Any] = {}
+    offset = 0
+    for name, kind, width in FUNDING_CREATED_FIELD_LAYOUT:
+        raw = payload[offset * 2:(offset + width) * 2]
+        require(len(raw) == width * 2,
+                f"funding_created field {name} runs past the target payload")
+        field: dict[str, Any] = {
+            "name": name,
+            "kind": kind,
+            "offset": offset,
+            "length": width,
+            "hex": raw,
+        }
+        if kind in ("u8", "u16", "u32", "u64"):
+            value = int(raw, 16)
+            require(str(value) in body,
+                    f"funding_created field {name} value {value} is not a "
+                    f"pinned test literal")
+            field["value"] = value
+            construction[name] = value
+        else:
+            construction[name] = raw
+        fields.append(field)
+        offset += width
+    require(offset == 130,
+            f"funding_created layout covers {offset} bytes, expected 130")
+
+    # Txid displays its internal bytes in reverse order, so the payload field is
+    # the reverse of the pinned `Txid::from_str` string.
+    txid_display = bytes.fromhex(construction["funding_txid"])[::-1].hex()
+    require(txid_display in body,
+            "funding_created funding_txid is not the pinned test literal")
+    require(len(construction["signature"]) == 128,
+            "funding_created signature is not 64 bytes")
+    return {
+        "payload": payload,
+        "construction": construction,
+        "fields": fields,
+    }
+
+
+def extract_funding_signed(source: Path) -> dict[str, Any]:
+    """Re-extract the pinned BOLT 2 `funding_signed` encoding target.
+
+    The pinned `ln::msgs::tests::encoding_funding_signed` test constructs a
+    public `FundingSigned` with an all-`0x02` channel id and the pinned compact
+    signature, then compares `encode()` with a literal.  The target is the
+    96-byte payload: 32-byte channel id plus 64-byte signature.
+    """
+    text = (source / "lightning/src/ln/msgs.rs").read_text(encoding="utf-8")
+    body = function_body(text, "encoding_funding_signed")
+    require("ChannelId::from_bytes([2; 32])" in body,
+            "funding_signed test no longer uses an all-0x02 channel id")
+    require("signature: sig_1" in body,
+            "funding_signed test signature construction changed")
+    target = re.search(r'<Vec<u8>>::from_hex\(\s*"([0-9a-f]+)"\s*\)', body)
+    require(target is not None,
+            "funding_signed encoded payload literal not found")
+    payload = target.group(1)
+    require(len(payload) == 192,
+            f"funding_signed payload is {len(payload)//2} bytes, expected 96")
+    require(payload[:64] == "02" * 32,
+            "funding_signed channel id is not all-0x02")
+
+    fields: list[dict[str, Any]] = []
+    construction: dict[str, Any] = {}
+    offset = 0
+    for name, kind, width in FUNDING_SIGNED_FIELD_LAYOUT:
+        raw = payload[offset * 2:(offset + width) * 2]
+        require(len(raw) == width * 2,
+                f"funding_signed field {name} runs past the target payload")
+        fields.append({
+            "name": name,
+            "kind": kind,
+            "offset": offset,
+            "length": width,
+            "hex": raw,
+        })
+        construction[name] = raw
+        offset += width
+    require(offset == 96,
+            f"funding_signed layout covers {offset} bytes, expected 96")
+    return {
+        "payload": payload,
+        "construction": construction,
+        "fields": fields,
+    }
+
+
 def offline_generation() -> dict[str, Any]:
     return {
         "script": "tests/conformance/rust-lightning/generate.py",
@@ -580,6 +730,8 @@ def derived(doc: dict[str, Any], source: Path,
     accepted, unknown_even, truncated = extract_tlv(source)
     max_len = extract_wire(source)
     message_sources = {
+        "funding_created": extract_funding_created(source),
+        "funding_signed": extract_funding_signed(source),
         "channel_ready": extract_messages(source),
         "open_channel": extract_open_channel(source),
         "accept_channel": extract_accept_channel(source),
@@ -765,7 +917,15 @@ def probe_commands(doc: dict[str, Any]) -> list[str]:
         commands.append(f"T\t{row['id']}\t{mode}\t{row['bytes']}")
     for row in fixtures["messages"]:
         construction = row["construction"]
-        if row["name"] == "channel_ready":
+        if row["name"] == "funding_created":
+            values = [construction[key]
+                      for key in FUNDING_CREATED_CONSTRUCTION_KEYS]
+            commands.append("\t".join(["F", row["id"]] + [str(v) for v in values]))
+        elif row["name"] == "funding_signed":
+            values = [construction[key]
+                      for key in FUNDING_SIGNED_CONSTRUCTION_KEYS]
+            commands.append("\t".join(["S", row["id"]] + [str(v) for v in values]))
+        elif row["name"] == "channel_ready":
             alias = construction["short_channel_id_alias"]
             alias_arg = "-" if alias is None else str(alias)
             commands.append(

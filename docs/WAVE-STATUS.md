@@ -2,14 +2,16 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `6a48d41` (`[WAVE11]`); status commits may advance the tip.
+**Gate HEAD:** `5ddab4c` (`[WAVE11]` status tip); wave-12 integration is
+pending publication, and the status commit will record the new tip.
 Base `9359475` (wave-9 integration); wave 10 launched from `9158592`; wave 11
-launched from `4037264`.
-**Catalog:** 51 proved / 0 statementOnly / 0 unresolved / 277 targets.
-**Wave 11:** integrated and published non-force; eight lanes complete, reports
-under `agents/reports/swarm11/`; lane plan `agents/swarm/WAVE-11.md`.
-Hosted CI runs `39288684058` at `9940642` and `39290061147` at `90ef1f1`
-are green.
+launched from `4037264`; wave 12 launched from `5ddab4c`.
+**Catalog:** 51 proved / 0 statementOnly / 0 unresolved / 294 targets.
+**Wave 12:** four disjoint lanes complete: BOLT 7 address wire parsing
+(`RT-02`), coverage-consumer contract (`PR-02` / `LN-PR-004`), live
+`funding_created`/`funding_signed` conformance (`CONF-01`), and an independent
+P0/P1 barrier/non-vacuity audit. Reports are under
+`agents/reports/swarm12/`; lane plan `agents/swarm/WAVE-12.md`.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 
 This file describes the repair branch. Older wave tables are retained as
@@ -20,26 +22,48 @@ history; they are not a claim about the current tree. Current open work is in
 
 | Metric | Value |
 |---|---|
-| Lean files under `LnLean/` | **273** |
-| Root imports in `LnLean.lean` | **271** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
-| Full build | **RC 0**, `Build completed successfully (312 jobs)` |
+| Lean files under `LnLean/` | **275** |
+| Root imports in `LnLean.lean` | **273** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
+| Full build | **RC 0**, `Build completed successfully (314 jobs)` |
 | Actual `sorry` lines | **0** (`grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` → no matches, grep RC 1) |
 | Proof files with the word `sorry` in prose | comments only, not proof terms |
 | Catalog rows | **51** |
 | Catalog `proved` | **51** |
 | Catalog `statementOnly` | **0** |
-| Catalog targets | **277** |
+| Catalog targets | **294** |
 | Unresolved/planned targets | **0** |
 | Vendor snapshot | **OK**, 149 files from public `btc-lean` `4f5c4f8`; `fetch-vendor.sh --from-git` tested |
-| Anchors | **311 checked, 0 bad**, 2 unanchored rows |
-| Generated obligation index | 235 proof files, 81 markers, 9382 declarations, 0 `sorry` sites |
-| Axiom audit | 407 theorems; only `propext`, `Quot.sound`, `Classical.choice` |
-| Conformance | 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 190 Lean references, 18/18 mutation controls, 3 declared model gaps; live 26 BigSize + 3 TLV + 4 wire + 3 BOLT 2 messages; 6 finite BOLT 2 message vectors |
+| Anchors | **313 checked, 0 bad**, 2 unanchored rows |
+| Generated obligation index | 237 proof files, 81 markers, 9537 declarations, 0 `sorry` sites |
+| Axiom audit | 435 theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Conformance | 61 base + 16 framing + 9 boundary checks, 26 differential fixtures, 200 Lean references, 22/22 mutation controls, 3 declared model gaps; live 26 BigSize + 3 TLV + 4 wire + 5 BOLT 2 messages; 6 finite BOLT 2 message vectors |
 | Public L1 pin | `Rob1Ham/btc-lean` `main@4f5c4f8` |
 | Build dependency | `vendor/btc-lean-core` `4f5c4f8` (public `spec/core` copy) |
 
 The exact `sorry` result is **zero matching lines**. Prose mentions of
 `sorry` in documentation are not `sorry` terms.
+
+## Proof-wave 12 gate
+
+- `lake build` — **RC 0**, 314 jobs.
+- `check-catalog.py --audit` — **RC 0**, 51 proved, 0 statement-only,
+  294 targets, 0 unresolved, 0 proved failures, 0 candidates, 11,898
+  declarations.
+- `check.sh` — **RC 0**: `files=275 obligations=82 sorry_in_proofs=0`,
+  `check: OK`.
+- `check-final.py` — **RC 0**: 275 Lean files, 273 root imports, D=33 E=15
+  F=15.
+- `check-conformance.py` — **RC 0**: 200 Lean references, 22/22 mutation
+  controls, 6 finite BOLT 2 message vectors, 26 differential fixtures, live
+  transcript `a47b2aa4a2e16f519efa451c0090262f1ebba80a3999fda8668ee554f2dbc892`
+  with 26 BigSize + 3 TLV + 4 wire + 5 live BOLT 2 payloads
+  (`funding_created`, `funding_signed`, `channel_ready`, `open_channel`,
+  `accept_channel`).
+- `verify-vendor.sh` — **RC 0**, 149 files (public `4f5c4f8` snapshot).
+- `verify-anchors.py` — **RC 0**, 313 anchors, 0 bad, 2 unanchored rows.
+- `AxiomAudit` — **RC 0**, 435 audited theorems with the permitted classical
+  axioms only; the `choice` short name printed inside `open Classical`
+  namespaces is `Classical.choice` when checked at root.
 
 ## Proof-wave 11 gate
 

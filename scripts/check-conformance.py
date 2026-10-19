@@ -17,9 +17,11 @@ This checker is deliberately small and dependency-free.  It does nine things:
    (``open_channel`` type 32, ``accept_channel`` type 33, ``update_add_htlc``
    type 128, ``commitment_signed`` type 132) and checks the payload length,
    transport length, and transport header.
-5. Replays the pinned BOLT 2 ``channel_ready`` (type 36), ``open_channel``
+5. Replays the pinned BOLT 2 ``funding_created`` (type 34),
+   ``funding_signed`` (type 35), ``channel_ready`` (type 36), ``open_channel``
    (type 32), and ``accept_channel`` (type 33) differential fixtures extracted
-   from the pinned rust-lightning ``encoding_channel_ready`` /
+   from the pinned rust-lightning ``encoding_funding_created`` /
+   ``encoding_funding_signed`` / ``encoding_channel_ready`` /
    ``encoding_open_channel`` / ``encoding_accept_channel`` unit tests, including
    their live-encoded payloads in the transcript.
 6. Replays pinned rust-lightning differential fixtures from
@@ -77,6 +79,8 @@ LIVE_TRANSCRIPT_SCHEMA = "lnlean.rust-lightning.live-transcript.v1"
 LIVE_TEST_NAMES = [
     "util::ser::tests::bigsize_encoding_decoding",
     "util::ser_macros::tests::retired_tlvs_skipped_on_read",
+    "ln::msgs::tests::encoding_funding_created",
+    "ln::msgs::tests::encoding_funding_signed",
     "ln::msgs::tests::encoding_channel_ready",
     "ln::msgs::tests::encoding_open_channel",
     "ln::msgs::tests::encoding_accept_channel",
@@ -470,14 +474,26 @@ MESSAGE_TYPES = {
     "commitment_signed": 132,
 }
 
-# The live differential message rows cover BOLT 2 `channel_ready`,
-# `open_channel`, and `accept_channel`, whose public rust-lightning
-# structs/encodings are exercised by the pinned `encoding_channel_ready` /
-# `encoding_open_channel` / `encoding_accept_channel` unit tests and the
-# offline probe.
-DIFF_MESSAGE_TYPES = {"channel_ready": 36, "open_channel": 32, "accept_channel": 33}
+# The live differential message rows cover BOLT 2 `funding_created`,
+# `funding_signed`, `channel_ready`, `open_channel`, and `accept_channel`,
+# whose public rust-lightning structs/encodings are exercised by the pinned
+# `encoding_funding_created` / `encoding_funding_signed` /
+# `encoding_channel_ready` / `encoding_open_channel` /
+# `encoding_accept_channel` unit tests and the offline probe.
+DIFF_MESSAGE_TYPES = {
+    "funding_created": 34,
+    "funding_signed": 35,
+    "channel_ready": 36,
+    "open_channel": 32,
+    "accept_channel": 33,
+}
 
 DIFF_MESSAGE_CONSTRUCTION_KEYS = {
+    "funding_created": [
+        "temporary_channel_id", "funding_txid", "funding_output_index",
+        "signature",
+    ],
+    "funding_signed": ["channel_id", "signature"],
     "channel_ready": [
         "channel_id", "next_per_commitment_point", "short_channel_id_alias",
     ],
@@ -503,6 +519,11 @@ DIFF_MESSAGE_CONSTRUCTION_KEYS = {
 }
 
 MESSAGE_REQUIRED_FIELDS = {
+    "funding_created": [
+        "temporary_channel_id", "funding_txid", "funding_output_index",
+        "signature",
+    ],
+    "funding_signed": ["channel_id", "signature"],
     "open_channel": [
         "chain_hash", "temporary_channel_id", "funding_satoshis", "push_msat",
         "dust_limit_satoshis", "max_htlc_value_in_flight_msat",
@@ -1590,6 +1611,43 @@ def check_mutations(doc: dict[str, Any], diff_doc: dict[str, Any] | None,
         accept_channel["construction"]["minimum_depth"] += 1
         control("differential accept_channel construction value changed",
                 lambda: check_diff_message(accept_channel, set()))
+
+        mutated = copy.deepcopy(diff_doc)
+        funding_created = next(
+            e for e in mutated["fixtures"]["messages"]
+            if e["name"] == "funding_created")
+        payload = bytearray.fromhex(funding_created["payload"])
+        payload[66] ^= 0x01
+        funding_created["payload"] = payload.hex()
+        control("differential funding_created payload byte changed",
+                lambda: check_diff_message(funding_created, set()))
+
+        mutated = copy.deepcopy(diff_doc)
+        funding_created = next(
+            e for e in mutated["fixtures"]["messages"]
+            if e["name"] == "funding_created")
+        funding_created["construction"]["funding_output_index"] += 1
+        control("differential funding_created construction value changed",
+                lambda: check_diff_message(funding_created, set()))
+
+        mutated = copy.deepcopy(diff_doc)
+        funding_signed = next(
+            e for e in mutated["fixtures"]["messages"]
+            if e["name"] == "funding_signed")
+        payload = bytearray.fromhex(funding_signed["payload"])
+        payload[-1] ^= 0x01
+        funding_signed["payload"] = payload.hex()
+        control("differential funding_signed payload byte changed",
+                lambda: check_diff_message(funding_signed, set()))
+
+        mutated = copy.deepcopy(diff_doc)
+        funding_signed = next(
+            e for e in mutated["fixtures"]["messages"]
+            if e["name"] == "funding_signed")
+        funding_signed["construction"]["signature"] = \
+            "00" + funding_signed["construction"]["signature"][2:]
+        control("differential funding_signed construction signature changed",
+                lambda: check_diff_message(funding_signed, set()))
 
         mutated = copy.deepcopy(diff_doc)
         mutated["generation"]["live_cargo_test"] = True

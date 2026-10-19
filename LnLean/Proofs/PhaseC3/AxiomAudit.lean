@@ -94,6 +94,7 @@ import LnLean.Proofs.Bitcoin.EcdsaConcreteTargets
 import LnLean.Proofs.Protocol.OpenChannelRoutingTargets
 import LnLean.Proofs.Crypto.AttributionGameTargets
 import LnLean.Proofs.Channel.PreimageCoverageTargets
+import LnLean.Proofs.Routing.NodeAddressTargets
 import LnLean.Proofs.Routing.NodeCanonicalTargets
 import LnLean.Proofs.Bitcoin.EcdsaDomainTargets
 import LnLean.Proofs.Protocol.TransportAuthTargets
@@ -102,6 +103,7 @@ import LnLean.Proofs.Channel.CoverageWitnessTargets
 import LnLean.Proofs.Routing.NodeIdentityTargets
 import LnLean.Proofs.Routing.NodeIdentityChainTargets
 import LnLean.Proofs.Protocol.NoiseTransportTargets
+import LnLean.Proofs.Channel.CoverageConsumerTargets
 import LnLean.Proofs.Channel.CoverageSourceTargets
 import LnLean.Proofs.Security.ChainFinalityTargets
 import LnLean.Proofs.Payment.InvoiceWireTargets
@@ -538,6 +540,34 @@ set_option autoImplicit false
 #print axioms LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_header
 #print axioms LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_frame_prefix
 #print axioms LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_payload
+#print axioms LnLean.Proofs.Channel.CoverageConsumerTargets.CoverageConsumer.coversHtlcOutputs
+#print axioms LnLean.Proofs.Channel.CoverageConsumerTargets.fullRecordConsumer_correct
+#print axioms LnLean.Proofs.Channel.CoverageConsumerTargets.no_wire_determined_consumer
+#print axioms LnLean.Proofs.Channel.CoverageConsumerTargets.no_wire_determined_fullRecord_consumer
+#print axioms LnLean.Proofs.Channel.CoverageConsumerTargets.extension_consumer_determines
+#print axioms LnLean.Proofs.Channel.CoverageConsumerTargets.extension_rowCount_not_determining
+#print axioms LnLean.Proofs.Channel.CoverageConsumerTargets.exampleFullConsumer_covers
+#print axioms LnLean.Proofs.Channel.CoverageConsumerTargets.coverage_consumer_summary
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_funding_created_length
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_funding_created_transport
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_funding_created_header
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_funding_created_frame_prefix
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_funding_created_payload
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_funding_signed_length
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_funding_signed_transport
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_funding_signed_header
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_funding_signed_frame_prefix
+#print axioms LnLean.Proofs.Conformance.Diff.diff_msg_funding_signed_payload
+#print axioms LnLean.Proofs.Routing.NodeAddressTargets.decodeAddresses_encodeAddresses
+#print axioms LnLean.Proofs.Routing.NodeAddressTargets.parseAddressList_encodeAddressBlob
+#print axioms LnLean.Proofs.Routing.NodeAddressTargets.Address.parse_encode
+#print axioms LnLean.Proofs.Routing.NodeAddressTargets.Address.decode_encode
+#print axioms LnLean.Proofs.Routing.NodeAddressTargets.Address.encode_injective
+#print axioms LnLean.Proofs.Routing.NodeAddressTargets.encodeAddresses_injective
+#print axioms LnLean.Proofs.Routing.NodeAddressTargets.decodeAddresses_addrlen_mismatch
+#print axioms LnLean.Proofs.Routing.NodeAddressTargets.decodeAddresses_not_sorted
+#print axioms LnLean.Proofs.Routing.NodeAddressTargets.decodeAddresses_two_dns
+#print axioms LnLean.Proofs.Routing.NodeAddressTargets.witnessList_roundtrip
 
 /-! ## 15. Registry
 
@@ -954,7 +984,35 @@ def auditedTheorems : List Lean.Name :=
     `LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_header,
     `LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_frame_prefix,
     `LnLean.Proofs.Conformance.Diff.diff_msg_accept_channel_payload,
+    `LnLean.Proofs.Channel.CoverageConsumerTargets.CoverageConsumer.coversHtlcOutputs,
+    `LnLean.Proofs.Channel.CoverageConsumerTargets.fullRecordConsumer_correct,
+    `LnLean.Proofs.Channel.CoverageConsumerTargets.no_wire_determined_consumer,
+    `LnLean.Proofs.Channel.CoverageConsumerTargets.no_wire_determined_fullRecord_consumer,
+    `LnLean.Proofs.Channel.CoverageConsumerTargets.extension_consumer_determines,
+    `LnLean.Proofs.Channel.CoverageConsumerTargets.extension_rowCount_not_determining,
+    `LnLean.Proofs.Channel.CoverageConsumerTargets.exampleFullConsumer_covers,
+    `LnLean.Proofs.Channel.CoverageConsumerTargets.coverage_consumer_summary,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_funding_created_length,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_funding_created_transport,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_funding_created_header,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_funding_created_frame_prefix,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_funding_created_payload,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_funding_signed_length,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_funding_signed_transport,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_funding_signed_header,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_funding_signed_frame_prefix,
+    `LnLean.Proofs.Conformance.Diff.diff_msg_funding_signed_payload,
+    `LnLean.Proofs.Routing.NodeAddressTargets.decodeAddresses_encodeAddresses,
+    `LnLean.Proofs.Routing.NodeAddressTargets.parseAddressList_encodeAddressBlob,
+    `LnLean.Proofs.Routing.NodeAddressTargets.Address.parse_encode,
+    `LnLean.Proofs.Routing.NodeAddressTargets.Address.decode_encode,
+    `LnLean.Proofs.Routing.NodeAddressTargets.Address.encode_injective,
+    `LnLean.Proofs.Routing.NodeAddressTargets.encodeAddresses_injective,
+    `LnLean.Proofs.Routing.NodeAddressTargets.decodeAddresses_addrlen_mismatch,
+    `LnLean.Proofs.Routing.NodeAddressTargets.decodeAddresses_not_sorted,
+    `LnLean.Proofs.Routing.NodeAddressTargets.decodeAddresses_two_dns,
+    `LnLean.Proofs.Routing.NodeAddressTargets.witnessList_roundtrip,
     ]
 
 set_option maxRecDepth 6000 in
-theorem auditedTheorems_length : auditedTheorems.length = 407 := rfl
+theorem auditedTheorems_length : auditedTheorems.length = 435 := rfl

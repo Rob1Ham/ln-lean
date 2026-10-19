@@ -2,17 +2,19 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `6a48d41` (`[WAVE11] integrate identity-chain, Noise,
-coverage-source, finality, invoice, aggregate-HTLC, and non-vacuity lanes`);
-status commits may advance the tip. Base `9359475` (wave-9 integration);
-wave 10 launched from `9158592`; wave 11 launched from `4037264`.
-**Catalog state:** **51 `proved` / 0 `statementOnly` / 0 unresolved / 277
+**Gate HEAD:** `5ddab4c` (`[WAVE11]` status tip); wave-12 integration is
+pending publication, and the status commit will record the new tip. Base
+`9359475` (wave-9 integration); wave 10 launched from `9158592`; wave 11
+launched from `4037264`; wave 12 launched from `5ddab4c`.
+**Catalog state:** **51 `proved` / 0 `statementOnly` / 0 unresolved / 294
 targets**.
 **Remote refs:** wave 11 is published non-force to `origin/repair/integrated` at
-`9940642` and status commit `90ef1f1`; hosted CI runs `39288684058`
-and `39290061147` completed both source gates and the pinned-vendor build
-gate successfully. `origin/main` is not touched by this work. The former `repair/pubbump` branch is merged and
-retired; its public-core bump is part of this branch.
+`9940642`, with status commits `90ef1f1` and `5ddab4c`; hosted CI runs
+`39288684058`, `39290061147`, and `39290644672` completed both source gates and
+the pinned-vendor build gate successfully. Wave 12 will be published
+non-force as the next checkpoint. `origin/main` is not touched by this work.
+The former `repair/pubbump` branch is merged and retired; its public-core bump
+is part of this branch.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 **L1 build dependency:** read-only `vendor/btc-lean-core` copy of public
 `btc-lean` `spec/core` at
@@ -135,25 +137,45 @@ plus the `withVendorEcdsa` vacuity result). The conformance lane adds a live
 `accept_channel` (type 33) row, taking the suite to 190 Lean references,
 18/18 mutation controls, and three live BOLT 2 payloads.
 
+Proof-wave 12 adds two root-imported proof modules and extends six catalog
+rows without adding a row:
+`LnLean/Proofs/Routing/NodeAddressTargets.lean` (the real BOLT 7
+`node_announcement.addresses` wire format: `u16 addrlen` followed by typed
+IPv4/IPv6/Tor v2/Tor v3/ASCII-DNS descriptors with exact 6/18/12/37-byte
+layouts, nonzero ports, ascending type order, at most one type 5, canonical
+round-trip/injectivity, and explicit rejection theorems) and
+`LnLean/Proofs/Channel/CoverageConsumerTargets.lean` (an explicit consumer
+contract separating full-record from wire-determined coverage, with
+consumer-completeness and non-determinacy separation results). The conformance
+lane adds live `funding_created` (type 34) and `funding_signed` (type 35)
+payloads, taking the suite to 200 Lean references, 22/22 mutation controls,
+26 differential fixtures, and five live BOLT 2 payloads. The independent
+barrier audit re-checked the nine P0/P1 rows: `L1-01`/`L1-07` are blocked at
+the untyped `ByteArray` EC interface, `L1-02` has no `TxValidation.Full`
+transfer gap, and the other externally blocked rows remain explicit rather
+than being claimed closed. Catalog claims were narrowed where prior wording
+overstated the mechanized result (`LN-L1-001`, `LN-L1-004`, `LN-CH-007`,
+`LN-PR-001`, `LN-RT-002`, `LN-SEC-007`).
+
 ## Verified state
 
 | Check | Command | Result |
 |---|---|---|
-| Full build | `LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (312 jobs).` |
+| Full build | `LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (314 jobs).` |
 | Actual `sorry` | `grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` | **0 matches** (grep RC 1: no lines) |
-| Policy checker | `./scripts/check.sh` | **RC 0**, `files=273 obligations=82 sorry_in_proofs=0`, `check: OK` |
-| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 273 Lean files, 271 root imports |
+| Policy checker | `./scripts/check.sh` | **RC 0**, `files=275 obligations=82 sorry_in_proofs=0`, `check: OK` |
+| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 275 Lean files, 273 root imports |
 | Vendor integrity | `./scripts/verify-vendor.sh` | **RC 0**, `OK (149 files)` |
-| Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=311 bad=0 unanchored_rows=2` |
-| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 51 proved, 0 statement-only, 277 targets, 0 unresolved, 0 proved failures, 0 candidates |
+| Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=313 bad=0 unanchored_rows=2` |
+| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 51 proved, 0 statement-only, 294 targets, 0 unresolved, 0 proved failures, 0 candidates, 11,898 declarations |
 | Catalog, planned-aware | `python3 scripts/check-catalog.py --allow-planned` | **RC 0**, `rows=51 proved=51 statementOnly=0 planned=0 proved_failures=0` |
-| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 407 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
-| Generated index | `python3 scripts/collect-obligations.py` | `235` proof files, `81` markers, `51` catalog rows, `9382` declarations, `0` `sorry` sites |
-| Conformance | `python3 scripts/check-conformance.py` | **RC 0**, 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 190 Lean theorem references, 18/18 mutation controls, 6 finite BOLT 2 message vectors, live 26 BigSize + 3 TLV + 4 wire + 3 BOLT 2 payloads (`channel_ready`, `open_channel`, `accept_channel`) |
+| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 435 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Generated index | `python3 scripts/collect-obligations.py` | `237` proof files, `81` markers, `51` catalog rows, `9537` declarations, `0` `sorry` sites |
+| Conformance | `python3 scripts/check-conformance.py` | **RC 0**, 61 base + 16 framing + 9 boundary checks, 26 differential fixtures, 200 Lean theorem references, 22/22 mutation controls, 6 finite BOLT 2 message vectors, live 26 BigSize + 3 TLV + 4 wire + 5 BOLT 2 payloads (`funding_created`, `funding_signed`, `channel_ready`, `open_channel`, `accept_channel`) |
 
-Tree size: **273 Lean files** under `LnLean/`, **271** root imports in
+Tree size: **275 Lean files** under `LnLean/`, **273** root imports in
 `LnLean.lean`; `LnLean.Proofs.All` and the `LnLean.Proofs.PhaseC2` aggregator
-are not root-imported. The full build covers 312 Lake jobs.
+are not root-imported. The full build covers 314 Lake jobs.
 
 The `sorry` grep result is exact: **there are no lines consisting only of
 `sorry` (modulo whitespace) in any `LnLean/**/*.lean` file.** Prose mentions of

@@ -39,22 +39,28 @@ the exact source lines.  The fixtures cover four behaviours:
    header is `msgbuf.len() - 16 - 2`, i.e. the type plus payload, bounded by
    `LN_MAX_MSG_LEN = u16::MAX = 65535`.  This is the BOLT 8 transport length,
    not the model's payload-only length.
-4. **BOLT 2 messages** (`lightning/src/ln/msgs.rs:431-443,3239-3243,5098-5188,5399-5464,5672-5682`,
-   unit tests `encoding_channel_ready`, `encoding_open_channel`, and
-   `encoding_accept_channel`): a `ChannelReady` (type 36) with an all-`0x02`
-   channel id, the public key for the all-`0x01` secret, and no
-   `short_channel_id_alias`; the base `OpenChannel` (type 32) target from
+4. **BOLT 2 messages** (`lightning/src/ln/msgs.rs:403-428,431-443,3227-3240,5098-5188,5399-5464,5633-5682`,
+   unit tests `encoding_funding_created`, `encoding_funding_signed`,
+   `encoding_channel_ready`, `encoding_open_channel`, and
+   `encoding_accept_channel`): a `FundingCreated` (type 34) with an all-`0x02`
+   temporary channel id, the pinned 32-byte funding txid, output index `255`,
+   and the pinned 64-byte compact signature; a `FundingSigned` (type 35) with
+   the same all-`0x02` channel id and signature; a `ChannelReady` (type 36)
+   with an all-`0x02` channel id, the public key for the all-`0x01` secret, and
+   no `short_channel_id_alias`; the base `OpenChannel` (type 32) target from
    `do_encoding_open_channel(false, false, false)` (mainnet genesis
    `chain_hash`, pinned numeric fields, six compressed points, zero
    `channel_flags`, no optional TLVs); and the base `AcceptChannel` (type 33)
    target from `do_encoding_accept_channel(false)` (all-`0x02`
    `temporary_channel_id`, pinned numeric fields, six compressed points, no
    `shutdown_scriptpubkey`/`channel_type` TLVs).  The live probe constructs all
-   three public structs and calls the pinned `Writeable` implementations,
-   yielding the exact 65-byte `channel_ready` payload `0202…0203 1b84…078f`,
-   the exact 319-byte `open_channel` payload, and the exact 270-byte
-   `accept_channel` payload; the fixtures record the field tables, payloads,
-   transport lengths `67`/`321`/`272`, and headers `0043`/`0141`/`0110`.
+   five public structs and calls the pinned `Writeable` implementations,
+   yielding the exact 130-byte `funding_created` payload, the exact 96-byte
+   `funding_signed` payload, the exact 65-byte `channel_ready` payload
+   `0202…0203 1b84…078f`, the exact 319-byte `open_channel` payload, and the
+   exact 270-byte `accept_channel` payload; the fixtures record the field
+   tables, payloads, transport lengths `132`/`98`/`67`/`321`/`272`, and headers
+   `0084`/`0062`/`0043`/`0141`/`0110`.
 
 ## Run
 
@@ -70,10 +76,10 @@ true — verifies the transcript hash and the transcript's fixture-row, probe,
 lockfile, and pinned-commit provenance:
 
 ```text
-differential: 26 rust-lightning BigSize, 3 TLV, 4 wire, 3 BOLT 2 message fixtures (pinned fe49009, offline)
+differential: 26 rust-lightning BigSize, 3 TLV, 4 wire, 5 BOLT 2 message fixtures (pinned fe49009, offline)
 differential TLV: 2 enforced, 1 declared not-modelled gaps
 fixture generation: live-cargo-test (live cargo test: yes)
-live evidence: 26 BigSize + 3 TLV compared against rust-lightning, 4 wire via live LN_MAX_MSG_LEN, 3 BOLT 2 message payload(s) (channel_ready, open_channel, accept_channel) encoded live; transcript sha256 2677d760420f
+live evidence: 26 BigSize + 3 TLV compared against rust-lightning, 4 wire via live LN_MAX_MSG_LEN, 5 BOLT 2 message payload(s) (funding_created, funding_signed, channel_ready, open_channel, accept_channel) encoded live; transcript sha256 a47b2aa4a2e1
 provenance: 5 pinned rust-lightning source files verified (HEAD verified)
 ```
 
@@ -82,9 +88,9 @@ provenance: 5 pinned rust-lightning source files verified (HEAD verified)
 the optional pinned-source check.
 
 `generate.py --check` (the default) verifies the five provenance hashes,
-re-extracts the literal arrays, TLV stream, and channel_ready/open_channel/
-accept_channel targets from the pinned unit tests, and fails if any committed
-derived field differs.
+re-extracts the literal arrays, TLV stream, and funding_created/
+funding_signed/channel_ready/open_channel/accept_channel targets from the
+pinned unit tests, and fails if any committed derived field differs.
 `generate.py --write` rewrites those fields deterministically; running it on
 the committed file is a no-op.
 
@@ -98,16 +104,18 @@ python3 tests/conformance/rust-lightning/generate.py --live
 writing `Cargo.lock`/`target` into `refs/`), installs the committed
 `pinned/Cargo.lock` and `live_probe.rs`, and runs:
 
-1. the five pinned unit tests with `cargo test --offline --locked -- --exact`;
+1. the seven pinned unit tests with `cargo test --offline --locked -- --exact`;
 2. `live_probe.rs` with `cargo run --offline --locked`; the probe uses only the
    public `BigSize` `Readable`/`Writeable` impls, the exported
    `decode_tlv_stream!` macro, `LN_MAX_MSG_LEN`, and the public
-   `ChannelReady`/`OpenChannel`/`AcceptChannel` fields and `Writeable` impls,
-   then prints one result per fixture input;
+   `FundingCreated`/`FundingSigned`/`ChannelReady`/`OpenChannel`/
+   `AcceptChannel` fields and `Writeable` impls, then prints one result per
+   fixture input;
 3. a field-by-field comparison of the live results with `fixtures.json`.
 
-The probe compares all 26 BigSize rows, all 3 TLV rows, and all three BOLT 2
-message rows (`channel_ready`, `open_channel`, and `accept_channel`).  The 4
+The probe compares all 26 BigSize rows, all 3 TLV rows, and all five BOLT 2
+message rows (`funding_created`, `funding_signed`, `channel_ready`,
+`open_channel`, and `accept_channel`).  The 4
 wire rows are checked against the live `LN_MAX_MSG_LEN = 65535`; their
 length-header arithmetic
 remains the pinned-source check in `extract_wire` (the constant is public, the
@@ -145,8 +153,8 @@ pinned literals, so the committed file is reproducible and any drift is a hard
 failure.  The `generation` object now records `mode = live-cargo-test`,
 `live_cargo_test = true`, and the transcript hash; the live run independently
 confirmed the 26 BigSize and 3 TLV rows, the live `LN_MAX_MSG_LEN`, and the
-`channel_ready`, base `open_channel`, and base `accept_channel` payloads
-encoded through the public `Writeable` impls.
+`funding_created`, `funding_signed`, `channel_ready`, base `open_channel`, and
+base `accept_channel` payloads encoded through the public `Writeable` impls.
 
 The wire fixture's `header` field is the plaintext two-byte value passed as
 AEAD associated data in rust-lightning; the real transport encrypts that header

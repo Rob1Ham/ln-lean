@@ -12,6 +12,8 @@
 //!   `E <id> <value>`                 encode a BigSize
 //!   `D <id> <hex>`                   decode a BigSize
 //!   `T <id> retired|unlisted <hex>`  run the pinned TLV readers
+//!   `F <id> ...`                     encode a BOLT 2 funding_created
+//!   `S <id> ...`                     encode a BOLT 2 funding_signed
 //!   `B <id> <alias|-> <channel_id> <point>` encode a BOLT 2 channel_ready
 //!   `O <id> ...`                     encode a BOLT 2 open_channel
 //!   `A <id> ...`                     encode a BOLT 2 accept_channel
@@ -23,13 +25,16 @@
 use std::io::{self, BufRead};
 
 use lightning::bitcoin::constants::ChainHash;
+use lightning::bitcoin::hash_types::Txid;
+use lightning::bitcoin::hashes::Hash;
+use lightning::bitcoin::secp256k1::ecdsa::Signature;
 use lightning::bitcoin::secp256k1::PublicKey;
 use lightning::bitcoin::Network;
 use lightning::decode_tlv_stream;
 use lightning::io::Cursor;
 use lightning::ln::msgs::{
     AcceptChannel, ChannelReady, CommonAcceptChannelFields, CommonOpenChannelFields,
-    DecodeError, OpenChannel,
+    DecodeError, FundingCreated, FundingSigned, OpenChannel,
 };
 use lightning::ln::types::ChannelId;
 use lightning::ln::LN_MAX_MSG_LEN;
@@ -105,6 +110,47 @@ fn report_tlv(result: Result<(u64, Option<u32>), DecodeError>) -> String {
         },
         Err(error) => class(error).to_string(),
     }
+}
+
+fn channel_id_bytes(hex: &str) -> [u8; 32] {
+    let bytes = from_hex(hex);
+    assert_eq!(bytes.len(), 32, "channel id must be 32 bytes");
+    let mut channel_id = [0u8; 32];
+    channel_id.copy_from_slice(&bytes);
+    channel_id
+}
+
+fn compact_signature(hex: &str) -> Signature {
+    Signature::from_compact(&from_hex(hex)).expect("valid compact signature")
+}
+
+/// Encode the public BOLT 2 `funding_created` fields through the pinned
+/// `Writeable` implementation.  Argument order is
+/// `temporary_channel_id`, `funding_txid`, `funding_output_index`, `signature`.
+/// The Txid payload bytes are the wire-order bytes; `Txid::from_byte_array`
+/// stores them in that order, matching the pinned unit test's encoded target.
+fn encode_funding_created(args: &[&str]) -> String {
+    let funding_txid_bytes = from_hex(args[1]);
+    assert_eq!(funding_txid_bytes.len(), 32, "funding txid must be 32 bytes");
+    let mut funding_txid = [0u8; 32];
+    funding_txid.copy_from_slice(&funding_txid_bytes);
+    let message = FundingCreated {
+        temporary_channel_id: ChannelId::from_bytes(channel_id_bytes(args[0])),
+        funding_txid: Txid::from_byte_array(funding_txid),
+        funding_output_index: args[2].parse::<u16>().expect("u16 output index"),
+        signature: compact_signature(args[3]),
+    };
+    to_hex(&message.encode())
+}
+
+/// Encode the public BOLT 2 `funding_signed` fields through the pinned
+/// `Writeable` implementation.  Argument order is `channel_id`, `signature`.
+fn encode_funding_signed(args: &[&str]) -> String {
+    let message = FundingSigned {
+        channel_id: ChannelId::from_bytes(channel_id_bytes(args[0])),
+        signature: compact_signature(args[1]),
+    };
+    to_hex(&message.encode())
 }
 
 /// Encode the public BOLT 2 `channel_ready` fields through the pinned
@@ -228,6 +274,15 @@ fn main() {
             }
             ["T", id, "unlisted", hex] => {
                 format!("{id}\t{}", report_tlv(unlisted_even_tlv_reader(&from_hex(hex))))
+            }
+            ["F", id, ..] => {
+                // F <id> <temporary_channel_id> <funding_txid>
+                //   <funding_output_index> <signature>
+                format!("{id}\tok\t{}", encode_funding_created(&fields[2..]))
+            }
+            ["S", id, ..] => {
+                // S <id> <channel_id> <signature>
+                format!("{id}\tok\t{}", encode_funding_signed(&fields[2..]))
             }
             ["B", id, alias, channel_id, point] => {
                 let alias = if *alias == "-" {

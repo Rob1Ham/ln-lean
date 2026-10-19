@@ -9,10 +9,10 @@
     "mode": "live-cargo-test",
     "live_cargo_test": true,
     "live_transcript": "tests/conformance/rust-lightning/live-transcript.json",
-    "live_transcript_sha256": "2677d760420fd934d1226825c5ce475697237787230947add967c133ee1df1a3",
-    "note": "The committed rows were extracted from the pinned source/unit-test literals; `generate.py --check` re-extracts and compares them. `generate.py --live --fetch` ran the pinned unit tests and the public-API probe under `cargo --offline --locked` with the committed `pinned/Cargo.lock`; `live-transcript.json` records the comparison. The BOLT 2 channel_ready, open_channel, and accept_channel payloads are encoded live through the pinned `Writeable` impl; the wire header arithmetic remains a pinned-source check and only `LN_MAX_MSG_LEN` is probed live."
+    "live_transcript_sha256": "a47b2aa4a2e16f519efa451c0090262f1ebba80a3999fda8668ee554f2dbc892",
+    "note": "The committed rows were extracted from the pinned source/unit-test literals; `generate.py --check` re-extracts and compares them. `generate.py --live --fetch` ran the pinned unit tests and the public-API probe under `cargo --offline --locked` with the committed `pinned/Cargo.lock`; `live-transcript.json` records the comparison. The BOLT 2 funding_created, funding_signed, channel_ready, open_channel, and accept_channel payloads are encoded live through the pinned `Writeable` impl; the wire header arithmetic remains a pinned-source check and only `LN_MAX_MSG_LEN` is probed live."
   },
-  "scope": "Pinned rust-lightning differential fixtures for BigSize, a TLV reader stream, the BOLT 8 wire length header, and live-encoded BOLT 2 channel_ready and open_channel payloads. This is NOT a full implementation test: fixtures are finite, were transcribed from the pinned source/unit tests, and are validated offline against the same independent Python references used for the BOLT vectors. No Rust toolchain or network is required to run the checker.",
+  "scope": "Pinned rust-lightning differential fixtures for BigSize, a TLV reader stream, the BOLT 8 wire length header, and live-encoded BOLT 2 funding_created, funding_signed, channel_ready, open_channel, and accept_channel payloads. This is NOT a full implementation test: fixtures are finite, were transcribed from the pinned source/unit tests, and are validated offline against the same independent Python references used for the BOLT vectors. No Rust toolchain or network is required to run the checker.",
   "provenance": [
     {
       "path": "lightning/src/util/ser.rs",
@@ -41,8 +41,8 @@
     {
       "path": "lightning/src/ln/msgs.rs",
       "sha256": "75bc3698ab6e5595dcb02de23dceb52e37a25cd31621947387054fab2461a4f8",
-      "lines": "431-443, 3239-3243, 5098-5188, 5399-5464, 5672-5682",
-      "use": "BOLT 2 channel_ready (type 36), open_channel (type 32), and accept_channel (type 33) field order/Writeable encodings and the encoding_channel_ready / encoding_open_channel / encoding_accept_channel unit-test target values"
+      "lines": "403-428, 431-443, 3227-3240, 5098-5188, 5399-5464, 5633-5670, 5672-5682",
+      "use": "BOLT 2 funding_created (type 34), funding_signed (type 35), channel_ready (type 36), open_channel (type 32), and accept_channel (type 33) field order/Writeable encodings and the encoding_funding_created / encoding_funding_signed / encoding_channel_ready / encoding_open_channel / encoding_accept_channel unit-test target values"
     }
   ],
   "fixtures": {
@@ -426,6 +426,105 @@
       }
     ],
     "messages": [
+      {
+        "id": "rust_msg_funding_created_encoding",
+        "kind": "message",
+        "name": "funding_created",
+        "type": 34,
+        "lean": {
+          "payload": "diff_msg_funding_created_payload",
+          "length": "diff_msg_funding_created_length",
+          "transport": "diff_msg_funding_created_transport",
+          "header": "diff_msg_funding_created_header",
+          "frame_prefix": "diff_msg_funding_created_frame_prefix"
+        },
+        "source": "ln/msgs.rs:403-428, 3227-3233, 5633-5655 (encoding_funding_created)",
+        "construction": {
+          "temporary_channel_id": "0202020202020202020202020202020202020202020202020202020202020202",
+          "funding_txid": "6e96fe9f8b0ddcd729ba03cfafa5a27b050b39d354dd980814268dfa9a44d4c2",
+          "funding_output_index": 255,
+          "signature": "d977cb9b53d93a6ff64bb5f1e158b4094b66e798fb12911168a3ccdf80a83096340a6a95da0ae8d9f776528eecdbb747eb6b545495a4319ed5378e35b21e073a"
+        },
+        "fields": [
+          {
+            "name": "temporary_channel_id",
+            "kind": "bytes",
+            "offset": 0,
+            "length": 32,
+            "hex": "0202020202020202020202020202020202020202020202020202020202020202"
+          },
+          {
+            "name": "funding_txid",
+            "kind": "bytes",
+            "offset": 32,
+            "length": 32,
+            "hex": "6e96fe9f8b0ddcd729ba03cfafa5a27b050b39d354dd980814268dfa9a44d4c2"
+          },
+          {
+            "name": "funding_output_index",
+            "kind": "u16",
+            "offset": 64,
+            "length": 2,
+            "hex": "00ff",
+            "value": 255
+          },
+          {
+            "name": "signature",
+            "kind": "signature64",
+            "offset": 66,
+            "length": 64,
+            "hex": "d977cb9b53d93a6ff64bb5f1e158b4094b66e798fb12911168a3ccdf80a83096340a6a95da0ae8d9f776528eecdbb747eb6b545495a4319ed5378e35b21e073a"
+          }
+        ],
+        "payload": "02020202020202020202020202020202020202020202020202020202020202026e96fe9f8b0ddcd729ba03cfafa5a27b050b39d354dd980814268dfa9a44d4c200ffd977cb9b53d93a6ff64bb5f1e158b4094b66e798fb12911168a3ccdf80a83096340a6a95da0ae8d9f776528eecdbb747eb6b545495a4319ed5378e35b21e073a",
+        "payload_length": 130,
+        "transport_length": 132,
+        "header": "0084",
+        "frame_prefix": "00220084",
+        "rust_result": "accept",
+        "model_result": "accept"
+      },
+      {
+        "id": "rust_msg_funding_signed_encoding",
+        "kind": "message",
+        "name": "funding_signed",
+        "type": 35,
+        "lean": {
+          "payload": "diff_msg_funding_signed_payload",
+          "length": "diff_msg_funding_signed_length",
+          "transport": "diff_msg_funding_signed_transport",
+          "header": "diff_msg_funding_signed_header",
+          "frame_prefix": "diff_msg_funding_signed_frame_prefix"
+        },
+        "source": "ln/msgs.rs:420-428, 3234-3240, 5656-5670 (encoding_funding_signed)",
+        "construction": {
+          "channel_id": "0202020202020202020202020202020202020202020202020202020202020202",
+          "signature": "d977cb9b53d93a6ff64bb5f1e158b4094b66e798fb12911168a3ccdf80a83096340a6a95da0ae8d9f776528eecdbb747eb6b545495a4319ed5378e35b21e073a"
+        },
+        "fields": [
+          {
+            "name": "channel_id",
+            "kind": "bytes",
+            "offset": 0,
+            "length": 32,
+            "hex": "0202020202020202020202020202020202020202020202020202020202020202"
+          },
+          {
+            "name": "signature",
+            "kind": "signature64",
+            "offset": 32,
+            "length": 64,
+            "hex": "d977cb9b53d93a6ff64bb5f1e158b4094b66e798fb12911168a3ccdf80a83096340a6a95da0ae8d9f776528eecdbb747eb6b545495a4319ed5378e35b21e073a"
+          }
+        ],
+        "payload": "0202020202020202020202020202020202020202020202020202020202020202d977cb9b53d93a6ff64bb5f1e158b4094b66e798fb12911168a3ccdf80a83096340a6a95da0ae8d9f776528eecdbb747eb6b545495a4319ed5378e35b21e073a",
+        "payload_length": 96,
+        "transport_length": 98,
+        "header": "0062",
+        "frame_prefix": "00230062",
+        "rust_result": "accept",
+        "model_result": "accept"
+      },
       {
         "id": "rust_msg_channel_ready_encoding",
         "kind": "message",

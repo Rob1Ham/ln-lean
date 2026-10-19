@@ -417,6 +417,29 @@ Wave-11 gate: **build 312 jobs, strict catalog 51/51 proved / 277 targets /
 407 audited theorems, 311 anchors, 149 vendor files, conformance 190 refs and
 18/18 controls, and zero actual `sorry`/forbidden constructs.**
 
+Wave-12 lanes (all integrated after parent review):
+
+- [x] `S12-RT-ADDRESS` — corrected BOLT 7 `u16 addrlen` blob and typed
+  IPv4/IPv6/Tor v2/Tor v3/ASCII-DNS descriptors; exact widths, nonzero ports,
+  ascending order, at most one type 5, round-trip/injectivity, and rejection
+  theorems; `LN-RT-002` extended by ten targets.
+- [x] `S12-PR-CONSUMER` — explicit coverage-consumer contract separating
+  full-record coverage from wire-determined determinacy; `LN-PR-004` extended
+  by eight targets.
+- [x] `S12-CONF-FUNDING` — live `funding_created` (34) and `funding_signed` (35)
+  fixtures/probes; ten Lean targets and 22/22 mutation controls.
+- [x] `S12-AUDIT-BARRIERS` — independent review of the nine P0/P1 rows; no new
+  model-level closure, explicit external barriers recorded, and catalog claims
+  narrowed where needed.
+- [x] Parent integration: two root-imported modules, 294 targets, 435 audited
+  theorems, refreshed Traceability tables (ID-indexed to keep the gate
+  memory-bounded), and full gate green.
+
+Wave-12 gate: **build 314 jobs, strict catalog 51/51 proved / 294 targets /
+11898 declarations, `check.sh` `files=275 obligations=82 sorry_in_proofs=0`,
+435 audited theorems, 313 anchors, 149 vendor files, conformance 200 refs and
+22/22 controls, and zero actual `sorry`/forbidden constructs.**
+
 ## Commands
 
 ```sh
@@ -427,6 +450,6 @@ flock -w 1800 /tmp/ln-build.lock lake build LnLean
 python3 scripts/verify-anchors.py
 ./scripts/check.sh
 python3 scripts/check-final.py
-python3 scripts/check-catalog.py --allow-planned
+python3 scripts/check-catalog.py --audit
 python3 scripts/check-conformance.py
 ```

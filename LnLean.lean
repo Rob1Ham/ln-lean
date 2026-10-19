@@ -53,6 +53,7 @@ import LnLean.Proofs.Channel.CommitmentIntegrationTargets
 import LnLean.Proofs.Channel.CommitmentOrderTargets
 import LnLean.Proofs.Channel.CommitmentTxProps
 import LnLean.Proofs.Channel.CommitmentTypesTargets
+import LnLean.Proofs.Channel.CoverageConsumerTargets
 import LnLean.Proofs.Channel.CoverageSourceTargets
 import LnLean.Proofs.Channel.CoverageWitnessTargets
 import LnLean.Proofs.Channel.FeeProps
@@ -154,6 +155,7 @@ import LnLean.Proofs.Routing.GossipRawRefinementTargets
 import LnLean.Proofs.Routing.GossipStoreEpochTargets
 import LnLean.Proofs.Routing.GossipTargets
 import LnLean.Proofs.Routing.GraphProps
+import LnLean.Proofs.Routing.NodeAddressTargets
 import LnLean.Proofs.Routing.NodeCanonicalTargets
 import LnLean.Proofs.Routing.NodeIdentityChainTargets
 import LnLean.Proofs.Routing.NodeIdentityTargets
