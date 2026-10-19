@@ -2,8 +2,8 @@
 
 **Base:** `5ddab4c` (`repair/integrated`, wave-11 status tip)
 **Status:** complete, integrated, and published non-force at `d210079` with
-status checkpoints `d9c0d2f` and `07288ad`; hosted CI runs `39303105137`,
-`39303680973`, and `39303944696` are green. The post-integration audit is
+status checkpoints `d9c0d2f`, `07288ad`, and `97897b6`; hosted CI runs
+`39303105137`, `39303680973`, `39303944696`, and `39304616746` are green. The post-integration audit is
 `agents/reports/swarm12/S12-POST-INTEGRATION-AUDIT.md`; it finds no tractable
 wave-13 proof lane.
 **Catalog:** 51 rows / 294 targets; no new rows.
