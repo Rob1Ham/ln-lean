@@ -2,9 +2,9 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** the Wave H merge commit on `wave-h/48` (remote base `e3e0aa8`).
-Status commits may advance the branch tip. Proof-wave 7 code was `b48d041`;
-wave 8 launched from `50d78ed`.
+**Gate HEAD:** `b15744b` (`[MERGE] integrate remote wave 8 residual tree with
+45-module wave H`; remote base `e3e0aa8`). Status commits may advance the
+branch tip. Proof-wave 7 code was `b48d041`; wave 8 launched from `50d78ed`.
 **Catalog:** 48 proved / 0 statementOnly / 0 unresolved / 100 targets.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 

@@ -3,8 +3,8 @@
 **Status:** living roadmap after proof-wave 8; wave 8 is integrated on
 `repair/integrated` and the wave-9 candidates are tracked below.
 **Branch:** `repair/integrated`.
-**Base commit:** `e3e0aa8` (remote wave 8 code); the Wave H merge commit on
-`wave-h/48` adds 45 independent proof modules; wave 8 launch is `50d78ed`;
+**Base commit:** `b15744b` (Wave H merge of remote `e3e0aa8`); it adds 45
+independent proof modules; wave 8 launch is `50d78ed`;
 proof-wave 7 code is `b48d041`; wave 7 launch is `3180581`; proof-wave 6 code
 is `0a3a5fb` (proof-wave 5 code is `6389baa`; proof-wave 4 code at `26ced90`).
 **Catalog gate:** 48/48 rows `proved`, 0 `statement-only`, 0 unresolved,

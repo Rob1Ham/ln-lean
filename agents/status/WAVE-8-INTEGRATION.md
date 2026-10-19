@@ -4,8 +4,8 @@
 **Wave H base:** `50d78ed`
 **Worktree:** `/home/ubuntu/ln-lean-waveh`
 **Branch:** `wave-h/48`
-**Merge commit:** the commit containing this report merges `origin/repair/integrated`
-into the Wave H branch; status commits may advance the tip.
+**Merge commit:** `b15744b` (`[MERGE] integrate remote wave 8 residual tree
+with 45-module wave H`); status commits may advance the tip.
 **Push:** non-force to `origin/repair/integrated`; the remote was not rewritten.
 
 ## Gate
