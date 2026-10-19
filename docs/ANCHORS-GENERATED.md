@@ -3,8 +3,8 @@
 Extracted from `LnLean/**.lean` by `scripts/collect-anchors.py`.
 The pinned commits are in `refs/PINNED.md`.
 
-- Lean files scanned: **204**
-- files with anchors: **198**
+- Lean files scanned: **266**
+- files with anchors: **251**
 
 | Lean file | Kind | Anchor |
 |---|---|---|
@@ -194,6 +194,8 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Bitcoin/ToLocalScriptTargets.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Bitcoin/ToLocalScriptTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Bitcoin/ToLocalScriptTargets.lean` | LDK | `lightning/src/ln/chan_utils.rs:687` |
+| `LnLean/Proofs/Bitcoin/TxValidTransferTargets.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/Bitcoin/TxValidTransferTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Bitcoin/WeightProps.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Bitcoin/WeightProps.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Bitcoin/WeightProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:274` |
@@ -209,6 +211,8 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Channel/BreachProps.lean` | LDK | `lightning/src/chain/channelmonitor.rs:5101` |
 | `LnLean/Proofs/Channel/BreachProps.lean` | LDK | `lightning/src/chain/channelmonitor.rs:5104` |
 | `LnLean/Proofs/Channel/BreachProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:537` |
+| `LnLean/Proofs/Channel/CommitmentConsumerSitesTargets.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/Channel/CommitmentConsumerSitesTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Channel/CommitmentConsumerTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Channel/CommitmentDanceTargets.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Channel/CommitmentDanceTargets.lean` | BOLT | `BOLT 3` |
@@ -224,6 +228,8 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Channel/CommitmentTxProps.lean` | LDK | `lightning/src/sign/tx_builder.rs:984` |
 | `LnLean/Proofs/Channel/CommitmentTypesTargets.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Channel/CommitmentTypesTargets.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/Channel/CoverageWitnessTargets.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/Channel/CoverageWitnessTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Channel/FeeProps.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Channel/FeeProps.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Channel/FeeProps.lean` | BOLT | `BOLT 5` |
@@ -244,6 +250,8 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Channel/HTLCProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:919` |
 | `LnLean/Proofs/Channel/HTLCProps.lean` | LDK | `lightning/src/ln/channel.rs:8368` |
 | `LnLean/Proofs/Channel/HtlcGlobalIdTargets.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/Channel/HtlcPreimageTargets.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/Channel/HtlcPreimageTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Channel/PenaltyProps.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Channel/PenaltyProps.lean` | BOLT | `BOLT 5` |
 | `LnLean/Proofs/Channel/PenaltyProps.lean` | LDK | `lightning/src/chain/channelmonitor.rs:2424` |
@@ -251,6 +259,7 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Channel/PenaltyProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:2183` |
 | `LnLean/Proofs/Channel/PenaltyProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:537` |
 | `LnLean/Proofs/Channel/PenaltyProps.lean` | LDK | `lightning/src/ln/chan_utils.rs:687` |
+| `LnLean/Proofs/Channel/PreimageCoverageTargets.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Channel/ProtocolEventFoldTargets.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Channel/ProtocolEventFoldTargets.lean` | LDK | `lightning/src/ln/channel.rs:773` |
 | `LnLean/Proofs/Channel/ReserveProps.lean` | BOLT | `BOLT 2` |
@@ -285,8 +294,12 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Channel/StateMachineProps.lean` | LDK | `lightning/src/ln/channelmanager.rs` |
 | `LnLean/Proofs/Channel/StateTransitionTargets.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Channel/StateTransitionTargets.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/ConformanceDiffTargets.lean` | BOLT | `BOLT 0` |
 | `LnLean/Proofs/ConformanceDiffTargets.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/ConformanceDiffTargets.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/ConformanceDiffTargets.lean` | BOLT | `BOLT 8` |
+| `LnLean/Proofs/ConformanceDiffTargets.lean` | LDK | `lightning/src/ln/msgs.rs:5098` |
+| `LnLean/Proofs/ConformanceDiffTargets.lean` | LDK | `lightning/src/ln/msgs.rs:5672` |
 | `LnLean/Proofs/ConformanceDiffTargets.lean` | LDK | `lightning/src/ln/peer_channel_encryptor.rs:518` |
 | `LnLean/Proofs/ConformanceDiffTargets.lean` | LDK | `lightning/src/util/ser.rs:1857` |
 | `LnLean/Proofs/ConformanceDiffTargets.lean` | LDK | `lightning/src/util/ser.rs:1859` |
@@ -304,6 +317,10 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Conservation.lean` | LDK | `lightning/src/ln/chan_utils.rs:1887` |
 | `LnLean/Proofs/Conservation.lean` | LDK | `lightning/src/ln/chan_utils.rs:275` |
 | `LnLean/Proofs/Conservation.lean` | LDK | `lightning/src/ln/chan_utils.rs:716` |
+| `LnLean/Proofs/Crypto/AcceptPayloadTargets.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/Crypto/AcceptPayloadTargets.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/Crypto/AttributionGameTargets.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/Crypto/AttributionGameTargets.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Crypto/EcdsaProps.lean` | BOLT | `BOLT 1` |
 | `LnLean/Proofs/Crypto/EcdsaProps.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Crypto/EcdsaProps.lean` | BOLT | `BOLT 3` |
@@ -316,6 +333,9 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Crypto/KeyModelTargets.lean` | BOLT | `BOLT 1` |
 | `LnLean/Proofs/Crypto/KeyModelTargets.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/Crypto/KeyModelTargets.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/Crypto/PopProtocolTargets.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/Crypto/PopProtocolTargets.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/Crypto/PopProtocolTargets.lean` | BOLT | `BOLT 8` |
 | `LnLean/Proofs/Crypto/SchnorrProps.lean` | BOLT | `BOLT 1` |
 | `LnLean/Proofs/Crypto/SchnorrProps.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/Crypto/SchnorrProps.lean` | LDK | `lightning/src/ln/interactivetxs.rs:810` |
@@ -645,6 +665,16 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Protocol/HandshakeProps.lean` | LDK | `lightning/src/ln/msgs.rs:371` |
 | `LnLean/Proofs/Protocol/HandshakeProps.lean` | LDK | `lightning/src/ln/types.rs:42` |
 | `LnLean/Proofs/Protocol/HandshakeProps.lean` | LDK | `lightning/src/ln/wire.rs:518` |
+| `LnLean/Proofs/Protocol/OpenChannelRoutingTargets.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/Protocol/OpenChannelRoutingTargets.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/Protocol/OpenChannelRoutingTargets.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/Protocol/OpenChannelWireTargets.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/Protocol/OpenChannelWireTargets.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/Protocol/OpenChannelWireTargets.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/Protocol/TransportAuthTargets.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/Protocol/TransportAuthTargets.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/Protocol/TransportAuthTargets.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/Protocol/TransportAuthTargets.lean` | BOLT | `BOLT 8` |
 | `LnLean/Proofs/ProtocolCoverageTargets.lean` | BOLT | `BOLT 1` |
 | `LnLean/Proofs/ProtocolCoverageTargets.lean` | BOLT | `BOLT 2` |
 | `LnLean/Proofs/ProtocolCoverageTargets.lean` | BOLT | `BOLT 3` |
@@ -669,6 +699,7 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Routing/GossipProps.lean` | LDK | `lightning/src/routing/gossip.rs:2474` |
 | `LnLean/Proofs/Routing/GossipProps.lean` | LDK | `lightning/src/routing/gossip.rs:515` |
 | `LnLean/Proofs/Routing/GossipProps.lean` | LDK | `lightning/src/routing/gossip.rs:906` |
+| `LnLean/Proofs/Routing/GossipStoreEpochTargets.lean` | BOLT | `BOLT 7` |
 | `LnLean/Proofs/Routing/GossipTargets.lean` | BOLT | `BOLT 7` |
 | `LnLean/Proofs/Routing/GraphProps.lean` | BOLT | `BOLT 4` |
 | `LnLean/Proofs/Routing/GraphProps.lean` | BOLT | `BOLT 7` |
@@ -677,6 +708,8 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/Routing/GraphProps.lean` | LDK | `lightning/src/routing/gossip.rs:2443` |
 | `LnLean/Proofs/Routing/GraphProps.lean` | LDK | `lightning/src/routing/gossip.rs:2697` |
 | `LnLean/Proofs/Routing/GraphProps.lean` | LDK | `lightning/src/routing/gossip.rs:906` |
+| `LnLean/Proofs/Routing/NodeCanonicalTargets.lean` | BOLT | `BOLT 7` |
+| `LnLean/Proofs/Routing/NodeIdentityTargets.lean` | BOLT | `BOLT 7` |
 | `LnLean/Proofs/Routing/OnionProps.lean` | BOLT | `BOLT 4` |
 | `LnLean/Proofs/Routing/OnionProps.lean` | LDK | `lightning/src/ln/msgs.rs:2725` |
 | `LnLean/Proofs/Routing/OnionProps.lean` | LDK | `lightning/src/ln/msgs.rs:2741` |
@@ -863,6 +896,83 @@ The pinned commits are in `refs/PINNED.md`.
 | `LnLean/Proofs/WaveE/E40.lean` | BOLT | `BOLT 7` |
 | `LnLean/Proofs/WaveE/E45.lean` | BOLT | `BOLT 3` |
 | `LnLean/Proofs/WaveE/E48.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H02.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H05.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H06.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H07.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H08.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H08.lean` | LDK | `lightning/src/ln/chan_utils.rs:761` |
+| `LnLean/Proofs/WaveH/H09.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H10.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H12.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H12.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H13.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/WaveH/H13.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H13.lean` | LDK | `lightning/src/ln/msgs.rs:289` |
+| `LnLean/Proofs/WaveH/H14.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/WaveH/H14.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H15.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H15.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H16.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H16.lean` | LDK | `lightning/src/ln/msgs.rs:111` |
+| `LnLean/Proofs/WaveH/H16.lean` | LDK | `lightning/src/ln/wire.rs:494` |
+| `LnLean/Proofs/WaveH/H17.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/WaveH/H17.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H17.lean` | LDK | `lightning/src/ln/msgs.rs:289` |
+| `LnLean/Proofs/WaveH/H17.lean` | LDK | `lightning/src/ln/wire.rs` |
+| `LnLean/Proofs/WaveH/H18.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/WaveH/H18.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H18.lean` | BOLT | `BOLT 8` |
+| `LnLean/Proofs/WaveH/H18.lean` | LDK | `lightning/src/ln/msgs.rs:3295` |
+| `LnLean/Proofs/WaveH/H19.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/WaveH/H19.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H20.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H20.lean` | LDK | `lightning/src/ln/channelmanager.rs` |
+| `LnLean/Proofs/WaveH/H20.lean` | LDK | `lightning/src/ln/msgs.rs:371` |
+| `LnLean/Proofs/WaveH/H20.lean` | LDK | `lightning/src/ln/wire.rs:518` |
+| `LnLean/Proofs/WaveH/H21.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/WaveH/H21.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H22.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H22.lean` | LDK | `lightning/src/crypto/utils.rs:75` |
+| `LnLean/Proofs/WaveH/H22.lean` | LDK | `lightning/src/ln/msgs.rs:371` |
+| `LnLean/Proofs/WaveH/H22.lean` | LDK | `lightning/src/util/message_signing.rs:83` |
+| `LnLean/Proofs/WaveH/H23.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/WaveH/H23.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H23.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H24.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/WaveH/H24.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H24.lean` | BOLT | `BOLT 8` |
+| `LnLean/Proofs/WaveH/H24.lean` | LDK | `lightning/src/ln/msgs.rs:371` |
+| `LnLean/Proofs/WaveH/H25.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H26.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H27.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H28.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H28.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H29.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H30.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H31.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H32.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H32.lean` | LDK | `lightning/src/ln/chan_utils.rs:687` |
+| `LnLean/Proofs/WaveH/H33.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H34.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H35.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/WaveH/H35.lean` | LDK | `lightning/src/util/ser.rs:442` |
+| `LnLean/Proofs/WaveH/H35.lean` | LDK | `lightning/src/util/ser.rs:62` |
+| `LnLean/Proofs/WaveH/H36.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/WaveH/H37.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/WaveH/H37.lean` | BOLT | `BOLT 8` |
+| `LnLean/Proofs/WaveH/H38.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/WaveH/H38.lean` | BOLT | `BOLT 8` |
+| `LnLean/Proofs/WaveH/H39.lean` | BOLT | `BOLT 7` |
+| `LnLean/Proofs/WaveH/H40.lean` | BOLT | `BOLT 7` |
+| `LnLean/Proofs/WaveH/H41.lean` | BOLT | `BOLT 7` |
+| `LnLean/Proofs/WaveH/H43.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/WaveH/H43.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H43.lean` | LDK | `lightning/src/ln/channelmanager.rs:17831` |
+| `LnLean/Proofs/WaveH/H44.lean` | BOLT | `BOLT 1` |
+| `LnLean/Proofs/WaveH/H44.lean` | BOLT | `BOLT 2` |
+| `LnLean/Proofs/WaveH/H44.lean` | BOLT | `BOLT 3` |
+| `LnLean/Proofs/WaveH/H44.lean` | BOLT | `BOLT 4` |
 | `LnLean/Proofs/Wire/TLVProps.lean` | BOLT | `BOLT 1` |
 | `LnLean/Proofs/Wire/TLVProps.lean` | LDK | `lightning/src/ln/peer_channel_encryptor.rs:36` |
 | `LnLean/Proofs/Wire/TLVProps.lean` | LDK | `lightning/src/ln/wire.rs:184` |

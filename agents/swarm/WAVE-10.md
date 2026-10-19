@@ -1,6 +1,6 @@
 # Wave 10 — domain boundaries, transport auth, PoP, coverage witnesses, node identity, live messages
 
-**Status:** running.
+**Status:** complete and integrated.
 
 **Base commit:** `9158592` (wave-9 integration + gate docs)
 **Branch:** `repair/integrated`
@@ -59,8 +59,28 @@ records the gate.
 - The parent integrates only sorry-free, faithful results, then updates the
   catalog, traceability, audit, generated indexes, roadmap, and gate record.
 
+## Integration result
+
+- Five new proof modules are root-imported:
+  `EcdsaDomainTargets`, `TransportAuthTargets`, `PopProtocolTargets`,
+  `CoverageWitnessTargets`, and `NodeIdentityTargets`. The conformance lane
+  extended `ConformanceDiffTargets.lean` in place.
+- The catalog remains 48 rows, all `proved`; six rows (`LN-L1-001`,
+  `LN-L1-004`, `LN-PR-001`, `LN-PR-003`, `LN-PR-004`, `LN-RT-002`) were
+  strengthened from **142 to 198 targets**. `AxiomAudit` now covers **323**
+  theorems; only `propext`, `Quot.sound`, and `Classical.choice` occur.
+- The live conformance suite now has **185** Lean references and **16/16**
+  mutation controls, with both `channel_ready` and `open_channel` payloads
+  encoded through the pinned public rust-lightning encoder.
+- Wave-10 gate: **305 build jobs, RC 0; 266 Lean files; 264 root imports;
+  10,968 declarations; 311 anchors; 149 vendor files; zero actual `sorry` or
+  forbidden constructs.**
+- `L1-01`/`L1-07` retain the EC/EUF-CMA boundary with the new tag-independent
+  obstruction; `L1-03`, `PR-01`, `PR-02`, and `RT-02` are narrowed but remain
+  open. `CONF-01` remains finite/public-API conformance, not node interop.
+
 ## Launch state
 
 - Base `9158592`; `origin/main` remains `b891a59`.
-- Wave 10 has no catalog target additions until integration; the launch commit
-  only records the lane plan and status.
+- Wave 10 had no catalog target additions until integration; the launch commit
+  only recorded the lane plan and status.

@@ -2,13 +2,12 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `9359475` (`[WAVE9] integrate EC, routing, attribution,
-preimage, node, and live-message lanes`); status commits may advance the tip.
-Base `93fa943` (wave-H merge). Proof-wave 8 code was `10d18a1`; wave 9
-launched from `50e8b5c`.
-**Catalog:** 48 proved / 0 statementOnly / 0 unresolved / 142 targets.
-**Wave 9:** integrated; six lanes complete, reports under
-`agents/reports/swarm9/`; lane plan `agents/swarm/WAVE-9.md`.
+**Gate HEAD:** `db52cc9` (`[WAVE10] integrate domain, transport-auth, PoP,
+coverage, node-identity, and live-message lanes`); status commits may advance
+the tip. Base `9359475` (wave-9 integration); wave 10 launched from `9158592`.
+**Catalog:** 48 proved / 0 statementOnly / 0 unresolved / 198 targets.
+**Wave 10:** integrated; six lanes complete, reports under
+`agents/reports/swarm10/`; lane plan `agents/swarm/WAVE-10.md`.
 **Toolchain:** `leanprover/lean4:v4.35.0`
 
 This file describes the repair branch. Older wave tables are retained as
@@ -19,26 +18,50 @@ history; they are not a claim about the current tree. Current open work is in
 
 | Metric | Value |
 |---|---|
-| Lean files under `LnLean/` | **261** |
-| Root imports in `LnLean.lean` | **259** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
-| Full build | **RC 0**, `Build completed successfully (300 jobs)` |
+| Lean files under `LnLean/` | **266** |
+| Root imports in `LnLean.lean` | **264** (`LnLean.Proofs.All` and the `PhaseC2` aggregator are not root-imported) |
+| Full build | **RC 0**, `Build completed successfully (305 jobs)` |
 | Actual `sorry` lines | **0** (`grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` → no matches, grep RC 1) |
 | Proof files with the word `sorry` in prose | comments only, not proof terms |
 | Catalog rows | **48** |
 | Catalog `proved` | **48** |
 | Catalog `statementOnly` | **0** |
-| Catalog targets | **142** |
+| Catalog targets | **198** |
 | Unresolved/planned targets | **0** |
 | Vendor snapshot | **OK**, 149 files from public `btc-lean` `4f5c4f8`; `fetch-vendor.sh --from-git` tested |
-| Anchors | **310 checked, 0 bad**, 2 unanchored rows |
-| Generated obligation index | 223 proof files, 81 markers, 8469 declarations, 0 `sorry` sites |
-| Axiom audit | 269 theorems; only `propext`, `Quot.sound`, `Classical.choice` |
-| Conformance | 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 180 Lean references, 14/14 mutation controls, 3 declared model gaps; live 26 BigSize + 3 TLV + 4 wire + 1 BOLT 2 message; 6 finite BOLT 2 message vectors |
+| Anchors | **311 checked, 0 bad**, 2 unanchored rows |
+| Generated obligation index | 228 proof files, 81 markers, 8681 declarations, 0 `sorry` sites |
+| Axiom audit | 323 theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Conformance | 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 185 Lean references, 16/16 mutation controls, 3 declared model gaps; live 26 BigSize + 3 TLV + 4 wire + 2 BOLT 2 messages; 6 finite BOLT 2 message vectors |
 | Public L1 pin | `Rob1Ham/btc-lean` `main@4f5c4f8` |
 | Build dependency | `vendor/btc-lean-core` `4f5c4f8` (public `spec/core` copy) |
 
 The exact `sorry` result is **zero matching lines**. Prose mentions of
 `sorry` in documentation are not `sorry` terms.
+
+## Proof-wave 10 gate
+
+- `lake build` — **RC 0**, 305 jobs.
+- `check-catalog.py --audit` — **RC 0**, 48 proved, 0 statement-only,
+  198 targets, 0 unresolved, 0 proved failures, 0 candidates, 10968
+  declarations.
+- `check.sh` — **RC 0**: `files=266 obligations=82 sorry_in_proofs=0`,
+  `check: OK`.
+- `check-final.py` — **RC 0**: 266 Lean files, 264 root imports, D=33 E=15
+  F=15.
+- `check-conformance.py` — **RC 0**: 61 base + 16 framing + 9 boundary
+  checks, 33 differential fixtures, 185 Lean references, 16/16 mutation
+  controls, 6 finite BOLT 2 message vectors, live transcript `9c6b664d7ac4…`
+  with 26 BigSize + 3 TLV + 4 wire + 2 live BOLT 2 payloads
+  (`channel_ready`, `open_channel`).
+- `verify-vendor.sh` — **RC 0**, 149 files (public `4f5c4f8` snapshot).
+- `verify-anchors.py` — **RC 0**, 311 anchors, 0 bad, 2 unanchored rows.
+- `AxiomAudit` — **RC 0**, 323 audited theorems with the permitted classical
+  axioms only.
+
+**Proof-wave 10 gate: PASS.** Push is non-force to
+`origin/repair/integrated`; the exact commit is recorded in
+`docs/FINAL-STATUS.md`.
 
 ## Proof-wave 9 gate
 
@@ -136,6 +159,7 @@ removed `DecidableEq`.
 | Proof-wave 8 (8 lanes) | `TxValidation.Full` transfer, HTLC preimage, type-32 `open_channel`, accept payload, consumer adapter, conditional ECDSA bridge, BOLT 2 encodings, store epochs | **7 files; 100 targets; 250-job gate** |
 | Wave H 48-lane integration | 45 independent modules: per-input checker/composition, HTLC preimage/scriptCode, 319-byte `open_channel`, accept/PoP, commitment sites, anchor/script-commitment, epoch gossip, liveness, reduction arithmetic, reorg, release artifacts | **45 files; 100 targets; 227 audited; 295-job merged gate** |
 | Proof-wave 9 (6 lanes) | EC boundary, transport routing, registration/PoP, arbitrary preimages, node canonicalisation, live `channel_ready` | **5 files; 142 targets; 269 audited; 300-job gate** |
+| Proof-wave 10 (6 lanes) | Tag-independent EC digest obstruction, transport auth, concrete PoP, coverage witness, node identity/wire membership, live `open_channel` | **5 files; 198 targets; 323 audited; 305-job gate** |
 
 ## Reproduce
 

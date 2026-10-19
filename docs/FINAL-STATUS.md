@@ -2,11 +2,10 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `9359475` (`[WAVE9] integrate EC, routing, attribution,
-preimage, node, and live-message lanes`); status commits may advance the tip.
-Base `93fa943` (wave-H merge). Proof-wave 8 code was `10d18a1`; wave 9
-launched from `50e8b5c`.
-**Catalog state:** **48 `proved` / 0 `statementOnly` / 0 unresolved / 142
+**Gate HEAD:** `db52cc9` (`[WAVE10] integrate domain, transport-auth, PoP,
+coverage, node-identity, and live-message lanes`); status commits may advance
+the tip. Base `9359475` (wave-9 integration); wave 10 launched from `9158592`.
+**Catalog state:** **48 `proved` / 0 `statementOnly` / 0 unresolved / 198
 targets**.
 **Remote refs:** push is non-force to `origin/repair/integrated`. `origin/main`
 is not touched by this work. The former `repair/pubbump` branch is merged and
@@ -48,7 +47,10 @@ strengthened seven rows from 79 to **100** resolved targets, and kept the
 proof modules on top of that base. Proof-wave 9 then added five proof modules,
 strengthened six rows from 100 to **142 resolved targets**, and took the tree
 to **261 Lean files**, **259 root imports**, and **269 audited headline
-theorems** without changing the 48-row catalog.
+theorems** without changing the 48-row catalog. Proof-wave 10 added five more
+proof modules, strengthened the same six rows from 142 to **198 resolved
+targets**, and took the tree to **266 Lean files**, **264 root imports**, and
+**323 audited headline theorems** without changing the 48-row catalog.
 
 * `LnLean/Proofs/Bitcoin/FundingScriptTargets.lean`
 * `LnLean/Proofs/Bitcoin/ToLocalScriptTargets.lean`
@@ -100,25 +102,38 @@ BOLT 3 `toLocalScriptFull` model plus delay bytes in
 mechanized counterexamples such as D12 and the cross-direction HTLC duplicate
 are retained.
 
+Proof-wave 10 adds five boundary-focused modules:
+`LnLean/Proofs/Bitcoin/EcdsaDomainTargets.lean` (no fixed tag repairs
+`DigestBindsMod`; canonical value-`< n` domain is the exact algebraic repair),
+`LnLean/Proofs/Protocol/TransportAuthTargets.lean` (session authentication is
+separate from the explicit `SessionKeyBinding`), `LnLean/Proofs/Crypto/PopProtocolTargets.lean`
+(concrete challenge-response PoP with fixed-width injectivity and replay
+counterexamples), `LnLean/Proofs/Channel/CoverageWitnessTargets.lean` (a
+constructive witness decoder plus legacy-only impossibility), and
+`LnLean/Proofs/Routing/NodeIdentityTargets.lean` (rotation linkage requires an
+explicit witness; wire membership is an additive admission gate). The
+conformance lane adds a live `open_channel` payload row, taking the suite to
+185 Lean references and 16/16 mutation controls.
+
 ## Verified state
 
 | Check | Command | Result |
 |---|---|---|
-| Full build | `LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (300 jobs).` |
+| Full build | `LEAN_NUM_THREADS=1 flock -w 1800 /tmp/opencode/btc-lean/build.lock lake build` | **RC 0**, `Build completed successfully (305 jobs).` |
 | Actual `sorry` | `grep -RInE '^[[:space:]]*sorry[[:space:]]*$' LnLean --include='*.lean'` | **0 matches** (grep RC 1: no lines) |
-| Policy checker | `./scripts/check.sh` | **RC 0**, `files=261 obligations=82 sorry_in_proofs=0`, `check: OK` |
-| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 261 Lean files, 259 root imports |
+| Policy checker | `./scripts/check.sh` | **RC 0**, `files=266 obligations=82 sorry_in_proofs=0`, `check: OK` |
+| Selection/root checker | `python3 scripts/check-final.py` | **RC 0**, `selected: D=33 E=15 F=15 total=63`, 266 Lean files, 264 root imports |
 | Vendor integrity | `./scripts/verify-vendor.sh` | **RC 0**, `OK (149 files)` |
-| Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=310 bad=0 unanchored_rows=2` |
-| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 48 proved, 0 statement-only, 142 targets, 0 unresolved, 0 proved failures, 0 candidates |
+| Anchors | `python3 scripts/verify-anchors.py` | **RC 0**, `anchors=311 bad=0 unanchored_rows=2` |
+| Catalog, strict | `python3 scripts/check-catalog.py --audit` | **RC 0**, 48 proved, 0 statement-only, 198 targets, 0 unresolved, 0 proved failures, 0 candidates |
 | Catalog, planned-aware | `python3 scripts/check-catalog.py --allow-planned` | **RC 0**, `rows=48 proved=48 statementOnly=0 planned=0 proved_failures=0` |
-| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 269 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
-| Generated index | `python3 scripts/collect-obligations.py` | `223` proof files, `81` markers, `48` catalog rows, `8469` declarations, `0` `sorry` sites |
-| Conformance | `python3 scripts/check-conformance.py` | **RC 0**, 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 180 Lean theorem references, 14/14 mutation controls, 6 finite BOLT 2 message vectors, live 26 BigSize + 3 TLV + 4 wire + 1 BOLT 2 `channel_ready` payload |
+| Axiom audit | `lake build LnLean.Proofs.PhaseC3.AxiomAudit` | **RC 0**, 323 audited theorems; only `propext`, `Quot.sound`, `Classical.choice` |
+| Generated index | `python3 scripts/collect-obligations.py` | `228` proof files, `81` markers, `48` catalog rows, `8681` declarations, `0` `sorry` sites |
+| Conformance | `python3 scripts/check-conformance.py` | **RC 0**, 61 base + 16 framing + 9 boundary checks, 33 differential fixtures, 185 Lean theorem references, 16/16 mutation controls, 6 finite BOLT 2 message vectors, live 26 BigSize + 3 TLV + 4 wire + 2 BOLT 2 payloads (`channel_ready`, `open_channel`) |
 
-Tree size: **261 Lean files** under `LnLean/`, **259** root imports in
+Tree size: **266 Lean files** under `LnLean/`, **264** root imports in
 `LnLean.lean`; `LnLean.Proofs.All` and the `LnLean.Proofs.PhaseC2` aggregator
-are not root-imported. The full build covers 300 Lake jobs.
+are not root-imported. The full build covers 305 Lake jobs.
 
 The `sorry` grep result is exact: **there are no lines consisting only of
 `sorry` (modulo whitespace) in any `LnLean/**/*.lean` file.** Prose mentions of
@@ -132,18 +147,18 @@ hypotheses; the scope caveat is part of the row's meaning.
 
 | Row | Exact target(s) | Scope caveat |
 |---|---|---|
-| `LN-L1-001` | `FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo`, `FundingLinkTargets.fundingScriptPubKey_eq_p2wsh_ordered`, `InterpreterBridgeTargets.funding_interpreters_agree`, `SighashBridgeTargets.funding_sighash_interpreters_agree`, `FundingAuthTargets.openAccept_hash_linked`, `EcdsaBridgeTargets.fundingSignedValid_iff_vendor`, `EcdsaBridgeTargets.funding_sighash_interpreters_agree_vendor` | Handshake constructs the hash link; joint open/accept shares it; positive-direction vendored P2WSH execution; BIP 143 digest/locktime constructed and consumed by the vendor checker; conditional `VendorEcdsaBridge` transfer added in wave 8; abstract EC/transaction-validity context and finite C1 admission retained |
+| `LN-L1-001` | `FundingScriptTargets.fundingScriptPubKey_eq_p2wsh_twoOfTwo`, `FundingLinkTargets.fundingScriptPubKey_eq_p2wsh_ordered`, `InterpreterBridgeTargets.funding_interpreters_agree`, `SighashBridgeTargets.funding_sighash_interpreters_agree`, `FundingAuthTargets.openAccept_hash_linked`, `EcdsaBridgeTargets.fundingSignedValid_iff_vendor`, `EcdsaBridgeTargets.funding_sighash_interpreters_agree_vendor`, `EcdsaDomainTargets.not_digestBindsMod_any_tag`, `EcdsaDomainTargets.digest_domain_dichotomy` | Handshake constructs the hash link; joint open/accept shares it; positive-direction vendored P2WSH execution; BIP 143 digest/locktime constructed and consumed by the vendor checker; conditional `VendorEcdsaBridge` transfer added in wave 8; wave 10 proves no fixed tag satisfies `DigestBindsMod` and isolates the canonical value-`< n` domain repair; abstract EC/transaction-validity context and finite C1 admission retained |
 | `LN-L1-003` | `ReorgTargets.reorg_preserves_channel_safety`, `deep_reorg_separate_failure_mode` | Common tip, common-prefix arithmetic, bounded-depth invariant; deep reorg is a separate failure mode |
-| `LN-L1-004` | `ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey`, `..._commits_delay_and_revocationKey`, `commitmentOutputs_toLocal_commits_delay_and_revocationKey`, `InterpreterBridgeTargets.toLocal_delayed_interpreters_agree`, `InterpreterRevocationTargets.toLocal_revocation_interpreters_agree`, `SighashBridgeTargets.toLocal_sighash_interpreters_agree`, `SequenceContextTargets.toLocal_delayed_realChecker_refinement`, `TxValidTransferTargets.txCheckerFor_some_eq_realCheckerOf`, `TxValidTransferTargets.toLocal_delayed_txCheckerFor_refinement`, `EcdsaBridgeTargets.model_verify_eq_realChecker_seam`, `EcdsaBridgeTargets.toLocal_revocation_interpreters_agree_vendor` | Full two-branch byte template plus vendored delayed and revocation execution with constructed BIP 143 digest/locktime; decoded BIP 68/112 context is exact and transferred to the real checker; wave 8 proves the exact known-amount `txCheckerFor` transfer and the `minimalData`/`csv ≥ 32768` edges; known-amount and concrete-EC boundaries remain explicit |
+| `LN-L1-004` | `ToLocalScriptTargets.toLocalScriptFull_carries_csv_and_revocationKey`, `..._commits_delay_and_revocationKey`, `commitmentOutputs_toLocal_commits_delay_and_revocationKey`, `InterpreterBridgeTargets.toLocal_delayed_interpreters_agree`, `InterpreterRevocationTargets.toLocal_revocation_interpreters_agree`, `SighashBridgeTargets.toLocal_sighash_interpreters_agree`, `SequenceContextTargets.toLocal_delayed_realChecker_refinement`, `TxValidTransferTargets.txCheckerFor_some_eq_realCheckerOf`, `TxValidTransferTargets.toLocal_delayed_txCheckerFor_refinement`, `EcdsaBridgeTargets.model_verify_eq_realChecker_seam`, `EcdsaBridgeTargets.toLocal_revocation_interpreters_agree_vendor`, `EcdsaDomainTargets.not_digestBindsMod_any_tag`, `EcdsaDomainTargets.digest_domain_dichotomy` | Full two-branch byte template plus vendored delayed and revocation execution with constructed BIP 143 digest/locktime; decoded BIP 68/112 context is exact and transferred to the real checker; wave 8 proves the exact known-amount `txCheckerFor` transfer and the `minimalData`/`csv ≥ 32768` edges; wave 10 proves the tag-independent digest-domain obstruction and the canonical-domain repair; known-amount and concrete-EC boundaries remain explicit |
 | `LN-L1-006` | `WeightTargets.commitmentBaseWeight_model_target` | BOLT 3 fee-basis constants `724`/`1124` and `172` per untrimmed HTLC; exact 8 WU anchor serialization gap retained |
 | `LN-CR-005` | `TLVStream.wellFormed_iff_pairwise`, `wellFormed_record_type_unique` | Exact theorem-level characterization; out-of-domain counterexample retained |
 | `LN-CH-003` | `Commitment.output_ordering`, `CommitmentTx.migratedFrom_outputsNet_perm_commitmentOutputs`, `CommitmentTypes.CommitmentTx.migrateNet_canonicalOutputs_eq_commitmentOutputs`, `CommitmentConsumer.migratedConsumerOutputs_eq_consumerOutputs_of_migrated`, `CommitmentConsumerSites.commitment_signed_full_covers_migrated`, `CommitmentConsumerSites.migratedConsumerOutputs_eq_viewOfState_outputs`, `CommitmentConsumerSites.viewOfState_outputs_perm_netConsumerOutputs` | Rich `CommitmentTx` model with script/dust/CLTV; five-field gross/net record layer; arbitrary-dust canonical permutation/refinement; normal-form consumer migration; wave 8 adds the proof-layer `SignedState.toCommitmentTx` adapter and concrete sites, but no production `CommitmentTx` consumer; D12 still refutes legacy `commitmentOutputs` |
 | `LN-CH-005` | `Fee.commitmentSigningGate_rejected_iff_insufficient`, `..._iff_no_checkedSigning` | Exact fee gate; normal-phase transition form explicit |
 | `LN-HT-004` | `HTLC.dir_id_unique`, `id_unique_of_reachable_cross`, `tagged_id_unique_of_reachable`, `tagged_ids_nodup_of_reachable`, `cross_direction_duplicate_tagged` | Per-sender uniqueness; direction-tagged ids are globally unique; the untagged global claim needs `CrossDisjoint` and is otherwise refuted |
-| `LN-PR-003` | `Handshake.funding_signed_signing_contract`, `SighashTargets.funding_and_commitment_signing_contract`, `KeyModelTargets.funding_signature_attribution`, `AcceptPayloadTargets.stored_accept_payload_attribution`, `AcceptPayloadTargets.acceptPayload_not_proof_of_possession` | Conditional on `FundingSigningLaw` + `KeyBinding`; joint funding/commitment contract; secret-key model attributes under `KeyBinding`; wave 8 stores the accept payload with provenance and proves storage is not proof of possession; C3/generation alone is insufficient |
-| `LN-PR-004` | `ProtocolWireTargets.commitment_signed_full_covers_exact`, `protocol_wire_summary`, `SighashTargets.SighashProduces.coverage`, `SighashViewBindingTargets.commitmentSignature_binds_viewOfState`, `SighashTargets.CommitmentWire.txBytes_parse`, `Bip143Preimage.preimageBytes_eq_bip143MsgL_ofTx`, `commitmentBip143Preimage_eq_bip143MsgL`, `HtlcPreimageTargets.htlcBip143Preimage_eq_bip143MsgL`, `HtlcPreimageTargets.HtlcSpend.successPreimage_eq_bip143MsgL`, `HtlcPreimageTargets.HtlcSpend.timeoutPreimage_eq_bip143MsgL`, `HtlcPreimageTargets.htlc_preimage_target_summary` | `CommitmentSignedFull` plus exact BOLT 3 transaction wire layouts/parser round-trips; C3-derived digests; conditional digest-to-view binding; commitment and HTLC second-stage preimage byte equality; explicit 20-byte hash-image/amount and display-order boundaries; wire-only negative results retained |
-| `LN-PR-001` | `Handshake.open_bounds`, `OpenChannelWireTargets.openChannelWire_end_to_end`, `OpenChannelWire.toFundingParams_hash_linked`, `OpenChannelWireTargets.acceptKey_bound_before_fundingCreated_wire` | Type-32 `open_channel` wire record projects to `Handshake.OpenChannel` and funding; `FundingPhase` reachable end-to-end; transport attribution remains explicit |
-| `LN-RT-002` | `Gossip.update_monotone`, `GossipStoreEpochTargets.epochFold_gossip_eq_canonicalStoreView_rawFold`, `Gossip.replacedUpdates_timestamp_lt`, `GossipStoreEpochTargets.StoreEpoch.epochFold_store_eq_foldl` | Update monotonicity plus the wave-8 epoch/replacement-history square; two divergence witnesses show both admission hypotheses are necessary; node-announcement canonicalisation remains open |
+| `LN-PR-003` | `Handshake.funding_signed_signing_contract`, `SighashTargets.funding_and_commitment_signing_contract`, `KeyModelTargets.funding_signature_attribution`, `AcceptPayloadTargets.stored_accept_payload_attribution`, `AcceptPayloadTargets.acceptPayload_not_proof_of_possession`, `PopProtocolTargets.challengeMessage_injective_of_valid`, `PopProtocolTargets.accepted_funding_attribution`, `PopProtocolTargets.popSound_of_keySoundOn`, `PopProtocolTargets.pop_protocol_summary` | Conditional on `FundingSigningLaw` + `KeyBinding`; joint funding/commitment contract; secret-key model attributes under `KeyBinding`; wave 8 stores the accept payload with provenance and proves storage is not proof of possession; wave 10 adds a concrete challenge-response PoP with fixed-width injectivity, honest completeness, `PopKeySoundOn`/`PopExtractionOn` derivation, and replay counterexamples; C3/generation alone is insufficient |
+| `LN-PR-004` | `ProtocolWireTargets.commitment_signed_full_covers_exact`, `protocol_wire_summary`, `SighashTargets.SighashProduces.coverage`, `SighashViewBindingTargets.commitmentSignature_binds_viewOfState`, `SighashTargets.CommitmentWire.txBytes_parse`, `Bip143Preimage.preimageBytes_eq_bip143MsgL_ofTx`, `commitmentBip143Preimage_eq_bip143MsgL`, `HtlcPreimageTargets.htlcBip143Preimage_eq_bip143MsgL`, `HtlcPreimageTargets.HtlcSpend.successPreimage_eq_bip143MsgL`, `HtlcPreimageTargets.HtlcSpend.timeoutPreimage_eq_bip143MsgL`, `HtlcPreimageTargets.htlc_preimage_target_summary`, `CoverageWitnessTargets.decodeCoverage_canonical`, `CoverageWitnessTargets.no_legacy_only_coverage_decoder`, `CoverageWitnessTargets.coverage_witness_summary` | `CommitmentSignedFull` plus exact BOLT 3 transaction wire layouts/parser round-trips; C3-derived digests; conditional digest-to-view binding; commitment and HTLC second-stage preimage byte equality; wave 10 adds a constructive per-HTLC coverage witness, proves the canonical decode, and rules out every legacy-only decoder/selector; explicit 20-byte hash-image/amount and display-order boundaries retained |
+| `LN-PR-001` | `Handshake.open_bounds`, `OpenChannelWireTargets.openChannelWire_end_to_end`, `OpenChannelWire.toFundingParams_hash_linked`, `OpenChannelWireTargets.acceptKey_bound_before_fundingCreated_wire`, `TransportAuthTargets.transport_authenticated_attributed`, `TransportAuthTargets.authenticated_delivery_reaches_fundingCreated`, `TransportAuthTargets.transport_auth_summary` | Type-32 `open_channel` wire record projects to `Handshake.OpenChannel` and funding; `FundingPhase` reachable end-to-end; wave 10 separates transport authentication from explicit `SessionKeyBinding`, composes attributed delivery with the funding route, and retains the no-wire-sender/key-ownership boundaries |
+| `LN-RT-002` | `Gossip.update_monotone`, `GossipStoreEpochTargets.epochFold_gossip_eq_canonicalStoreView_rawFold`, `Gossip.replacedUpdates_timestamp_lt`, `GossipStoreEpochTargets.StoreEpoch.epochFold_store_eq_foldl`, `NodeIdentityTargets.canonical_distinct_nodes_no_oriented_store_link`, `NodeIdentityTargets.rotation_preserves_wireMember`, `NodeIdentityTargets.missing_endpoint_channel_admitted` | Update monotonicity plus the wave-8 epoch/replacement-history square; wave 10 proves no antisymmetric store-only rotation link, requires an explicit `RotationWitness` for linkage, shows signatures are not preserved, and separates wire membership from the core admission transition; identity across rotation, chain existence, address parsing, and rate limits remain open |
 | `LN-RT-006` | `GossipTargets.gossip_graph_only_valid_announcements` | Reachable signature-gated `admitGossip` states; raw `applyGossip` remains unfiltered and is proved not to refine canonical admission; the canonical-store wrapper is the supported path |
 
 The earlier proof-wave promotions remain valid with their existing caveats
@@ -291,7 +306,10 @@ is [`docs/OPEN-ISSUES.md`](OPEN-ISSUES.md). The P0 blockers are:
   total rejection, so no non-vacuous concrete verifier theorem exists there.
   The amount/outpoint context and unconditional `ConsensusSpendBridge` remain
   open, and the EC seam must keep an explicit `VendorEcdsaContract`/EUF-CMA
-  hypothesis.
+  hypothesis. Wave 10 sharpens this further: no fixed tag satisfies
+  `DigestBindsMod` on arbitrary bytes, even at fixed 33-byte length; the
+  canonical value-`< n` domain is the exact algebraic repair available without
+  a computational hash assumption.
 
 Wave 7 closed `CH-01` (consumer path), `RT-01` (canonical wrapper and raw
 non-refinement), `CONF-02` (live finite comparison), and `MODEL-02`/`MODEL-03`

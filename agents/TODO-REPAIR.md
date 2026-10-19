@@ -303,7 +303,7 @@ Wave-8 reports are in `agents/reports/swarm8/`. The proof-wave-8 gate is
 **build 250 jobs, strict catalog 100 targets / 8181 declarations, check.sh
 `files=211 obligations=82 sorry_in_proofs=0`, 215 audited theorems, 306
 anchors, 149 vendor files, and 0 forbidden constructs.** The next candidates
-are listed in `docs/OPEN-ISSUES.md` under “Wave 9 candidates”.
+are tracked in `docs/OPEN-ISSUES.md`; wave 10 later attacked the next layer.
 
 ### Proof-wave 9 — remaining boundaries after wave H
 
@@ -338,25 +338,40 @@ declarations, `check.sh` `files=261 obligations=82 sorry_in_proofs=0`, 269
 audited theorems, 310 anchors, 149 vendor files, conformance 180 refs and
 14/14 controls, and zero actual `sorry`/forbidden constructs.**
 
-### Proof-wave 10 — next boundary layer
+### Proof-wave 10 — boundary layer and second live row
 
 Wave 10 launched from `9158592` (wave-9 integration and gate docs). The lane
-plan is `agents/swarm/WAVE-10.md`; reports go to `agents/reports/swarm10/`.
+plan is `agents/swarm/WAVE-10.md`; reports are in
+`agents/reports/swarm10/`. All six lanes are complete and integrated.
 
-- [ ] `S10-L1-EC-DOMAIN` — canonical tag vs `DigestBindsMod`; general
-  collision/impossibility or conditional domain theorem.
-- [ ] `S10-L1-TRANSPORT-AUTH` — transport authentication above
-  `OpenChannelEnvelope`; derive `EnvelopeAttributed` and retain no-auth
-  counterexample.
-- [ ] `S10-PR-POP-DERIVE` — challenge-response PoP; completeness, conditional
-  soundness/attribution, replay counterexample.
-- [ ] `S10-PR-COVERAGE-WITNESS` — coverage witness decoder; legacy-only
-  impossibility.
-- [ ] `S10-RT-NODE-IDENTITY` — node-ID rotation/linkage and wire membership
-  boundaries.
-- [ ] `S10-CONF-LIVE-MSGS` — additional live BOLT 2 message row.
-- [ ] Parent integration: root imports, catalog targets, audit, generated
-  indexes, docs, full gate, and non-force checkpoint.
+- [x] `S10-L1-EC-DOMAIN` — no fixed tag repairs `DigestBindsMod`
+  (`not_digestBindsMod_any_tag`, `no_digestBindsMod_anywhere`); the exact
+  algebraic repair is a canonical fixed-size value-`< n` domain. No
+  unconditional ECDSA/consensus claim.
+- [x] `S10-L1-TRANSPORT-AUTH` — authenticated session separated from explicit
+  `SessionKeyBinding`; attributed delivery composed with the funding route;
+  no payload-only sender or transport-attribution function.
+- [x] `S10-PR-POP-DERIVE` — concrete challenge-response PoP, fixed-width
+  injectivity, honest completeness, derived `PopSound`/`PopProducedBy`, and
+  replay counterexamples.
+- [x] `S10-PR-COVERAGE-WITNESS` — constructive per-HTLC coverage decoder plus
+  legacy-only impossibility; production coverage needs an out-of-band/full
+  record or a protocol change.
+- [x] `S10-RT-NODE-IDENTITY` — no antisymmetric store-only rotation link;
+  explicit witness preserves wire membership but not signatures; core
+  admission does not enforce wire membership.
+- [x] `S10-CONF-LIVE-MSGS` — live `open_channel` (type 32) base case through
+  the pinned public rust-lightning encoder; 185 Lean refs and 16/16 mutation
+  controls.
+- [x] Parent integration: five root-imported modules, six catalog rows
+  strengthened from 142 to 198 targets, audit extended to 323 theorems,
+  generated indexes/docs refreshed, full gate green, and the non-force
+  checkpoint prepared.
+
+Wave-10 gate: **build 305 jobs, strict catalog 198 targets / 10968
+declarations, `check.sh` `files=266 obligations=82 sorry_in_proofs=0`, 323
+audited theorems, 311 anchors, 149 vendor files, conformance 185 refs and
+16/16 controls, and zero actual `sorry`/forbidden constructs.**
 
 The catalog is no longer the work queue. Open issues are tracked in
 `docs/OPEN-ISSUES.md`; the swarm protocol is `docs/SWARM-LOOP.md`.

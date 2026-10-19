@@ -165,10 +165,13 @@ in `agents/reports/swarm8/`. Wave 8 closed the final `TxValidation.Full`
 transfer for a known amount, `HtlcWire` preimage equality, the type-32
 `open_channel` wire constructor, `accept_channel` payload storage, the
 proof-layer consumer adapter, the conditional ECDSA bridge, wider BOLT
-encodings, and gossip-store epochs. The next candidates are listed in
-`docs/OPEN-ISSUES.md` under “Wave 9 candidates”; they focus on the remaining
-unconditional EC/amount boundary, transport attribution, registration, and the
-live message row. Wave 7 is recorded in `agents/swarm/WAVE-7.md` and
+encodings, and gossip-store epochs. Wave 9 then added the concrete EC
+obstruction, transport routing, registration/PoP, arbitrary-preimage
+characterization, node canonicalisation, and the live `channel_ready` row.
+Wave 10 added the tag-independent digest-domain obstruction, transport
+authentication interface, concrete PoP, coverage witness, node identity/wire
+membership, and the live `open_channel` row. The current open issues are in
+`docs/OPEN-ISSUES.md`; wave 7 is recorded in `agents/swarm/WAVE-7.md` and
 `agents/reports/swarm7/`. Every wave is integrated under the same gate and
 recorded here.
 
