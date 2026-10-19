@@ -2,8 +2,8 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** wave-11 code commit; status commits may advance the tip. Base
-`9359475` (wave-9 integration); wave 10 launched from `9158592`; wave 11
+**Gate HEAD:** `6a48d41` (`[WAVE11]`); status commits may advance the tip.
+Base `9359475` (wave-9 integration); wave 10 launched from `9158592`; wave 11
 launched from `4037264`.
 **Catalog:** 51 proved / 0 statementOnly / 0 unresolved / 277 targets.
 **Wave 11:** integrated; eight lanes complete, reports under

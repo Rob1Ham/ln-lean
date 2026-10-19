@@ -2,9 +2,10 @@
 
 **Repository:** `/home/ubuntu/ln-lean-repair`
 **Branch:** `repair/integrated`
-**Gate HEAD:** `db52cc9` (`[WAVE10] integrate domain, transport-auth, PoP,
-coverage, node-identity, and live-message lanes`); status commits may advance
-the tip. Base `9359475` (wave-9 integration); wave 10 launched from `9158592`.
+**Gate HEAD:** `6a48d41` (`[WAVE11] integrate identity-chain, Noise,
+coverage-source, finality, invoice, aggregate-HTLC, and non-vacuity lanes`);
+status commits may advance the tip. Base `9359475` (wave-9 integration);
+wave 10 launched from `9158592`; wave 11 launched from `4037264`.
 **Catalog state:** **51 `proved` / 0 `statementOnly` / 0 unresolved / 277
 targets**.
 **Remote refs:** push is non-force to `origin/repair/integrated`. `origin/main`

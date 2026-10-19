@@ -1,7 +1,7 @@
 # Wave 11 integration status
 
 **Base:** `4037264` (wave-10 integration)
-**Code commit:** wave-11 code commit (recorded in the status commit)
+**Code commit:** `6a48d41` (`[WAVE11]` integration)
 **Branch:** `repair/integrated`
 **Result:** eight lanes reviewed and integrated; source, build, conformance, and
 axiom gates green; checkpoint prepared for a non-force push to

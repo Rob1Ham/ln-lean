@@ -29,8 +29,8 @@ Evidence labels used below:
 
 | Item | State | Evidence |
 |---|---|---|
-| Branch tip | wave-11 code commit; status commits may advance it | `git rev-parse HEAD` |
-| `origin/main` | `b891a59`; **100 commits behind** code gate `db52cc9`; `main` is an ancestor of `HEAD` | `git rev-list --count origin/main..db52cc9` = 100; `git merge-base --is-ancestor origin/main db52cc9` |
+| Branch tip | `6a48d41` wave-11 integration; status commits may advance it | `git rev-parse HEAD` |
+| `origin/main` | `b891a59`; **102 commits behind** code gate `6a48d41`; `main` is an ancestor of `HEAD` | `git rev-list --count origin/main..6a48d41` = 102; `git merge-base --is-ancestor origin/main 6a48d41` |
 | Release tags | none | `git tag -l` empty; GitHub tags API empty |
 | GitHub releases | none | GitHub releases API empty |
 | `LICENSE` | **none** at repository root | `find` / `git ls-files` |
